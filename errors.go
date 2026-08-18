@@ -44,6 +44,14 @@ type BadRequestError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *BadRequestError) Unwrap() error { return &e.APIError }
 
+// PaymentRequiredError is returned for 402 responses. The plan does not include this.
+type PaymentRequiredError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *PaymentRequiredError) Unwrap() error { return &e.APIError }
+
 // NotFoundError is returned for 404 responses. No such resource in this account.
 type NotFoundError struct {
 	APIError
@@ -51,14 +59,6 @@ type NotFoundError struct {
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *NotFoundError) Unwrap() error { return &e.APIError }
-
-// PaymentRequiredError is returned for 402 responses. The account has used its hosted generation allowance.
-type PaymentRequiredError struct {
-	APIError
-}
-
-// Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *PaymentRequiredError) Unwrap() error { return &e.APIError }
 
 // apiError maps a status onto the documented error type for an operation.
 func apiError(status int, body []byte, requestID string, errs map[string]func(int, []byte, string) error) error {
@@ -94,10 +94,10 @@ func newBadRequestError(status int, body []byte, requestID string) error {
 	return &BadRequestError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
-func newNotFoundError(status int, body []byte, requestID string) error {
-	return &NotFoundError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
-}
-
 func newPaymentRequiredError(status int, body []byte, requestID string) error {
 	return &PaymentRequiredError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+}
+
+func newNotFoundError(status int, body []byte, requestID string) error {
+	return &NotFoundError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }

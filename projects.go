@@ -43,6 +43,7 @@ type ProjectsUpdateParams struct {
 	Name                *string                          `json:"name,omitempty"`
 	SpecURL             *string                          `json:"spec_url,omitempty"`
 	Source              *Source                          `json:"source,omitempty"`
+	Platforms           []string                         `json:"platforms,omitempty"`
 	Destination         *ProjectsUpdateParamsDestination `json:"destination,omitempty"`
 	Languages           []string                         `json:"languages,omitempty"`
 	Destinations        map[string]Destination           `json:"destinations,omitempty"`
@@ -109,7 +110,7 @@ func (s *ProjectsService) Create(ctx context.Context, params *ProjectsCreatePara
 		Method:    "POST",
 		Path:      "/projects",
 		Body:      params,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError},
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError},
 		SchemaKey: "projects.create",
 	}
 	var out Project
@@ -163,7 +164,7 @@ func (s *ProjectsService) Update(ctx context.Context, projectID string, params *
 		Method:    "PATCH",
 		Path:      fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
 		Body:      params,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "404": newNotFoundError},
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "404": newNotFoundError},
 		SchemaKey: "projects.update",
 	}
 	var out Project

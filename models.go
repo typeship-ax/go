@@ -196,17 +196,17 @@ type Project struct {
 	PackageName *string        `json:"package_name,omitempty"`
 	SpecPatches []SpecPatch    `json:"spec_patches,omitempty"`
 	Config      *ProjectConfig `json:"config,omitempty"`
-	// McpEnabled Whether the hosted MCP endpoint is on.
+	// McpEnabled Whether the hosted MCP endpoint is on. Requires the mcp platform and Pro; turning the platform off turns this off.
 	McpEnabled *bool `json:"mcp_enabled,omitempty"`
 	// McpURL Path of the hosted MCP endpoint while it is on; read-only.
 	McpURL *string `json:"mcp_url,omitempty"`
-	// AgentContextEnabled Whether the hosted agent context URL is on.
+	// AgentContextEnabled Whether the hosted agent context URL is on. Requires the agent platform and Pro; turning the platform off turns this off.
 	AgentContextEnabled *bool `json:"agent_context_enabled,omitempty"`
 	// AgentContextURL Path of the hosted agent context (an always-current AGENTS.md) while it is on; read-only.
 	AgentContextURL *string `json:"agent_context_url,omitempty"`
-	// RelayEnabled Whether the webhook relay is on, letting the generated CLI's webhooks listen command mint relay sessions.
+	// RelayEnabled Whether the webhook relay is on, letting the generated CLI's webhooks listen command mint relay sessions. Requires the cli platform and Pro; turning the platform off turns this off.
 	RelayEnabled *bool `json:"relay_enabled,omitempty"`
-	// Platforms Artifacts this project builds from its spec, in one run into one package. sdk is always present.
+	// Platforms Artifacts this project builds from its spec. sdk is always present and stands for the SDK in each of `languages`; cli, mcp, and agent are built on the TypeScript SDK and ship in its package, so they require typescript among the languages. Each SDK language and each of cli, mcp, and agent is one platform for billing.
 	Platforms []string `json:"platforms"`
 	CreatedAt string   `json:"created_at"`
 }
