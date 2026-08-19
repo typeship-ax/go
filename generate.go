@@ -23,8 +23,12 @@ type GenerateRunParams struct {
 // Run — generate a package from a spec.
 //
 // Stateless generation: nothing is stored. Returns the full generated
-// package as files. The free plan generates the first 25 operations;
-// paid plans generate the whole spec.
+// package as files. Works without an API key: anonymous calls generate
+// the first 25 operations, rate limited per IP address, and the
+// response's `limits` object says what was held back and where to lift
+// it. With a key, the free plan generates the first 25 operations and
+// paid plans generate the whole spec. A present but invalid key is a
+// 401, not a downgrade to anonymous.
 //
 // POST /generate
 func (s *GenerateService) Run(ctx context.Context, params *GenerateRunParams, opts ...RequestOption) (*GenerationResult, error) {

@@ -136,9 +136,10 @@ type McpBehavior struct {
 }
 
 type GenerationResult struct {
-	Files    []GeneratedFile `json:"files"`
-	Warnings []string        `json:"warnings"`
-	Meta     GenerationMeta  `json:"meta"`
+	Files    []GeneratedFile   `json:"files"`
+	Warnings []string          `json:"warnings"`
+	Meta     GenerationMeta    `json:"meta"`
+	Limits   *GenerationLimits `json:"limits,omitempty"`
 }
 
 type GeneratedFile struct {
@@ -169,6 +170,19 @@ type GenerationMeta struct {
 	PrNumber   *int64  `json:"pr_number,omitempty"`
 	FileCount  *int64  `json:"file_count,omitempty"`
 	TotalLines *int64  `json:"total_lines,omitempty"`
+}
+
+// GenerationLimits Present when the generation was capped: by the free plan, or because the call was anonymous. Absent on uncapped generations.
+type GenerationLimits struct {
+	// MaxOperations How many operations this generation was allowed to include.
+	MaxOperations int64 `json:"max_operations"`
+	// OmittedOperations How many operations in the spec were left out.
+	OmittedOperations int64  `json:"omitted_operations"`
+	Reason            string `json:"reason"`
+	// SignupURL Anonymous calls only. Where to create an account.
+	SignupURL *string `json:"signup_url,omitempty"`
+	// UpgradeURL Where the cap is lifted.
+	UpgradeURL string `json:"upgrade_url"`
 }
 
 type ProjectsListResponse struct {
@@ -652,11 +666,12 @@ type SpecVersion struct {
 	CreatedAt      string `json:"created_at"`
 }
 
+// Account The organization an API key belongs to. Members share its projects, keys, and plan; sign-in identity is not part of the API.
 type Account struct {
-	ID        string `json:"id"`
-	Object    string `json:"object"`
+	ID     string `json:"id"`
+	Object string `json:"object"`
+	// Name The organization's display name.
 	Name      string `json:"name"`
-	Email     string `json:"email"`
 	Plan      string `json:"plan"`
 	CreatedAt string `json:"created_at"`
 }
