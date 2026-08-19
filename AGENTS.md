@@ -30,7 +30,7 @@ if err != nil {
 - Optional fields are pointers; slices and maps are already nil-able and stay bare.
 - Paginated methods return an `*Iter[T]`: `for it.Next() { it.Value() }`, then check `it.Err()`.
 - Every method takes variadic `RequestOption`s (`WithRequestTimeout`, `WithRequestMaxRetries`, `WithRequestHeader`, `WithAPIResponse` for status/headers/request id) for per-call overrides.
-- A `$ref`, array, or text body is a positional `body` argument; inline object bodies are fields of the params struct. Uploads are `Upload{Name, ContentType, Reader}` fields. `oneOf`/`anyOf` values are union types with `As<Variant>()`/`From<Variant>()` accessors and `Discriminator()`. GraphQL operations take `WithSelection("{ id name }")`.
+- A `$ref`, array, or text body is a positional `body` argument; inline object bodies are fields of the params struct. Uploads are `Upload{Name, ContentType, Reader}` fields. `oneOf`/`anyOf` values are union types with `As<Variant>()`/`From<Variant>()` accessors and `Discriminator()`.
 
 ## Documentation
 - The reference for this exact package: `api.md` (offline, always current with the code).

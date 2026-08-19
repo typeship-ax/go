@@ -56,6 +56,12 @@ func main() {
 }
 ```
 
+## Authentication
+
+- **Bearer token** — `typeship.WithBearerToken` (or `WithBearerTokenFunc` for tokens that expire), sent as `Authorization: Bearer <token>`.
+
+`typeship.WithOnRequest` sees every request before it is sent, for headers every call needs (API version headers, tenant ids).
+
 ## Errors
 
 Every documented error response has its own type, so you can match at
@@ -103,7 +109,7 @@ fmt.Println(meta.StatusCode, meta.RequestID, meta.Header.Get("X-RateLimit-Remain
 
 ```go
 client, err := typeship.New(
-	typeship.WithBaseURL("https://api.example.com"),
+	typeship.WithBaseURL("https://typeship.dev/api/v1"), // overrides the default
 	typeship.WithTimeout(10*time.Second),   // per attempt
 	typeship.WithMaxRetries(3),
 	typeship.WithHTTPClient(myClient),      // proxies, transports, tracing
