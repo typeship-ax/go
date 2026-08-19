@@ -21,40 +21,38 @@ type ProjectsListParams struct {
 
 // ProjectsCreateParams are the inputs for ProjectsService.Create.
 type ProjectsCreateParams struct {
-	Name                string                           `json:"name"`
-	SpecURL             *string                          `json:"spec_url,omitempty"`
-	Source              *Source                          `json:"source,omitempty"`
-	Platforms           []string                         `json:"platforms,omitempty"`
-	Languages           []string                         `json:"languages,omitempty"`
-	Destinations        map[string]Destination           `json:"destinations,omitempty"`
-	PackageNames        map[string]string                `json:"package_names,omitempty"`
-	Destination         *ProjectsCreateParamsDestination `json:"destination,omitempty"`
-	AutoRegen           *bool                            `json:"auto_regen,omitempty"`
-	PackageName         *string                          `json:"package_name,omitempty"`
-	SpecPatches         []SpecPatch                      `json:"spec_patches,omitempty"`
-	McpEnabled          *bool                            `json:"mcp_enabled,omitempty"`
-	RelayEnabled        *bool                            `json:"relay_enabled,omitempty"`
-	AgentContextEnabled *bool                            `json:"agent_context_enabled,omitempty"`
-	Config              *ProjectsCreateParamsConfig      `json:"config,omitempty"`
+	Name         string                           `json:"name"`
+	SpecURL      *string                          `json:"spec_url,omitempty"`
+	Source       *Source                          `json:"source,omitempty"`
+	Platforms    []string                         `json:"platforms,omitempty"`
+	Languages    []string                         `json:"languages,omitempty"`
+	Destinations map[string]Destination           `json:"destinations,omitempty"`
+	PackageNames map[string]string                `json:"package_names,omitempty"`
+	Destination  *ProjectsCreateParamsDestination `json:"destination,omitempty"`
+	AutoRegen    *bool                            `json:"auto_regen,omitempty"`
+	PackageName  *string                          `json:"package_name,omitempty"`
+	SpecPatches  []SpecPatch                      `json:"spec_patches,omitempty"`
+	McpEnabled   *bool                            `json:"mcp_enabled,omitempty"`
+	RelayEnabled *bool                            `json:"relay_enabled,omitempty"`
+	Config       *ProjectsCreateParamsConfig      `json:"config,omitempty"`
 }
 
 // ProjectsUpdateParams are the inputs for ProjectsService.Update.
 type ProjectsUpdateParams struct {
-	Name                *string                          `json:"name,omitempty"`
-	SpecURL             *string                          `json:"spec_url,omitempty"`
-	Source              *Source                          `json:"source,omitempty"`
-	Platforms           []string                         `json:"platforms,omitempty"`
-	Destination         *ProjectsUpdateParamsDestination `json:"destination,omitempty"`
-	Languages           []string                         `json:"languages,omitempty"`
-	Destinations        map[string]Destination           `json:"destinations,omitempty"`
-	PackageNames        map[string]string                `json:"package_names,omitempty"`
-	AutoRegen           *bool                            `json:"auto_regen,omitempty"`
-	PackageName         *string                          `json:"package_name,omitempty"`
-	SpecPatches         []SpecPatch                      `json:"spec_patches,omitempty"`
-	McpEnabled          *bool                            `json:"mcp_enabled,omitempty"`
-	RelayEnabled        *bool                            `json:"relay_enabled,omitempty"`
-	AgentContextEnabled *bool                            `json:"agent_context_enabled,omitempty"`
-	Config              *ProjectsUpdateParamsConfig      `json:"config,omitempty"`
+	Name         *string                          `json:"name,omitempty"`
+	SpecURL      *string                          `json:"spec_url,omitempty"`
+	Source       *Source                          `json:"source,omitempty"`
+	Platforms    []string                         `json:"platforms,omitempty"`
+	Destination  *ProjectsUpdateParamsDestination `json:"destination,omitempty"`
+	Languages    []string                         `json:"languages,omitempty"`
+	Destinations map[string]Destination           `json:"destinations,omitempty"`
+	PackageNames map[string]string                `json:"package_names,omitempty"`
+	AutoRegen    *bool                            `json:"auto_regen,omitempty"`
+	PackageName  *string                          `json:"package_name,omitempty"`
+	SpecPatches  []SpecPatch                      `json:"spec_patches,omitempty"`
+	McpEnabled   *bool                            `json:"mcp_enabled,omitempty"`
+	RelayEnabled *bool                            `json:"relay_enabled,omitempty"`
+	Config       *ProjectsUpdateParamsConfig      `json:"config,omitempty"`
 }
 
 // ProjectsListGenerationsParams are the inputs for ProjectsService.ListGenerations.

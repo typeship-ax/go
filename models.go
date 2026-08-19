@@ -21,7 +21,7 @@ type Config struct {
 	Pagination map[string]ConfigPaginationValue `json:"pagination,omitempty"`
 	Cli        *CliBehavior                     `json:"cli,omitempty"`
 	Mcp        *McpBehavior                     `json:"mcp,omitempty"`
-	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the agent context. Defaults to the spec's externalDocs URL.
+	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the spec's externalDocs URL.
 	DocsURL *string `json:"docs_url,omitempty"`
 }
 
@@ -131,7 +131,7 @@ type CliBehavior struct {
 
 // McpBehavior How the generated MCP server and the hosted endpoint behave. Part of Config.
 type McpBehavior struct {
-	// ToolMode MCP tool shape. meta collapses per-operation tools into search_docs, read_docs, and execute so large APIs don't flood agent context; auto switches to meta above 100 operations.
+	// ToolMode MCP tool shape. meta collapses per-operation tools into search_docs, read_docs, and execute so large APIs don't flood an agent's context window; auto switches to meta above 100 operations.
 	ToolMode *string `json:"tool_mode,omitempty"`
 }
 
@@ -200,13 +200,9 @@ type Project struct {
 	McpEnabled *bool `json:"mcp_enabled,omitempty"`
 	// McpURL Path of the hosted MCP endpoint while it is on; read-only.
 	McpURL *string `json:"mcp_url,omitempty"`
-	// AgentContextEnabled Whether the hosted agent context URL is on. Requires the agent platform and Pro; turning the platform off turns this off.
-	AgentContextEnabled *bool `json:"agent_context_enabled,omitempty"`
-	// AgentContextURL Path of the hosted agent context (an always-current AGENTS.md) while it is on; read-only.
-	AgentContextURL *string `json:"agent_context_url,omitempty"`
 	// RelayEnabled Whether the webhook relay is on, letting the generated CLI's webhooks listen command mint relay sessions. Requires the cli platform and Pro; turning the platform off turns this off.
 	RelayEnabled *bool `json:"relay_enabled,omitempty"`
-	// Platforms Artifacts this project builds from its spec. sdk is always present and stands for the SDK in each of `languages`; cli, mcp, and agent are built on the TypeScript SDK and ship in its package, so they require typescript among the languages. Each SDK language and each of cli, mcp, and agent is one platform for billing.
+	// Platforms Artifacts this project builds from its spec. sdk is always present and stands for the SDK in each of `languages`; cli and mcp are built on the TypeScript SDK and ship in its package, so they require typescript among the languages. Each SDK language and each of cli and mcp is one platform for billing.
 	Platforms []string `json:"platforms"`
 	CreatedAt string   `json:"created_at"`
 }

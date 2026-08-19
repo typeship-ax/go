@@ -22,7 +22,7 @@ Body (required):
 | --- | --- | --- | --- |
 | `params.Spec` | `SpecInput` | yes |  |
 | `params.Platforms` | `[]string` | no | Artifacts to generate from the spec. Defaults to [sdk]. |
-| `params.Language` | `*string` | no | Language to generate. Python and Go produce the SDK only; the CLI, MCP server, and agent context are TypeScript artifacts and are skipped with a warning when requested alongside them. |
+| `params.Language` | `*string` | no | Language to generate. Python and Go produce the SDK only; the CLI and MCP server are TypeScript artifacts and are skipped with a warning when requested alongside them. |
 | `params.PackageName` | `*string` | no | npm name override for the generated package. |
 | `params.Config` | `*Config` | no |  |
 
@@ -58,7 +58,7 @@ Body (required):
 | `params.Name` | `string` | yes |  |
 | `params.SpecURL` | `*string` | no | Spec location for a URL-sourced project. Provide this or source; a project with neither has nothing to generate. |
 | `params.Source` | `*Source` | no |  |
-| `params.Platforms` | `[]string` | no | Artifacts to build. sdk is implied; cli, mcp, and agent require typescript among the languages. Free projects run one platform in total (one SDK language); more is a 402 until the account is on Pro. |
+| `params.Platforms` | `[]string` | no | Artifacts to build. sdk is implied; cli and mcp require typescript among the languages. Free projects run one platform in total (one SDK language); more is a 402 until the account is on Pro. |
 | `params.Languages` | `[]string` | no | Languages to generate. Each is a separate package, a separate pull request, a separate hosted generation, and one platform for billing. Defaults to typescript alone. |
 | `params.Destinations` | `map[string]Destination` | no | Per-language pull-request destination, keyed by language. |
 | `params.PackageNames` | `map[string]string` | no | Registry name per language; unset derives from the API title. |
@@ -68,7 +68,6 @@ Body (required):
 | `params.SpecPatches` | `[]SpecPatch` | no |  |
 | `params.McpEnabled` | `*bool` | no | Requires the mcp platform and Pro. |
 | `params.RelayEnabled` | `*bool` | no | Requires the cli platform and Pro. |
-| `params.AgentContextEnabled` | `*bool` | no | Requires the agent platform and Pro. |
 | `params.Config` | `*ProjectsCreateParamsConfig` | no |  |
 
 Returns: `(*Project, error)`
@@ -117,7 +116,7 @@ Body (required):
 | `params.Name` | `*string` | no |  |
 | `params.SpecURL` | `*string` | no |  |
 | `params.Source` | `*Source` | no |  |
-| `params.Platforms` | `[]string` | no | Artifacts to build; replaces the list. Dropping cli, mcp, or agent turns off the hosted feature it serves. cli, mcp, and agent require typescript among the languages. Turning a platform off stops generating it; nothing already delivered is removed. |
+| `params.Platforms` | `[]string` | no | Artifacts to build; replaces the list. Dropping cli or mcp turns off the hosted feature it serves. cli and mcp require typescript among the languages. Turning a platform off stops generating it; nothing already delivered is removed. |
 | `params.Destination` | `*ProjectsUpdateParamsDestination` | no |  |
 | `params.Languages` | `[]string` | no | Languages to generate; replaces the list. Each is its own hosted generation and one platform for billing. |
 | `params.Destinations` | `map[string]Destination` | no | Per-language pull-request destination, keyed by language. |
@@ -127,7 +126,6 @@ Body (required):
 | `params.SpecPatches` | `[]SpecPatch` | no |  |
 | `params.McpEnabled` | `*bool` | no | Serve this project as a hosted remote MCP endpoint. Requires the mcp platform and Pro. |
 | `params.RelayEnabled` | `*bool` | no | Enable the webhook relay so the generated CLI's webhooks listen command works for this API's users. Requires the cli platform and Pro. |
-| `params.AgentContextEnabled` | `*bool` | no | Serve an always-current AGENTS.md for this API at a stable hosted URL. Requires the agent platform and Pro. |
 | `params.Config` | `*ProjectsUpdateParamsConfig` | no | Replaces the whole config. Pass null to clear it. |
 
 Returns: `(*Project, error)`
