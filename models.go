@@ -19,6 +19,7 @@ type Config struct {
 	Retries *RetryTuning `json:"retries,omitempty"`
 	// Pagination Per-operation pagination control, keyed by operationId or "METHOD /path". Unmatched keys are reported as generation warnings.
 	Pagination map[string]ConfigPaginationValue `json:"pagination,omitempty"`
+	Graphql    *GraphqlSettings                 `json:"graphql,omitempty"`
 	Cli        *CliBehavior                     `json:"cli,omitempty"`
 	Mcp        *McpBehavior                     `json:"mcp,omitempty"`
 	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the spec's externalDocs URL.
@@ -113,6 +114,25 @@ type PaginationRule struct {
 	LimitParam      *string `json:"limit_param,omitempty"`
 }
 
+// GraphqlSettings What a GraphQL schema cannot say about itself. Ignored for OpenAPI specs.
+type GraphqlSettings struct {
+	// Endpoint The URL every request is POSTed to; the generated client's default baseUrl. Defaults to the URL the schema was fetched from. Without either, baseUrl is a required client option.
+	Endpoint *string `json:"endpoint,omitempty"`
+	// Environments Named endpoints (sandbox, production). Each becomes a client environment; the first is the default unless endpoint is set.
+	Environments []GraphqlSettingsEnvironmentsItem `json:"environments,omitempty"`
+	// Auth How requests authenticate. bearer sends Authorization: Bearer; basic is for key-pair APIs (public key as username, private key as password); api_key sends a header named by api_key_header; none generates no auth option.
+	Auth *string `json:"auth,omitempty"`
+	// APIKeyHeader Header carrying the key when auth is api_key. Default X-API-Key.
+	APIKeyHeader *string `json:"api_key_header,omitempty"`
+	// Title The API's name; drives the package and client names ("Braintree" gives braintree and BraintreeClient). Defaults to a name derived from the endpoint's host.
+	Title *string `json:"title,omitempty"`
+}
+
+type GraphqlSettingsEnvironmentsItem struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
 // CliBehavior How the generated CLI behaves. Part of Config.
 type CliBehavior struct {
 	// WhoamiOperation resource.method of a zero-argument GET that the generated CLI's whoami command calls. Overrides auto-detection; a value that matches nothing is reported as a generation warning.
@@ -187,51 +207,7 @@ type GenerationLimits struct {
 	UpgradeURL string `json:"upgrade_url"`
 }
 
-// GenerationResultClaim is one of GenerationResultClaimVariant1 — Anonymous, URL-sourced generations only. A link a signed-in person can open to turn this run into a project in their organization (same spec, language, platforms, config). Lasts seven days. Null for inline specs; absent on keyed calls.
-// Go has no sum types, so it holds the JSON as received and decodes on
-// request: try the As* accessors, or switch on Discriminator() when the
-// spec names one.
 type GenerationResultClaim struct {
-	union json.RawMessage
-}
-
-// MarshalJSON writes the value as it was set or received.
-func (u GenerationResultClaim) MarshalJSON() ([]byte, error) {
-	if u.union == nil {
-		return []byte("null"), nil
-	}
-	return u.union, nil
-}
-
-// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *GenerationResultClaim) UnmarshalJSON(data []byte) error {
-	u.union = append(u.union[:0], data...)
-	return nil
-}
-
-// Raw returns the JSON exactly as received.
-func (u GenerationResultClaim) Raw() json.RawMessage {
-	return u.union
-}
-
-// AsGenerationResultClaimVariant1 decodes the value as GenerationResultClaimVariant1.
-func (u GenerationResultClaim) AsGenerationResultClaimVariant1() (GenerationResultClaimVariant1, error) {
-	var v GenerationResultClaimVariant1
-	err := json.Unmarshal(u.union, &v)
-	return v, err
-}
-
-// FromGenerationResultClaimVariant1 sets the value to a GenerationResultClaimVariant1.
-func (u *GenerationResultClaim) FromGenerationResultClaimVariant1(v GenerationResultClaimVariant1) error {
-	encoded, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	u.union = encoded
-	return nil
-}
-
-type GenerationResultClaimVariant1 struct {
 	URL       string `json:"url"`
 	ExpiresAt string `json:"expires_at"`
 }
@@ -246,9 +222,9 @@ type Project struct {
 	Object string `json:"object"`
 	Name   string `json:"name"`
 	// SpecURL The source URL when the source kind is url; null otherwise.
-	SpecURL     *string             `json:"spec_url,omitempty"`
-	Source      Source              `json:"source"`
-	Destination *ProjectDestination `json:"destination,omitempty"`
+	SpecURL     *string      `json:"spec_url,omitempty"`
+	Source      Source       `json:"source"`
+	Destination *Destination `json:"destination,omitempty"`
 	// Languages Languages this project generates. Each is a separate package, a separate pull request, and a separate hosted generation. Defaults to typescript alone.
 	Languages []string `json:"languages,omitempty"`
 	// Destinations Where each language's pull request lands, keyed by language. A repository each is the convention API vendors follow, and Go requires it since `go get` resolves a module to the repository root. Several languages may share a repository with different directories, producing one pull request.
@@ -258,9 +234,9 @@ type Project struct {
 	// AutoRegen Regenerate when the spec changes: on every push to the default branch for a repository source, every 30 minutes for a URL source. On by default. Off means only "generate now" and POST /projects/{project_id}/generations regenerate.
 	AutoRegen bool `json:"auto_regen"`
 	// PackageName npm name override for generated output; supports @scope/name.
-	PackageName *string        `json:"package_name,omitempty"`
-	SpecPatches []SpecPatch    `json:"spec_patches,omitempty"`
-	Config      *ProjectConfig `json:"config,omitempty"`
+	PackageName *string     `json:"package_name,omitempty"`
+	SpecPatches []SpecPatch `json:"spec_patches,omitempty"`
+	Config      *Config     `json:"config,omitempty"`
 	// McpEnabled Whether the hosted MCP endpoint is on. Requires the mcp platform and Pro; turning the platform off turns this off.
 	McpEnabled *bool `json:"mcp_enabled,omitempty"`
 	// McpURL Path of the hosted MCP endpoint while it is on; read-only.
@@ -283,50 +259,6 @@ type Source struct {
 	Path *string `json:"path,omitempty"`
 }
 
-// ProjectDestination is one of Destination.
-// Go has no sum types, so it holds the JSON as received and decodes on
-// request: try the As* accessors, or switch on Discriminator() when the
-// spec names one.
-type ProjectDestination struct {
-	union json.RawMessage
-}
-
-// MarshalJSON writes the value as it was set or received.
-func (u ProjectDestination) MarshalJSON() ([]byte, error) {
-	if u.union == nil {
-		return []byte("null"), nil
-	}
-	return u.union, nil
-}
-
-// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *ProjectDestination) UnmarshalJSON(data []byte) error {
-	u.union = append(u.union[:0], data...)
-	return nil
-}
-
-// Raw returns the JSON exactly as received.
-func (u ProjectDestination) Raw() json.RawMessage {
-	return u.union
-}
-
-// AsDestination decodes the value as Destination.
-func (u ProjectDestination) AsDestination() (Destination, error) {
-	var v Destination
-	err := json.Unmarshal(u.union, &v)
-	return v, err
-}
-
-// FromDestination sets the value to a Destination.
-func (u *ProjectDestination) FromDestination(v Destination) error {
-	encoded, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	u.union = encoded
-	return nil
-}
-
 // Destination Where regeneration pull requests land.
 type Destination struct {
 	// Repo Defaults to the source repository when the source is a repo.
@@ -347,228 +279,8 @@ type SpecPatch struct {
 	Reason *string `json:"reason,omitempty"`
 }
 
-// ProjectConfig is one of Config.
-// Go has no sum types, so it holds the JSON as received and decodes on
-// request: try the As* accessors, or switch on Discriminator() when the
-// spec names one.
-type ProjectConfig struct {
-	union json.RawMessage
-}
-
-// MarshalJSON writes the value as it was set or received.
-func (u ProjectConfig) MarshalJSON() ([]byte, error) {
-	if u.union == nil {
-		return []byte("null"), nil
-	}
-	return u.union, nil
-}
-
-// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *ProjectConfig) UnmarshalJSON(data []byte) error {
-	u.union = append(u.union[:0], data...)
-	return nil
-}
-
-// Raw returns the JSON exactly as received.
-func (u ProjectConfig) Raw() json.RawMessage {
-	return u.union
-}
-
-// AsConfig decodes the value as Config.
-func (u ProjectConfig) AsConfig() (Config, error) {
-	var v Config
-	err := json.Unmarshal(u.union, &v)
-	return v, err
-}
-
-// FromConfig sets the value to a Config.
-func (u *ProjectConfig) FromConfig(v Config) error {
-	encoded, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	u.union = encoded
-	return nil
-}
-
-// ProjectsCreateParamsDestination is one of Destination.
-// Go has no sum types, so it holds the JSON as received and decodes on
-// request: try the As* accessors, or switch on Discriminator() when the
-// spec names one.
-type ProjectsCreateParamsDestination struct {
-	union json.RawMessage
-}
-
-// MarshalJSON writes the value as it was set or received.
-func (u ProjectsCreateParamsDestination) MarshalJSON() ([]byte, error) {
-	if u.union == nil {
-		return []byte("null"), nil
-	}
-	return u.union, nil
-}
-
-// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *ProjectsCreateParamsDestination) UnmarshalJSON(data []byte) error {
-	u.union = append(u.union[:0], data...)
-	return nil
-}
-
-// Raw returns the JSON exactly as received.
-func (u ProjectsCreateParamsDestination) Raw() json.RawMessage {
-	return u.union
-}
-
-// AsDestination decodes the value as Destination.
-func (u ProjectsCreateParamsDestination) AsDestination() (Destination, error) {
-	var v Destination
-	err := json.Unmarshal(u.union, &v)
-	return v, err
-}
-
-// FromDestination sets the value to a Destination.
-func (u *ProjectsCreateParamsDestination) FromDestination(v Destination) error {
-	encoded, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	u.union = encoded
-	return nil
-}
-
-// ProjectsCreateParamsConfig is one of Config.
-// Go has no sum types, so it holds the JSON as received and decodes on
-// request: try the As* accessors, or switch on Discriminator() when the
-// spec names one.
-type ProjectsCreateParamsConfig struct {
-	union json.RawMessage
-}
-
-// MarshalJSON writes the value as it was set or received.
-func (u ProjectsCreateParamsConfig) MarshalJSON() ([]byte, error) {
-	if u.union == nil {
-		return []byte("null"), nil
-	}
-	return u.union, nil
-}
-
-// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *ProjectsCreateParamsConfig) UnmarshalJSON(data []byte) error {
-	u.union = append(u.union[:0], data...)
-	return nil
-}
-
-// Raw returns the JSON exactly as received.
-func (u ProjectsCreateParamsConfig) Raw() json.RawMessage {
-	return u.union
-}
-
-// AsConfig decodes the value as Config.
-func (u ProjectsCreateParamsConfig) AsConfig() (Config, error) {
-	var v Config
-	err := json.Unmarshal(u.union, &v)
-	return v, err
-}
-
-// FromConfig sets the value to a Config.
-func (u *ProjectsCreateParamsConfig) FromConfig(v Config) error {
-	encoded, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	u.union = encoded
-	return nil
-}
-
 type ProjectsDeleteResponse struct {
 	Deleted bool `json:"deleted"`
-}
-
-// ProjectsUpdateParamsDestination is one of Destination.
-// Go has no sum types, so it holds the JSON as received and decodes on
-// request: try the As* accessors, or switch on Discriminator() when the
-// spec names one.
-type ProjectsUpdateParamsDestination struct {
-	union json.RawMessage
-}
-
-// MarshalJSON writes the value as it was set or received.
-func (u ProjectsUpdateParamsDestination) MarshalJSON() ([]byte, error) {
-	if u.union == nil {
-		return []byte("null"), nil
-	}
-	return u.union, nil
-}
-
-// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *ProjectsUpdateParamsDestination) UnmarshalJSON(data []byte) error {
-	u.union = append(u.union[:0], data...)
-	return nil
-}
-
-// Raw returns the JSON exactly as received.
-func (u ProjectsUpdateParamsDestination) Raw() json.RawMessage {
-	return u.union
-}
-
-// AsDestination decodes the value as Destination.
-func (u ProjectsUpdateParamsDestination) AsDestination() (Destination, error) {
-	var v Destination
-	err := json.Unmarshal(u.union, &v)
-	return v, err
-}
-
-// FromDestination sets the value to a Destination.
-func (u *ProjectsUpdateParamsDestination) FromDestination(v Destination) error {
-	encoded, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	u.union = encoded
-	return nil
-}
-
-// ProjectsUpdateParamsConfig is one of Config — Replaces the whole config. Pass null to clear it.
-// Go has no sum types, so it holds the JSON as received and decodes on
-// request: try the As* accessors, or switch on Discriminator() when the
-// spec names one.
-type ProjectsUpdateParamsConfig struct {
-	union json.RawMessage
-}
-
-// MarshalJSON writes the value as it was set or received.
-func (u ProjectsUpdateParamsConfig) MarshalJSON() ([]byte, error) {
-	if u.union == nil {
-		return []byte("null"), nil
-	}
-	return u.union, nil
-}
-
-// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *ProjectsUpdateParamsConfig) UnmarshalJSON(data []byte) error {
-	u.union = append(u.union[:0], data...)
-	return nil
-}
-
-// Raw returns the JSON exactly as received.
-func (u ProjectsUpdateParamsConfig) Raw() json.RawMessage {
-	return u.union
-}
-
-// AsConfig decodes the value as Config.
-func (u ProjectsUpdateParamsConfig) AsConfig() (Config, error) {
-	var v Config
-	err := json.Unmarshal(u.union, &v)
-	return v, err
-}
-
-// FromConfig sets the value to a Config.
-func (u *ProjectsUpdateParamsConfig) FromConfig(v Config) error {
-	encoded, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	u.union = encoded
-	return nil
 }
 
 type ProjectsListGenerationsResponse struct {
