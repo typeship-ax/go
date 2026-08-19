@@ -732,6 +732,8 @@ type Usage struct {
 	HostedGenerations UsageHostedGenerations `json:"hosted_generations"`
 	// IncludedEndpoints Endpoints included before per-endpoint billing applies.
 	IncludedEndpoints int64 `json:"included_endpoints"`
+	// Requests Who called the API in the last 30 days, read from the User-Agent the generated tooling sends: by surface (cli, mcp, sdk, http) and by agent harness (claude-code, codex, cursor, ...), and the share of requests that came through an agent.
+	Requests *UsageRequests `json:"requests,omitempty"`
 }
 
 type UsageHostedGenerations struct {
@@ -739,6 +741,16 @@ type UsageHostedGenerations struct {
 	// Included Null on paid plans, which meter rather than cap.
 	Included  *int64 `json:"included,omitempty"`
 	Remaining *int64 `json:"remaining,omitempty"`
+}
+
+// UsageRequests Who called the API in the last 30 days, read from the User-Agent the generated tooling sends: by surface (cli, mcp, sdk, http) and by agent harness (claude-code, codex, cursor, ...), and the share of requests that came through an agent.
+type UsageRequests struct {
+	Days      int64            `json:"days"`
+	Requests  int64            `json:"requests"`
+	BySurface map[string]int64 `json:"by_surface"`
+	ByHarness map[string]int64 `json:"by_harness"`
+	// AgentShare 0 to 1.
+	AgentShare float64 `json:"agent_share"`
 }
 
 type APIKeysListResponse struct {
