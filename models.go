@@ -153,6 +153,8 @@ type CliBehavior struct {
 type McpBehavior struct {
 	// ToolMode MCP tool shape. meta collapses per-operation tools into search_docs, read_docs, and execute so large APIs don't flood an agent's context window; auto switches to meta above 100 operations.
 	ToolMode *string `json:"tool_mode,omitempty"`
+	// Instructions Guidance appended to the MCP server's instructions, which agents read once when they connect (server/discover): what to call first, conventions the spec does not state, what not to do. Carried by the package's server and the hosted endpoint alike.
+	Instructions *string `json:"instructions,omitempty"`
 }
 
 type GenerationResult struct {
