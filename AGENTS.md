@@ -5,9 +5,10 @@ This package is the generated Go SDK for **typeship** (v1.0.0).
 Generate a zero-dependency SDK — TypeScript, Python, or Go — plus a CLI
 and an MCP server, from an OpenAPI spec.
 
-Every operation requires an API key, created in the console and sent as
-`Authorization: Bearer tsk_live_...`. A browser session is not a
-credential for this API.
+Every operation but one requires an API key, created in the console and
+sent as `Authorization: Bearer tsk_live_...`. A browser session is not a
+credential for this API. The exception is POST /generate, which works
+anonymously with the free plan's limits.
 
 ## Ground rules
 - Generated code: never edit files in this package by hand — changes are lost on regeneration. Wrap the client in your own code instead.
