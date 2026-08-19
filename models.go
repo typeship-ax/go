@@ -140,6 +140,8 @@ type GenerationResult struct {
 	Warnings []string          `json:"warnings"`
 	Meta     GenerationMeta    `json:"meta"`
 	Limits   *GenerationLimits `json:"limits,omitempty"`
+	// Claim Anonymous, URL-sourced generations only. A link a signed-in person can open to turn this run into a project in their organization (same spec, language, platforms, config). Lasts seven days. Null for inline specs; absent on keyed calls.
+	Claim *GenerationResultClaim `json:"claim,omitempty"`
 }
 
 type GeneratedFile struct {
@@ -183,6 +185,55 @@ type GenerationLimits struct {
 	SignupURL *string `json:"signup_url,omitempty"`
 	// UpgradeURL Where the cap is lifted.
 	UpgradeURL string `json:"upgrade_url"`
+}
+
+// GenerationResultClaim is one of GenerationResultClaimVariant1 — Anonymous, URL-sourced generations only. A link a signed-in person can open to turn this run into a project in their organization (same spec, language, platforms, config). Lasts seven days. Null for inline specs; absent on keyed calls.
+// Go has no sum types, so it holds the JSON as received and decodes on
+// request: try the As* accessors, or switch on Discriminator() when the
+// spec names one.
+type GenerationResultClaim struct {
+	union json.RawMessage
+}
+
+// MarshalJSON writes the value as it was set or received.
+func (u GenerationResultClaim) MarshalJSON() ([]byte, error) {
+	if u.union == nil {
+		return []byte("null"), nil
+	}
+	return u.union, nil
+}
+
+// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
+func (u *GenerationResultClaim) UnmarshalJSON(data []byte) error {
+	u.union = append(u.union[:0], data...)
+	return nil
+}
+
+// Raw returns the JSON exactly as received.
+func (u GenerationResultClaim) Raw() json.RawMessage {
+	return u.union
+}
+
+// AsGenerationResultClaimVariant1 decodes the value as GenerationResultClaimVariant1.
+func (u GenerationResultClaim) AsGenerationResultClaimVariant1() (GenerationResultClaimVariant1, error) {
+	var v GenerationResultClaimVariant1
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromGenerationResultClaimVariant1 sets the value to a GenerationResultClaimVariant1.
+func (u *GenerationResultClaim) FromGenerationResultClaimVariant1(v GenerationResultClaimVariant1) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+type GenerationResultClaimVariant1 struct {
+	URL       string `json:"url"`
+	ExpiresAt string `json:"expires_at"`
 }
 
 type ProjectsListResponse struct {
