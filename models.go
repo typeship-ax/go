@@ -611,6 +611,30 @@ type GenerationFailure struct {
 	Error    string `json:"error"`
 }
 
+type McpUsage struct {
+	Object    string `json:"object"`
+	ProjectID string `json:"project_id"`
+	// McpURL The hosted endpoint URL, or null when it is off.
+	McpURL *string `json:"mcp_url,omitempty"`
+	// Days The window these numbers cover.
+	Days int64 `json:"days"`
+	// Calls Tool calls served
+	Calls int64 `json:"calls"`
+	// Errors Calls whose result was a tool error (API failures
+	Errors int64 `json:"errors"`
+	// RateLimited Calls turned away by the per-caller or per-endpoint limit.
+	RateLimited int64 `json:"rate_limited"`
+	// AvgDurationMs Mean upstream request time across served calls.
+	AvgDurationMs int64                `json:"avg_duration_ms"`
+	ByTool        []McpUsageByToolItem `json:"by_tool"`
+}
+
+type McpUsageByToolItem struct {
+	Tool   string `json:"tool"`
+	Calls  int64  `json:"calls"`
+	Errors int64  `json:"errors"`
+}
+
 type SpecVersionsListResponse struct {
 	Data       []SpecVersion `json:"data"`
 	NextCursor *string       `json:"next_cursor,omitempty"`

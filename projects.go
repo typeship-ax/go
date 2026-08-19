@@ -64,6 +64,11 @@ type ProjectsListGenerationsParams struct {
 	Language *string `json:"-"`
 }
 
+// ProjectsMcpUsageParams are the inputs for ProjectsService.McpUsage.
+type ProjectsMcpUsageParams struct {
+	Days *int64 `json:"-"`
+}
+
 // List projects.
 //
 // GET /projects
@@ -232,6 +237,33 @@ func (s *ProjectsService) Generate(ctx context.Context, projectID string, opts .
 		SchemaKey: "projects.generate",
 	}
 	var out ProjectsGenerateResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// McpUsage — retrieve hosted MCP endpoint usage for a project.
+//
+// What the project's hosted MCP endpoint has served over the last `days` (default 30, max 90): tool calls, calls that returned an error, calls turned away by the rate limit, mean upstream latency, and a per-tool breakdown. The same numbers the console shows next to the endpoint URL. Zeroes when the endpoint is off or unused.
+//
+// GET /projects/{project_id}/mcp_usage
+func (s *ProjectsService) McpUsage(ctx context.Context, projectID string, params *ProjectsMcpUsageParams, opts ...RequestOption) (*McpUsage, error) {
+	query := map[string]any{}
+	if params != nil {
+		if params.Days != nil {
+			query["days"] = *params.Days
+		}
+	}
+	req := request{
+		Method:     "GET",
+		Path:       fmt.Sprintf("/projects/%s/mcp_usage", url.PathEscape(projectID)),
+		Query:      query,
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "404": newNotFoundError},
+		SchemaKey:  "projects.mcpUsage",
+		Idempotent: true,
+	}
+	var out McpUsage
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}

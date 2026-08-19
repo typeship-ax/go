@@ -168,6 +168,22 @@ regenerate on push.
 Returns: `(*ProjectsGenerateResponse, error)`
 Errors: `*UnauthorizedError` (401), `*PaymentRequiredError` (402), `*NotFoundError` (404), `*UnprocessableEntityError` (422)
 
+### `client.Projects.McpUsage(ctx, projectID, params)`
+
+Retrieve hosted MCP endpoint usage for a project
+
+`GET /projects/{project_id}/mcp_usage`
+
+What the project's hosted MCP endpoint has served over the last `days` (default 30, max 90): tool calls, calls that returned an error, calls turned away by the rate limit, mean upstream latency, and a per-tool breakdown. The same numbers the console shows next to the endpoint URL. Zeroes when the endpoint is off or unused.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `projectID` | path | `string` | yes |  |
+| `params.Days` | query | `*int64` | no | Window in days, 1 to 90. |
+
+Returns: `(*McpUsage, error)`
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*NotFoundError` (404)
+
 ## generations
 
 ### `client.Generations.Get(ctx, generationID)`
