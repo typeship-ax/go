@@ -247,7 +247,7 @@ type Project struct {
 	Destinations map[string]Destination `json:"destinations,omitempty"`
 	// PackageNames Registry name per language. The ecosystems disagree about what a name is: npm takes an optional @scope, PyPI normalizes to lowercase-with-hyphens, and Go's name is the module path that `go get` resolves. Unset means the name is derived from the API's title.
 	PackageNames map[string]string `json:"package_names,omitempty"`
-	// AutoRegen Regenerate when the spec changes: on every push to the default branch for a repository source, every 30 minutes for a URL source. On by default. Off means only "generate now" and POST /projects/{project_id}/generations regenerate.
+	// AutoRegen Regenerate when the spec changes: on every push to the default branch for a repository source, every 30 minutes for a URL source. Off by default: the first generation is always one you asked for. Off means only "generate now" and POST /projects/{project_id}/generations regenerate.
 	AutoRegen bool `json:"auto_regen"`
 	// PackageName npm name override for generated output; supports @scope/name.
 	PackageName *string     `json:"package_name,omitempty"`
