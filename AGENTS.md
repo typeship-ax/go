@@ -6,7 +6,7 @@ Generate a zero-dependency SDK — TypeScript, Python, or Go — plus a CLI
 and an MCP server, from an OpenAPI spec.
 
 Every operation but one requires an API key, created in the console and
-sent as `Authorization: Bearer tsk_live_...`. A browser session is not a
+sent as `Authorization: Bearer ak_...`. A browser session is not a
 credential for this API. The exception is POST /generate, which works
 anonymously with the free plan's limits.
 
