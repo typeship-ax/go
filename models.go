@@ -192,10 +192,22 @@ type GenerationMeta struct {
 	// OmittedOperationCount Operations beyond the plan's endpoint allowance, not generated.
 	OmittedOperationCount *int64 `json:"omitted_operation_count,omitempty"`
 	// PrURL Pull request opened by this regeneration, when one was.
-	PrURL      *string `json:"pr_url,omitempty"`
-	PrNumber   *int64  `json:"pr_number,omitempty"`
-	FileCount  *int64  `json:"file_count,omitempty"`
-	TotalLines *int64  `json:"total_lines,omitempty"`
+	PrURL    *string `json:"pr_url,omitempty"`
+	PrNumber *int64  `json:"pr_number,omitempty"`
+	// Changelog Markdown changelog entry for this regeneration, from the API surface diff. Absent on a first generation or when nothing changed.
+	Changelog *string `json:"changelog,omitempty"`
+	// BreakingCount Breaking changes in the diff; removed methods and fields, changed types, inputs that became required.
+	BreakingCount *int64 `json:"breaking_count,omitempty"`
+	// Baseline What the diff was measured against; "destination" means the .typeship/surface.json merged in the destination repository.
+	Baseline *string `json:"baseline,omitempty"`
+	// Semver The typeship/semver verdict on the regeneration pull request; failure means breaking changes without a major version bump.
+	Semver *string `json:"semver,omitempty"`
+	// SemverNote The verdict in one line, as the commit status describes it.
+	SemverNote *string `json:"semver_note,omitempty"`
+	// PreviousVersion The package version the destination had before this regeneration.
+	PreviousVersion *string `json:"previous_version,omitempty"`
+	FileCount       *int64  `json:"file_count,omitempty"`
+	TotalLines      *int64  `json:"total_lines,omitempty"`
 }
 
 // GenerationLimits Present when the generation was capped: by the free plan, or because the call was anonymous. Absent on uncapped generations.
