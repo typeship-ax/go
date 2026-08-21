@@ -851,9 +851,17 @@ func requestOrigin(u *url.URL) string {
 }
 
 // withRedirectPolicy returns a copy of client that drops the credential
-// headers when a redirect crosses to another origin. A copy, never a
-// mutation: a client passed to WithHTTPClient belongs to the caller, and its
-// own CheckRedirect still decides whether the redirect is followed at all.
+// headers when a redirect leaves the origin the request was made to. A copy,
+// never a mutation: a client passed to WithHTTPClient belongs to the caller,
+// and its own CheckRedirect still decides whether the redirect is followed.
+//
+// The comparison is against the first request, not the previous hop. net/http
+// rebuilds every redirect's headers from the first request, so a hop that
+// stays on a foreign origin (storage -> storage/region) would otherwise get
+// the credential back after the hop before it had dropped it. The TypeScript
+// and Python runtimes carry one header set through the chain and so compare
+// hop to hop; here the chain is rebuilt from via[0] each time, and that is
+// the origin the credential belongs to.
 func withRedirectPolicy(client *http.Client) *http.Client {
 	if client == nil {
 		client = &http.Client{}
@@ -861,7 +869,7 @@ func withRedirectPolicy(client *http.Client) *http.Client {
 	inner := client.CheckRedirect
 	scoped := *client
 	scoped.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		if len(via) > 0 && requestOrigin(req.URL) != requestOrigin(via[len(via)-1].URL) {
+		if len(via) > 0 && requestOrigin(req.URL) != requestOrigin(via[0].URL) {
 			for _, name := range sensitiveHeaders {
 				req.Header.Del(name)
 			}
