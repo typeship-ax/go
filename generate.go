@@ -13,11 +13,11 @@ type GenerateService struct {
 
 // GenerateRunParams are the inputs for GenerateService.Run.
 type GenerateRunParams struct {
-	Spec        SpecInput `json:"spec"`
-	Platforms   []string  `json:"platforms,omitempty"`
-	Language    *string   `json:"language,omitempty"`
-	PackageName *string   `json:"package_name,omitempty"`
-	Config      *Config   `json:"config,omitempty"`
+	Spec        SpecInput  `json:"spec"`
+	Platforms   []Platform `json:"platforms,omitempty"`
+	Language    *Language  `json:"language,omitempty"`
+	PackageName *string    `json:"package_name,omitempty"`
+	Config      *Config    `json:"config,omitempty"`
 }
 
 // Run — generate a package from a spec.

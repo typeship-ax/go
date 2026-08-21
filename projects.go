@@ -24,15 +24,15 @@ type ProjectsCreateParams struct {
 	Name         string                 `json:"name"`
 	SpecURL      *string                `json:"spec_url,omitempty"`
 	Source       *Source                `json:"source,omitempty"`
-	Platforms    []string               `json:"platforms,omitempty"`
-	Languages    []string               `json:"languages,omitempty"`
+	Platforms    []Platform             `json:"platforms,omitempty"`
+	Languages    []Language             `json:"languages,omitempty"`
 	Destinations map[string]Destination `json:"destinations,omitempty"`
 	PackageNames map[string]string      `json:"package_names,omitempty"`
 	Destination  *Destination           `json:"destination,omitempty"`
 	AutoRegen    *bool                  `json:"auto_regen,omitempty"`
 	PackageName  *string                `json:"package_name,omitempty"`
 	SpecPatches  []SpecPatch            `json:"spec_patches,omitempty"`
-	McpEnabled   *bool                  `json:"mcp_enabled,omitempty"`
+	MCPEnabled   *bool                  `json:"mcp_enabled,omitempty"`
 	RelayEnabled *bool                  `json:"relay_enabled,omitempty"`
 	Config       *Config                `json:"config,omitempty"`
 }
@@ -42,28 +42,28 @@ type ProjectsUpdateParams struct {
 	Name         *string                `json:"name,omitempty"`
 	SpecURL      *string                `json:"spec_url,omitempty"`
 	Source       *Source                `json:"source,omitempty"`
-	Platforms    []string               `json:"platforms,omitempty"`
+	Platforms    []Platform             `json:"platforms,omitempty"`
 	Destination  *Destination           `json:"destination,omitempty"`
-	Languages    []string               `json:"languages,omitempty"`
+	Languages    []Language             `json:"languages,omitempty"`
 	Destinations map[string]Destination `json:"destinations,omitempty"`
 	PackageNames map[string]string      `json:"package_names,omitempty"`
 	AutoRegen    *bool                  `json:"auto_regen,omitempty"`
 	PackageName  *string                `json:"package_name,omitempty"`
 	SpecPatches  []SpecPatch            `json:"spec_patches,omitempty"`
-	McpEnabled   *bool                  `json:"mcp_enabled,omitempty"`
+	MCPEnabled   *bool                  `json:"mcp_enabled,omitempty"`
 	RelayEnabled *bool                  `json:"relay_enabled,omitempty"`
 	Config       *Config                `json:"config,omitempty"`
 }
 
 // ProjectsListGenerationsParams are the inputs for ProjectsService.ListGenerations.
 type ProjectsListGenerationsParams struct {
-	Limit    *int64  `json:"-"`
-	Cursor   *string `json:"-"`
-	Language *string `json:"-"`
+	Limit    *int64    `json:"-"`
+	Cursor   *string   `json:"-"`
+	Language *Language `json:"-"`
 }
 
-// ProjectsMcpUsageParams are the inputs for ProjectsService.McpUsage.
-type ProjectsMcpUsageParams struct {
+// ProjectsMCPUsageParams are the inputs for ProjectsService.MCPUsage.
+type ProjectsMCPUsageParams struct {
 	Days *int64 `json:"-"`
 }
 
@@ -241,12 +241,12 @@ func (s *ProjectsService) Generate(ctx context.Context, projectID string, opts .
 	return &out, nil
 }
 
-// McpUsage — retrieve hosted MCP endpoint usage for a project.
+// MCPUsage — retrieve hosted MCP endpoint usage for a project.
 //
 // What the project's hosted MCP endpoint has served over the last `days` (default 30, max 90): tool calls, calls that returned an error, calls turned away by the rate limit, mean upstream latency, and a per-tool breakdown. The same numbers the console shows next to the endpoint URL. Zeroes when the endpoint is off or unused.
 //
 // GET /projects/{project_id}/mcp_usage
-func (s *ProjectsService) McpUsage(ctx context.Context, projectID string, params *ProjectsMcpUsageParams, opts ...RequestOption) (*McpUsage, error) {
+func (s *ProjectsService) MCPUsage(ctx context.Context, projectID string, params *ProjectsMCPUsageParams, opts ...RequestOption) (*MCPUsage, error) {
 	query := map[string]any{}
 	if params != nil {
 		if params.Days != nil {
@@ -261,7 +261,7 @@ func (s *ProjectsService) McpUsage(ctx context.Context, projectID string, params
 		SchemaKey:  "projects.mcpUsage",
 		Idempotent: true,
 	}
-	var out McpUsage
+	var out MCPUsage
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}
