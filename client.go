@@ -23,7 +23,9 @@ func WithBaseURL(baseURL string) Option {
 }
 
 // WithHTTPClient supplies your own *http.Client — proxies, transports,
-// connection pools, instrumentation.
+// connection pools, instrumentation. The client is copied, not mutated,
+// and the copy drops credential headers on a cross-origin redirect; your
+// own CheckRedirect still decides whether to follow.
 func WithHTTPClient(client *http.Client) Option {
 	return func(c *core) { c.httpClient = client }
 }
@@ -128,6 +130,8 @@ func New(opts ...Option) (*Client, error) {
 	for _, opt := range opts {
 		opt(c)
 	}
+	// Wraps whatever client the options left behind, ours or the caller's.
+	c.httpClient = withRedirectPolicy(c.httpClient)
 	if c.baseURL == "" {
 		return nil, errors.New("no base URL: pass WithBaseURL or set TYPESHIP_BASE_URL")
 	}

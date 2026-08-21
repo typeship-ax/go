@@ -827,3 +827,52 @@ func envOr(name, fallback string) string {
 	}
 	return fallback
 }
+
+// Dropped when a redirect crosses to another origin. net/http drops the
+// standard names itself, but only when the target leaves the original parent
+// domain, and it has never heard of the header this spec puts its key on: a
+// Location pointing at object storage must not carry the credential to a host
+// the spec never named.
+var sensitiveHeaders = []string{"Authorization", "Cookie", "Cookie2", "Proxy-Authorization", "Www-Authenticate"}
+
+// requestOrigin is scheme, host, and port — what has to match for a redirect
+// to keep the credential. Compared exactly, as fetch does, rather than by
+// parent domain as net/http does, so all three generated SDKs draw the line
+// in the same place.
+func requestOrigin(u *url.URL) string {
+	port := u.Port()
+	if port == "" {
+		port = "80"
+		if u.Scheme == "https" {
+			port = "443"
+		}
+	}
+	return strings.ToLower(u.Scheme) + "://" + strings.ToLower(u.Hostname()) + ":" + port
+}
+
+// withRedirectPolicy returns a copy of client that drops the credential
+// headers when a redirect crosses to another origin. A copy, never a
+// mutation: a client passed to WithHTTPClient belongs to the caller, and its
+// own CheckRedirect still decides whether the redirect is followed at all.
+func withRedirectPolicy(client *http.Client) *http.Client {
+	if client == nil {
+		client = &http.Client{}
+	}
+	inner := client.CheckRedirect
+	scoped := *client
+	scoped.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if len(via) > 0 && requestOrigin(req.URL) != requestOrigin(via[len(via)-1].URL) {
+			for _, name := range sensitiveHeaders {
+				req.Header.Del(name)
+			}
+		}
+		if inner != nil {
+			return inner(req, via)
+		}
+		if len(via) >= 10 {
+			return fmt.Errorf("stopped after %d redirects", len(via))
+		}
+		return nil
+	}
+	return &scoped
+}
