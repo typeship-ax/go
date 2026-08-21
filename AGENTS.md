@@ -1,6 +1,6 @@
 # typeship — agent context
 
-This package is the generated Go SDK for **typeship** (v1.0.0).
+This package is the generated Go SDK for **typeship** (v0.1.0).
 
 Generate a zero-dependency SDK — TypeScript, Python, or Go — plus a CLI
 and an MCP server, from an OpenAPI spec.
