@@ -407,9 +407,9 @@ type McpUsage struct {
 	McpURL *string `json:"mcp_url,omitempty"`
 	// Days The window these numbers cover.
 	Days int64 `json:"days"`
-	// Calls Tool calls served
+	// Calls Tool calls served, including ones that returned an error.
 	Calls int64 `json:"calls"`
-	// Errors Calls whose result was a tool error (API failures
+	// Errors Calls whose result was a tool error (API failures, bad arguments).
 	Errors int64 `json:"errors"`
 	// RateLimited Calls turned away by the per-caller or per-endpoint limit.
 	RateLimited int64 `json:"rate_limited"`
