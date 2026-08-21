@@ -26,8 +26,8 @@ Body (required):
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `params.Spec` | `SpecInput` | yes |  |
-| `params.Platforms` | `[]string` | no | Artifacts to generate from the spec. Defaults to [sdk]. |
-| `params.Language` | `*string` | no | Language to generate. Python and Go produce the SDK only; the CLI and MCP server are TypeScript artifacts and are skipped with a warning when requested alongside them. |
+| `params.Platforms` | `[]Platform` | no | Artifacts to generate from the spec. Defaults to [sdk]. |
+| `params.Language` | `*Language` | no | Language to generate. Python and Go produce the SDK only; the CLI and MCP server are TypeScript artifacts and are skipped with a warning when requested alongside them. |
 | `params.PackageName` | `*string` | no | npm name override for the generated package. |
 | `params.Config` | `*Config` | no |  |
 
@@ -63,15 +63,15 @@ Body (required):
 | `params.Name` | `string` | yes |  |
 | `params.SpecURL` | `*string` | no | Spec location for a URL-sourced project. Provide this or source; a project with neither has nothing to generate. |
 | `params.Source` | `*Source` | no |  |
-| `params.Platforms` | `[]string` | no | Artifacts to build. sdk is implied; cli and mcp require typescript among the languages. Free projects run one platform in total (one SDK language); more is a 402 until the account is on Pro. |
-| `params.Languages` | `[]string` | no | Languages to generate. Each is a separate package, a separate pull request, a separate hosted generation, and one platform for billing. Defaults to typescript alone. |
+| `params.Platforms` | `[]Platform` | no | Artifacts to build. sdk is implied; cli and mcp require typescript among the languages. Free projects run one platform in total (one SDK language); more is a 402 until the account is on Pro. |
+| `params.Languages` | `[]Language` | no | Languages to generate. Each is a separate package, a separate pull request, a separate hosted generation, and one platform for billing. Defaults to typescript alone. |
 | `params.Destinations` | `map[string]Destination` | no | Per-language pull-request destination, keyed by language. |
 | `params.PackageNames` | `map[string]string` | no | Registry name per language; unset derives from the API title. |
 | `params.Destination` | `*Destination` | no |  |
 | `params.AutoRegen` | `*bool` | no |  |
 | `params.PackageName` | `*string` | no |  |
 | `params.SpecPatches` | `[]SpecPatch` | no |  |
-| `params.McpEnabled` | `*bool` | no | Requires the mcp platform and Enterprise. |
+| `params.MCPEnabled` | `*bool` | no | Requires the mcp platform and Enterprise. |
 | `params.RelayEnabled` | `*bool` | no | Requires the cli platform and Pro. |
 | `params.Config` | `*Config` | no |  |
 
@@ -121,15 +121,15 @@ Body (required):
 | `params.Name` | `*string` | no |  |
 | `params.SpecURL` | `*string` | no |  |
 | `params.Source` | `*Source` | no |  |
-| `params.Platforms` | `[]string` | no | Artifacts to build; replaces the list. Dropping cli or mcp turns off the hosted feature it serves. cli and mcp require typescript among the languages. Turning a platform off stops generating it; nothing already delivered is removed. |
+| `params.Platforms` | `[]Platform` | no | Artifacts to build; replaces the list. Dropping cli or mcp turns off the hosted feature it serves. cli and mcp require typescript among the languages. Turning a platform off stops generating it; nothing already delivered is removed. |
 | `params.Destination` | `*Destination` | no |  |
-| `params.Languages` | `[]string` | no | Languages to generate; replaces the list. Each is its own hosted generation and one platform for billing. |
+| `params.Languages` | `[]Language` | no | Languages to generate; replaces the list. Each is its own hosted generation and one platform for billing. |
 | `params.Destinations` | `map[string]Destination` | no | Per-language pull-request destination, keyed by language. |
 | `params.PackageNames` | `map[string]string` | no | Registry name per language; unset derives from the API title. |
 | `params.AutoRegen` | `*bool` | no |  |
 | `params.PackageName` | `*string` | no |  |
 | `params.SpecPatches` | `[]SpecPatch` | no |  |
-| `params.McpEnabled` | `*bool` | no | Serve this project as a hosted remote MCP endpoint. Requires the mcp platform and Enterprise. |
+| `params.MCPEnabled` | `*bool` | no | Serve this project as a hosted remote MCP endpoint. Requires the mcp platform and Enterprise. |
 | `params.RelayEnabled` | `*bool` | no | Enable the webhook relay so the generated CLI's webhooks listen command works for this API's users. Requires the cli platform and Pro. |
 | `params.Config` | `*Config` | no | Replaces the whole config. Pass null to clear it. |
 
@@ -147,7 +147,7 @@ List a project's generations
 | `projectID` | path | `string` | yes |  |
 | `params.Limit` | query | `*int64` | no |  |
 | `params.Cursor` | query | `*string` | no |  |
-| `params.Language` | query | `*string` | no | Only generations for this language. |
+| `params.Language` | query | `*Language` | no | Only generations for this language. |
 
 Returns: `*Iter[Generation]` — auto-paginating (`for it.Next()` walks every page)
 Errors: `*UnauthorizedError` (401), `*NotFoundError` (404)
@@ -171,7 +171,7 @@ regenerate on push.
 Returns: `(*ProjectsGenerateResponse, error)`
 Errors: `*UnauthorizedError` (401), `*PaymentRequiredError` (402), `*NotFoundError` (404), `*UnprocessableEntityError` (422)
 
-### `client.Projects.McpUsage(ctx, projectID, params)`
+### `client.Projects.MCPUsage(ctx, projectID, params)`
 
 Retrieve hosted MCP endpoint usage for a project
 
@@ -184,7 +184,7 @@ What the project's hosted MCP endpoint has served over the last `days` (default 
 | `projectID` | path | `string` | yes |  |
 | `params.Days` | query | `*int64` | no | Window in days, 1 to 90. |
 
-Returns: `(*McpUsage, error)`
+Returns: `(*MCPUsage, error)`
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*NotFoundError` (404)
 
 ## generations

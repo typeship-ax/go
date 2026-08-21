@@ -12,6 +12,24 @@ type SpecInput struct {
 	Inline *string `json:"inline,omitempty"`
 }
 
+// Platform is one of "sdk", "cli", "mcp".
+type Platform string
+
+const (
+	PlatformSDK Platform = "sdk"
+	PlatformCLI Platform = "cli"
+	PlatformMCP Platform = "mcp"
+)
+
+// Language is one of "typescript", "python", "go".
+type Language string
+
+const (
+	LanguageTypescript Language = "typescript"
+	LanguagePython     Language = "python"
+	LanguageGo         Language = "go"
+)
+
 // Config Everything typeship needs beyond the spec, in one object: generation customization (globals, retries, pagination) and how the generated tooling behaves (cli, mcp, docs_url). Plain configuration. typeship never requires vendor extensions inside the spec itself. The same shape is accepted on a project and on POST /generate.
 type Config struct {
 	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
@@ -20,8 +38,8 @@ type Config struct {
 	// Pagination Per-operation pagination control, keyed by operationId or "METHOD /path". Unmatched keys are reported as generation warnings.
 	Pagination map[string]ConfigPaginationValue `json:"pagination,omitempty"`
 	Graphql    *GraphqlSettings                 `json:"graphql,omitempty"`
-	Cli        *CliBehavior                     `json:"cli,omitempty"`
-	Mcp        *McpBehavior                     `json:"mcp,omitempty"`
+	CLI        *CLIBehavior                     `json:"cli,omitempty"`
+	MCP        *MCPBehavior                     `json:"mcp,omitempty"`
 	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the spec's externalDocs URL.
 	DocsURL *string `json:"docs_url,omitempty"`
 }
@@ -102,7 +120,7 @@ func (u *ConfigPaginationValue) FromBool(v bool) error {
 }
 
 type PaginationRule struct {
-	Style *string `json:"style,omitempty"`
+	Style *PaginationRuleStyle `json:"style,omitempty"`
 	// ItemsField Response field holding the item array.
 	ItemsField      string  `json:"items_field"`
 	CursorParam     *string `json:"cursor_param,omitempty"`
@@ -114,6 +132,16 @@ type PaginationRule struct {
 	LimitParam      *string `json:"limit_param,omitempty"`
 }
 
+// PaginationRuleStyle is one of "cursor", "cursorFromLastId", "page", "offset".
+type PaginationRuleStyle string
+
+const (
+	PaginationRuleStyleCursor           PaginationRuleStyle = "cursor"
+	PaginationRuleStyleCursorFromLastID PaginationRuleStyle = "cursorFromLastId"
+	PaginationRuleStylePage             PaginationRuleStyle = "page"
+	PaginationRuleStyleOffset           PaginationRuleStyle = "offset"
+)
+
 // GraphqlSettings What a GraphQL schema cannot say about itself. Ignored for OpenAPI specs.
 type GraphqlSettings struct {
 	// Endpoint The URL every request is POSTed to; the generated client's default baseUrl. Defaults to the URL the schema was fetched from. Without either, baseUrl is a required client option.
@@ -121,7 +149,7 @@ type GraphqlSettings struct {
 	// Environments Named endpoints (sandbox, production). Each becomes a client environment; the first is the default unless endpoint is set.
 	Environments []GraphqlSettingsEnvironmentsItem `json:"environments,omitempty"`
 	// Auth How requests authenticate. bearer sends Authorization: Bearer; basic is for key-pair APIs (public key as username, private key as password); api_key sends a header named by api_key_header; none generates no auth option.
-	Auth *string `json:"auth,omitempty"`
+	Auth *GraphqlSettingsAuth `json:"auth,omitempty"`
 	// APIKeyHeader Header carrying the key when auth is api_key. Default X-API-Key.
 	APIKeyHeader *string `json:"api_key_header,omitempty"`
 	// Title The API's name; drives the package and client names ("Braintree" gives braintree and BraintreeClient). Defaults to a name derived from the endpoint's host.
@@ -133,8 +161,18 @@ type GraphqlSettingsEnvironmentsItem struct {
 	URL  string `json:"url"`
 }
 
-// CliBehavior How the generated CLI behaves. Part of Config.
-type CliBehavior struct {
+// GraphqlSettingsAuth is one of "bearer", "basic", "api_key", "none". How requests authenticate. bearer sends Authorization: Bearer; basic is for key-pair APIs (public key as username, private key as password); api_key sends a header named by api_key_header; none generates no auth option.
+type GraphqlSettingsAuth string
+
+const (
+	GraphqlSettingsAuthBearer GraphqlSettingsAuth = "bearer"
+	GraphqlSettingsAuthBasic  GraphqlSettingsAuth = "basic"
+	GraphqlSettingsAuthAPIKey GraphqlSettingsAuth = "api_key"
+	GraphqlSettingsAuthNone   GraphqlSettingsAuth = "none"
+)
+
+// CLIBehavior How the generated CLI behaves. Part of Config.
+type CLIBehavior struct {
 	// WhoamiOperation resource.method of a zero-argument GET that the generated CLI's whoami command calls. Overrides auto-detection; a value that matches nothing is reported as a generation warning.
 	WhoamiOperation *string `json:"whoami_operation,omitempty"`
 	// OauthClientID OAuth client id baked into the generated CLI for device-flow login. Without it, login prompts for a pasted credential.
@@ -149,15 +187,24 @@ type CliBehavior struct {
 	SupportURL *string `json:"support_url,omitempty"`
 }
 
-// McpBehavior How the generated MCP server and the hosted endpoint behave. Part of Config.
-type McpBehavior struct {
+// MCPBehavior How the generated MCP server and the hosted endpoint behave. Part of Config.
+type MCPBehavior struct {
 	// ToolMode MCP tool shape. meta collapses per-operation tools into search_docs, read_docs, and execute so large APIs don't flood an agent's context window; auto switches to meta above 100 operations.
-	ToolMode *string `json:"tool_mode,omitempty"`
+	ToolMode *MCPBehaviorToolMode `json:"tool_mode,omitempty"`
 	// Instructions Guidance appended to the MCP server's instructions, which agents read once when they connect (server/discover): what to call first, conventions the spec does not state, what not to do. Carried by the package's server and the hosted endpoint alike.
 	Instructions *string `json:"instructions,omitempty"`
 	// ToolDescriptions Hand-written MCP tool descriptions keyed by operationId or "METHOD /path". Each replaces the text typeship derives for that operation (summary, first sentence, method and path, deprecation and auth notes). For flows the spec cannot describe, such as a multi-step upload. Keys that match no operation are reported as generation warnings.
 	ToolDescriptions map[string]string `json:"tool_descriptions,omitempty"`
 }
+
+// MCPBehaviorToolMode is one of "auto", "operations", "meta". MCP tool shape. meta collapses per-operation tools into search_docs, read_docs, and execute so large APIs don't flood an agent's context window; auto switches to meta above 100 operations.
+type MCPBehaviorToolMode string
+
+const (
+	MCPBehaviorToolModeAuto       MCPBehaviorToolMode = "auto"
+	MCPBehaviorToolModeOperations MCPBehaviorToolMode = "operations"
+	MCPBehaviorToolModeMeta       MCPBehaviorToolMode = "meta"
+)
 
 type GenerationResult struct {
 	Files    []GeneratedFile   `json:"files"`
@@ -175,20 +222,20 @@ type GeneratedFile struct {
 }
 
 type GenerationMeta struct {
-	Title      string  `json:"title"`
-	Version    string  `json:"version"`
-	SpecFormat *string `json:"spec_format,omitempty"`
+	Title      string                    `json:"title"`
+	Version    string                    `json:"version"`
+	SpecFormat *GenerationMetaSpecFormat `json:"spec_format,omitempty"`
 	// OasVersion Detected spec version, "2.0", "3.0", or "3.1".
 	OasVersion string `json:"oas_version"`
 	// Converted True when the input was Swagger 2.0 and was converted.
-	Converted               *bool    `json:"converted,omitempty"`
-	PackageName             string   `json:"package_name"`
-	ClientName              string   `json:"client_name"`
-	Targets                 []string `json:"targets"`
-	ResourceCount           *int64   `json:"resource_count,omitempty"`
-	OperationCount          *int64   `json:"operation_count,omitempty"`
-	SchemaCount             *int64   `json:"schema_count,omitempty"`
-	PaginatedOperationCount *int64   `json:"paginated_operation_count,omitempty"`
+	Converted               *bool      `json:"converted,omitempty"`
+	PackageName             string     `json:"package_name"`
+	ClientName              string     `json:"client_name"`
+	Targets                 []Platform `json:"targets"`
+	ResourceCount           *int64     `json:"resource_count,omitempty"`
+	OperationCount          *int64     `json:"operation_count,omitempty"`
+	SchemaCount             *int64     `json:"schema_count,omitempty"`
+	PaginatedOperationCount *int64     `json:"paginated_operation_count,omitempty"`
 	// OmittedOperationCount Operations beyond the plan's endpoint allowance, not generated.
 	OmittedOperationCount *int64 `json:"omitted_operation_count,omitempty"`
 	// PrURL Pull request opened by this regeneration, when one was.
@@ -199,9 +246,9 @@ type GenerationMeta struct {
 	// BreakingCount Breaking changes in the diff; removed methods and fields, changed types, inputs that became required.
 	BreakingCount *int64 `json:"breaking_count,omitempty"`
 	// Baseline What the diff was measured against; "destination" means the .typeship/surface.json merged in the destination repository.
-	Baseline *string `json:"baseline,omitempty"`
+	Baseline *GenerationMetaBaseline `json:"baseline,omitempty"`
 	// Semver The typeship/semver verdict on the regeneration pull request; failure means breaking changes without a major version bump.
-	Semver *string `json:"semver,omitempty"`
+	Semver *GenerationMetaSemver `json:"semver,omitempty"`
 	// SemverNote The verdict in one line, as the commit status describes it.
 	SemverNote *string `json:"semver_note,omitempty"`
 	// PreviousVersion The package version the destination had before this regeneration.
@@ -210,18 +257,51 @@ type GenerationMeta struct {
 	TotalLines      *int64  `json:"total_lines,omitempty"`
 }
 
+// GenerationMetaSpecFormat is one of "openapi", "graphql".
+type GenerationMetaSpecFormat string
+
+const (
+	GenerationMetaSpecFormatOpenapi GenerationMetaSpecFormat = "openapi"
+	GenerationMetaSpecFormatGraphql GenerationMetaSpecFormat = "graphql"
+)
+
+// GenerationMetaBaseline is one of "destination", "last-generation", "none". What the diff was measured against; "destination" means the .typeship/surface.json merged in the destination repository.
+type GenerationMetaBaseline string
+
+const (
+	GenerationMetaBaselineDestination    GenerationMetaBaseline = "destination"
+	GenerationMetaBaselineLastGeneration GenerationMetaBaseline = "last-generation"
+	GenerationMetaBaselineNone           GenerationMetaBaseline = "none"
+)
+
+// GenerationMetaSemver is one of "success", "failure". The typeship/semver verdict on the regeneration pull request; failure means breaking changes without a major version bump.
+type GenerationMetaSemver string
+
+const (
+	GenerationMetaSemverSuccess GenerationMetaSemver = "success"
+	GenerationMetaSemverFailure GenerationMetaSemver = "failure"
+)
+
 // GenerationLimits Present when the generation was capped: by the free plan, or because the call was anonymous. Absent on uncapped generations.
 type GenerationLimits struct {
 	// MaxOperations How many operations this generation was allowed to include.
 	MaxOperations int64 `json:"max_operations"`
 	// OmittedOperations How many operations in the spec were left out.
-	OmittedOperations int64  `json:"omitted_operations"`
-	Reason            string `json:"reason"`
+	OmittedOperations int64                  `json:"omitted_operations"`
+	Reason            GenerationLimitsReason `json:"reason"`
 	// SignupURL Anonymous calls only. Where to create an account.
 	SignupURL *string `json:"signup_url,omitempty"`
 	// UpgradeURL Where the cap is lifted.
 	UpgradeURL string `json:"upgrade_url"`
 }
+
+// GenerationLimitsReason is one of "anonymous", "free_plan".
+type GenerationLimitsReason string
+
+const (
+	GenerationLimitsReasonAnonymous GenerationLimitsReason = "anonymous"
+	GenerationLimitsReasonFreePlan  GenerationLimitsReason = "free_plan"
+)
 
 type GenerationResultClaim struct {
 	URL       string `json:"url"`
@@ -242,7 +322,7 @@ type Project struct {
 	Source      Source       `json:"source"`
 	Destination *Destination `json:"destination,omitempty"`
 	// Languages Languages this project generates. Each is a separate package, a separate pull request, and a separate hosted generation. Defaults to typescript alone.
-	Languages []string `json:"languages,omitempty"`
+	Languages []Language `json:"languages,omitempty"`
 	// Destinations Where each language's pull request lands, keyed by language. A repository each is the convention API vendors follow, and Go requires it since `go get` resolves a module to the repository root. Several languages may share a repository with different directories, producing one pull request.
 	Destinations map[string]Destination `json:"destinations,omitempty"`
 	// PackageNames Registry name per language. The ecosystems disagree about what a name is: npm takes an optional @scope, PyPI normalizes to lowercase-with-hyphens, and Go's name is the module path that `go get` resolves. Unset means the name is derived from the API's title.
@@ -253,20 +333,20 @@ type Project struct {
 	PackageName *string     `json:"package_name,omitempty"`
 	SpecPatches []SpecPatch `json:"spec_patches,omitempty"`
 	Config      *Config     `json:"config,omitempty"`
-	// McpEnabled Whether the hosted MCP endpoint is on. Requires the mcp platform and Enterprise; turning the platform off turns this off.
-	McpEnabled *bool `json:"mcp_enabled,omitempty"`
-	// McpURL Path of the hosted MCP endpoint while it is on; read-only.
-	McpURL *string `json:"mcp_url,omitempty"`
+	// MCPEnabled Whether the hosted MCP endpoint is on. Requires the mcp platform and Enterprise; turning the platform off turns this off.
+	MCPEnabled *bool `json:"mcp_enabled,omitempty"`
+	// MCPURL Path of the hosted MCP endpoint while it is on; read-only.
+	MCPURL *string `json:"mcp_url,omitempty"`
 	// RelayEnabled Whether the webhook relay is on, letting the generated CLI's webhooks listen command mint relay sessions. Requires the cli platform and Pro; turning the platform off turns this off.
 	RelayEnabled *bool `json:"relay_enabled,omitempty"`
 	// Platforms Artifacts this project builds from its spec. sdk is always present and stands for the SDK in each of `languages`; cli and mcp are built on the TypeScript SDK and ship in its package, so they require typescript among the languages. Each SDK language and each of cli and mcp is one platform for billing.
-	Platforms []string `json:"platforms"`
-	CreatedAt string   `json:"created_at"`
+	Platforms []Platform `json:"platforms"`
+	CreatedAt string     `json:"created_at"`
 }
 
 // Source Where the project's spec lives.
 type Source struct {
-	Kind string `json:"kind"`
+	Kind SourceKind `json:"kind"`
 	// URL kind url. Fetched server-side for every generation.
 	URL *string `json:"url,omitempty"`
 	// Repo kind repo, "owner/name". Watched via the GitHub App.
@@ -274,6 +354,14 @@ type Source struct {
 	// Path Path of the spec file inside the repository.
 	Path *string `json:"path,omitempty"`
 }
+
+// SourceKind is one of "url", "repo".
+type SourceKind string
+
+const (
+	SourceKindURL  SourceKind = "url"
+	SourceKindRepo SourceKind = "repo"
+)
 
 // Destination Where regeneration pull requests land.
 type Destination struct {
@@ -285,7 +373,7 @@ type Destination struct {
 
 // SpecPatch A fix applied to the spec before generation. Targets are JSON Pointers into the document. A patch whose target no longer exists is skipped and reported as a warning on the generation, never silently.
 type SpecPatch struct {
-	Op string `json:"op"`
+	Op SpecPatchOp `json:"op"`
 	// Path JSON-Pointer-style path. Pattern segments enable bulk fixes: * (any child), ** (any depth), [key=value] (filter), e.g. /paths/**/parameters/[name=account_id]/schema/type. Renaming a schema under /components/schemas also rewrites its $refs.
 	Path string `json:"path"`
 	// Value set only; the replacement value.
@@ -294,6 +382,16 @@ type SpecPatch struct {
 	To     *string `json:"to,omitempty"`
 	Reason *string `json:"reason,omitempty"`
 }
+
+// SpecPatchOp is one of "set", "append", "remove", "rename".
+type SpecPatchOp string
+
+const (
+	SpecPatchOpSet    SpecPatchOp = "set"
+	SpecPatchOpAppend SpecPatchOp = "append"
+	SpecPatchOpRemove SpecPatchOp = "remove"
+	SpecPatchOpRename SpecPatchOp = "rename"
+)
 
 type ProjectsDeleteResponse struct {
 	Deleted bool `json:"deleted"`
@@ -308,13 +406,13 @@ type Generation struct {
 	ID     string `json:"id"`
 	Object string `json:"object"`
 	// FilesOmitted Present and true when the generated output was too large to inline; files_index lists paths, fetched one at a time via GET /generations/{generation_id}/file.
-	FilesOmitted *bool      `json:"files_omitted,omitempty"`
-	FilesIndex   []FileStub `json:"files_index,omitempty"`
-	ProjectID    *string    `json:"project_id,omitempty"`
-	Status       string     `json:"status"`
-	Trigger      string     `json:"trigger"`
+	FilesOmitted *bool             `json:"files_omitted,omitempty"`
+	FilesIndex   []FileStub        `json:"files_index,omitempty"`
+	ProjectID    *string           `json:"project_id,omitempty"`
+	Status       GenerationStatus  `json:"status"`
+	Trigger      GenerationTrigger `json:"trigger"`
 	// Language Language this run generated. Null on generations recorded before projects had a language axis.
-	Language *string         `json:"language,omitempty"`
+	Language *Language       `json:"language,omitempty"`
 	Meta     *GenerationMeta `json:"meta,omitempty"`
 	Warnings []string        `json:"warnings,omitempty"`
 	// Files Present on retrieve and create; omitted in lists.
@@ -327,6 +425,24 @@ type FileStub struct {
 	Path  string `json:"path"`
 	Bytes int64  `json:"bytes"`
 }
+
+// GenerationStatus is one of "succeeded", "failed".
+type GenerationStatus string
+
+const (
+	GenerationStatusSucceeded GenerationStatus = "succeeded"
+	GenerationStatusFailed    GenerationStatus = "failed"
+)
+
+// GenerationTrigger is one of "manual", "webhook", "poll", "preview".
+type GenerationTrigger string
+
+const (
+	GenerationTriggerManual  GenerationTrigger = "manual"
+	GenerationTriggerWebhook GenerationTrigger = "webhook"
+	GenerationTriggerPoll    GenerationTrigger = "poll"
+	GenerationTriggerPreview GenerationTrigger = "preview"
+)
 
 type ProjectsGenerateResponse struct {
 	Data []ProjectsGenerateResponseDataItem `json:"data"`
@@ -395,16 +511,16 @@ func (u *ProjectsGenerateResponseDataItem) FromGenerationFailure(v GenerationFai
 
 // GenerationFailure A language that did not generate in a multi-language run.
 type GenerationFailure struct {
-	Language string `json:"language"`
-	Status   string `json:"status"`
-	Error    string `json:"error"`
+	Language Language `json:"language"`
+	Status   string   `json:"status"`
+	Error    string   `json:"error"`
 }
 
-type McpUsage struct {
+type MCPUsage struct {
 	Object    string `json:"object"`
 	ProjectID string `json:"project_id"`
-	// McpURL The hosted endpoint URL, or null when it is off.
-	McpURL *string `json:"mcp_url,omitempty"`
+	// MCPURL The hosted endpoint URL, or null when it is off.
+	MCPURL *string `json:"mcp_url,omitempty"`
 	// Days The window these numbers cover.
 	Days int64 `json:"days"`
 	// Calls Tool calls served, including ones that returned an error.
@@ -415,10 +531,10 @@ type McpUsage struct {
 	RateLimited int64 `json:"rate_limited"`
 	// AvgDurationMs Mean upstream request time across served calls.
 	AvgDurationMs int64                `json:"avg_duration_ms"`
-	ByTool        []McpUsageByToolItem `json:"by_tool"`
+	ByTool        []MCPUsageByToolItem `json:"by_tool"`
 }
 
-type McpUsageByToolItem struct {
+type MCPUsageByToolItem struct {
 	Tool   string `json:"tool"`
 	Calls  int64  `json:"calls"`
 	Errors int64  `json:"errors"`
@@ -450,10 +566,19 @@ type Account struct {
 	ID     string `json:"id"`
 	Object string `json:"object"`
 	// Name The organization's display name.
-	Name      string `json:"name"`
-	Plan      string `json:"plan"`
-	CreatedAt string `json:"created_at"`
+	Name      string      `json:"name"`
+	Plan      AccountPlan `json:"plan"`
+	CreatedAt string      `json:"created_at"`
 }
+
+// AccountPlan is one of "free", "pro", "enterprise".
+type AccountPlan string
+
+const (
+	AccountPlanFree       AccountPlan = "free"
+	AccountPlanPro        AccountPlan = "pro"
+	AccountPlanEnterprise AccountPlan = "enterprise"
+)
 
 type Usage struct {
 	Object            string                 `json:"object"`
