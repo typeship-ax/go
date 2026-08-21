@@ -253,7 +253,7 @@ type Project struct {
 	PackageName *string     `json:"package_name,omitempty"`
 	SpecPatches []SpecPatch `json:"spec_patches,omitempty"`
 	Config      *Config     `json:"config,omitempty"`
-	// McpEnabled Whether the hosted MCP endpoint is on. Requires the mcp platform and Pro; turning the platform off turns this off.
+	// McpEnabled Whether the hosted MCP endpoint is on. Requires the mcp platform and Enterprise; turning the platform off turns this off.
 	McpEnabled *bool `json:"mcp_enabled,omitempty"`
 	// McpURL Path of the hosted MCP endpoint while it is on; read-only.
 	McpURL *string `json:"mcp_url,omitempty"`

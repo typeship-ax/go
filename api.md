@@ -71,7 +71,7 @@ Body (required):
 | `params.AutoRegen` | `*bool` | no |  |
 | `params.PackageName` | `*string` | no |  |
 | `params.SpecPatches` | `[]SpecPatch` | no |  |
-| `params.McpEnabled` | `*bool` | no | Requires the mcp platform and Pro. |
+| `params.McpEnabled` | `*bool` | no | Requires the mcp platform and Enterprise. |
 | `params.RelayEnabled` | `*bool` | no | Requires the cli platform and Pro. |
 | `params.Config` | `*Config` | no |  |
 
@@ -129,7 +129,7 @@ Body (required):
 | `params.AutoRegen` | `*bool` | no |  |
 | `params.PackageName` | `*string` | no |  |
 | `params.SpecPatches` | `[]SpecPatch` | no |  |
-| `params.McpEnabled` | `*bool` | no | Serve this project as a hosted remote MCP endpoint. Requires the mcp platform and Pro. |
+| `params.McpEnabled` | `*bool` | no | Serve this project as a hosted remote MCP endpoint. Requires the mcp platform and Enterprise. |
 | `params.RelayEnabled` | `*bool` | no | Enable the webhook relay so the generated CLI's webhooks listen command works for this API's users. Requires the cli platform and Pro. |
 | `params.Config` | `*Config` | no | Replaces the whole config. Pass null to clear it. |
 
