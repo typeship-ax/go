@@ -21,49 +21,65 @@ type ProjectsListParams struct {
 
 // ProjectsCreateParams are the inputs for ProjectsService.Create.
 type ProjectsCreateParams struct {
-	Name         string                 `json:"name"`
-	SpecURL      *string                `json:"spec_url,omitempty"`
-	Source       *Source                `json:"source,omitempty"`
-	Platforms    []Platform             `json:"platforms,omitempty"`
-	Languages    []Language             `json:"languages,omitempty"`
+	Name string `json:"name"`
+	// SpecURL Spec location for a URL-sourced project. Provide this or source; a project with neither has nothing to generate.
+	SpecURL *string `json:"spec_url,omitempty"`
+	Source  *Source `json:"source,omitempty"`
+	// Platforms Artifacts to build. sdk is implied; cli and mcp require typescript among the languages. Free projects run one platform in total (one SDK language); more is a 402 until the account is on Pro.
+	Platforms []Platform `json:"platforms,omitempty"`
+	// Languages Languages to generate. Each is a separate package, a separate pull request, a separate hosted generation, and one platform for billing. Defaults to typescript alone.
+	Languages []Language `json:"languages,omitempty"`
+	// Destinations Per-language pull-request destination, keyed by language.
 	Destinations map[string]Destination `json:"destinations,omitempty"`
-	PackageNames map[string]string      `json:"package_names,omitempty"`
-	Destination  *Destination           `json:"destination,omitempty"`
-	AutoRegen    *bool                  `json:"auto_regen,omitempty"`
-	PackageName  *string                `json:"package_name,omitempty"`
-	SpecPatches  []SpecPatch            `json:"spec_patches,omitempty"`
-	MCPEnabled   *bool                  `json:"mcp_enabled,omitempty"`
-	RelayEnabled *bool                  `json:"relay_enabled,omitempty"`
-	Config       *Config                `json:"config,omitempty"`
+	// PackageNames Registry name per language; unset derives from the API title.
+	PackageNames map[string]string `json:"package_names,omitempty"`
+	Destination  *Destination      `json:"destination,omitempty"`
+	AutoRegen    *bool             `json:"auto_regen,omitempty"`
+	PackageName  *string           `json:"package_name,omitempty"`
+	SpecPatches  []SpecPatch       `json:"spec_patches,omitempty"`
+	// MCPEnabled Requires the mcp platform and Enterprise.
+	MCPEnabled *bool `json:"mcp_enabled,omitempty"`
+	// RelayEnabled Requires the cli platform and Pro.
+	RelayEnabled *bool   `json:"relay_enabled,omitempty"`
+	Config       *Config `json:"config,omitempty"`
 }
 
 // ProjectsUpdateParams are the inputs for ProjectsService.Update.
 type ProjectsUpdateParams struct {
-	Name         *string                `json:"name,omitempty"`
-	SpecURL      *string                `json:"spec_url,omitempty"`
-	Source       *Source                `json:"source,omitempty"`
-	Platforms    []Platform             `json:"platforms,omitempty"`
-	Destination  *Destination           `json:"destination,omitempty"`
-	Languages    []Language             `json:"languages,omitempty"`
+	Name    *string `json:"name,omitempty"`
+	SpecURL *string `json:"spec_url,omitempty"`
+	Source  *Source `json:"source,omitempty"`
+	// Platforms Artifacts to build; replaces the list. Dropping cli or mcp turns off the hosted feature it serves. cli and mcp require typescript among the languages. Turning a platform off stops generating it; nothing already delivered is removed.
+	Platforms   []Platform   `json:"platforms,omitempty"`
+	Destination *Destination `json:"destination,omitempty"`
+	// Languages Languages to generate; replaces the list. Each is its own hosted generation and one platform for billing.
+	Languages []Language `json:"languages,omitempty"`
+	// Destinations Per-language pull-request destination, keyed by language.
 	Destinations map[string]Destination `json:"destinations,omitempty"`
-	PackageNames map[string]string      `json:"package_names,omitempty"`
-	AutoRegen    *bool                  `json:"auto_regen,omitempty"`
-	PackageName  *string                `json:"package_name,omitempty"`
-	SpecPatches  []SpecPatch            `json:"spec_patches,omitempty"`
-	MCPEnabled   *bool                  `json:"mcp_enabled,omitempty"`
-	RelayEnabled *bool                  `json:"relay_enabled,omitempty"`
-	Config       *Config                `json:"config,omitempty"`
+	// PackageNames Registry name per language; unset derives from the API title.
+	PackageNames map[string]string `json:"package_names,omitempty"`
+	AutoRegen    *bool             `json:"auto_regen,omitempty"`
+	PackageName  *string           `json:"package_name,omitempty"`
+	SpecPatches  []SpecPatch       `json:"spec_patches,omitempty"`
+	// MCPEnabled Serve this project as a hosted remote MCP endpoint. Requires the mcp platform and Enterprise.
+	MCPEnabled *bool `json:"mcp_enabled,omitempty"`
+	// RelayEnabled Enable the webhook relay so the generated CLI's webhooks listen command works for this API's users. Requires the cli platform and Pro.
+	RelayEnabled *bool `json:"relay_enabled,omitempty"`
+	// Config Replaces the whole config. Pass null to clear it.
+	Config *Config `json:"config,omitempty"`
 }
 
 // ProjectsListGenerationsParams are the inputs for ProjectsService.ListGenerations.
 type ProjectsListGenerationsParams struct {
-	Limit    *int64    `json:"-"`
-	Cursor   *string   `json:"-"`
+	Limit  *int64  `json:"-"`
+	Cursor *string `json:"-"`
+	// Language Only generations for this language.
 	Language *Language `json:"-"`
 }
 
 // ProjectsMCPUsageParams are the inputs for ProjectsService.MCPUsage.
 type ProjectsMCPUsageParams struct {
+	// Days Window in days, 1 to 90.
 	Days *int64 `json:"-"`
 }
 

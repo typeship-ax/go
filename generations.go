@@ -15,6 +15,7 @@ type GenerationsService struct {
 
 // GenerationsGetFileParams are the inputs for GenerationsService.GetFile.
 type GenerationsGetFileParams struct {
+	// Path Repo-relative path inside the generated package.
 	Path *string `json:"-"`
 }
 
