@@ -258,6 +258,8 @@ type GenerationMeta struct {
 	// PrURL Pull request opened by this regeneration, when one was.
 	PrURL    *string `json:"pr_url,omitempty"`
 	PrNumber *int64  `json:"pr_number,omitempty"`
+	// PrStatus Whether a destination pull request opened, was unnecessary because the generated tree already matched, or could not be opened.
+	PrStatus *GenerationMetaPrStatus `json:"pr_status,omitempty"`
 	// PrError Why the configured destination pull request was not opened. Generation itself still succeeded; fix this action and regenerate.
 	PrError *string `json:"pr_error,omitempty"`
 	// Changelog Markdown changelog entry for this regeneration, from the API surface diff. Absent on a first generation or when nothing changed.
@@ -282,6 +284,15 @@ type GenerationMetaSpecFormat string
 const (
 	GenerationMetaSpecFormatOpenapi GenerationMetaSpecFormat = "openapi"
 	GenerationMetaSpecFormatGraphql GenerationMetaSpecFormat = "graphql"
+)
+
+// GenerationMetaPrStatus is one of "opened", "no_changes", "blocked". Whether a destination pull request opened, was unnecessary because the generated tree already matched, or could not be opened.
+type GenerationMetaPrStatus string
+
+const (
+	GenerationMetaPrStatusOpened    GenerationMetaPrStatus = "opened"
+	GenerationMetaPrStatusNoChanges GenerationMetaPrStatus = "no_changes"
+	GenerationMetaPrStatusBlocked   GenerationMetaPrStatus = "blocked"
 )
 
 // GenerationMetaBaseline is one of "destination", "last-generation", "none". What the diff was measured against; "destination" means the .typeship/surface.json merged in the destination repository.
