@@ -14,10 +14,8 @@ type GenerateService struct {
 // GenerateRunParams are the inputs for GenerateService.Run.
 type GenerateRunParams struct {
 	Spec SpecInput `json:"spec"`
-	// Platforms Artifacts to generate from the spec. Defaults to [sdk].
-	Platforms []Platform `json:"platforms,omitempty"`
-	// Language Language to generate. Python and Go produce the SDK only; the CLI and MCP server are TypeScript artifacts and are skipped with a warning when requested alongside them.
-	Language *Language `json:"language,omitempty"`
+	// Outputs Outputs for one delivery package. Choose one SDK output, or TypeScript SDK, CLI, and MCP in any combination. Linked projects can generate outputs in all ecosystems.
+	Outputs []OutputID `json:"outputs"`
 	// PackageName npm name override for the generated package.
 	PackageName *string `json:"package_name,omitempty"`
 	Config      *Config `json:"config,omitempty"`
