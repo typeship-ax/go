@@ -4,13 +4,21 @@ package typeship
 
 import "fmt"
 
-// UnauthorizedError is returned for 401 responses. Missing or invalid API key.
+// UnauthorizedError is returned for 401 responses. Missing, invalid, expired, or revoked credentials.
 type UnauthorizedError struct {
 	APIError
 }
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *UnauthorizedError) Unwrap() error { return &e.APIError }
+
+// ForbiddenError is returned for 403 responses. The credentials are valid but cannot act on the requested organization.
+type ForbiddenError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *ForbiddenError) Unwrap() error { return &e.APIError }
 
 // PayloadTooLargeError is returned for 413 responses. Spec exceeds the 10MB limit.
 type PayloadTooLargeError struct {
@@ -28,6 +36,14 @@ type UnprocessableEntityError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *UnprocessableEntityError) Unwrap() error { return &e.APIError }
 
+// RateLimitedError is returned for 429 responses. Too many requests. Wait for Retry-After before retrying.
+type RateLimitedError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *RateLimitedError) Unwrap() error { return &e.APIError }
+
 // APIResponseError is returned for default responses. Unexpected error.
 type APIResponseError struct {
 	APIError
@@ -36,7 +52,7 @@ type APIResponseError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *APIResponseError) Unwrap() error { return &e.APIError }
 
-// BadRequestError is returned for 400 responses. Invalid name, spec source, or field value.
+// BadRequestError is returned for 400 responses. The cursor is malformed.
 type BadRequestError struct {
 	APIError
 }
@@ -86,12 +102,20 @@ func newUnauthorizedError(status int, body []byte, requestID string) error {
 	return &UnauthorizedError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
+func newForbiddenError(status int, body []byte, requestID string) error {
+	return &ForbiddenError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+}
+
 func newPayloadTooLargeError(status int, body []byte, requestID string) error {
 	return &PayloadTooLargeError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
 func newUnprocessableEntityError(status int, body []byte, requestID string) error {
 	return &UnprocessableEntityError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+}
+
+func newRateLimitedError(status int, body []byte, requestID string) error {
+	return &RateLimitedError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
 func newAPIResponseError(status int, body []byte, requestID string) error {

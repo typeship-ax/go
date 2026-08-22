@@ -1,5 +1,101 @@
 # Changelog
 
+## 0.4.0 (2026-08-22) (18 breaking)
+
+### Added
+- `projects.retrieve()`: GET /projects/{project_id}
+- `generations.retrieve()`: GET /generations/{generation_id}
+- `generations.retrieveFile()`: GET /generations/{generation_id}/file
+- `specVersions.retrieve()`: GET /spec_versions/{spec_version_id}
+- `specVersions.retrieveContent()`: GET /spec_versions/{spec_version_id}/content
+- `account.retrieve()`: GET /me
+
+### Removed (breaking)
+- `projects.get()`: GET /projects/{project_id}
+- `projects.mcpUsage()`: GET /projects/{project_id}/mcp_usage
+- `generations.get()`: GET /generations/{generation_id}
+- `generations.getFile()`: GET /generations/{generation_id}/file
+- `specVersions.get()`: GET /spec_versions/{spec_version_id}
+- `specVersions.getContent()`: GET /spec_versions/{spec_version_id}/content
+- `account.me()`: GET /me
+- `usage.retrieve()`: GET /usage
+
+### Changed
+- `generate.run()`
+  - **breaking** error-type-changed: 401: UnauthorizedError<ErrorModel> -> UnauthorizedError<ErrorModel>
+  - **breaking** error-added: 403: ForbiddenError
+  - **breaking** error-type-changed: 413: PayloadTooLargeError<ErrorModel> -> PayloadTooLargeError<ErrorModel>
+  - **breaking** error-type-changed: 422: UnprocessableEntityError<ErrorModel> -> UnprocessableEntityError<ErrorModel>
+  - **breaking** error-added: 429: RateLimitedError
+  - **breaking** error-type-changed: default: ApiResponseError<ErrorModel> -> ApiResponseError<ErrorModel>
+- `projects.list()`
+  - **breaking** return-type-changed: { data: Project[]; next_cursor?: string | null; } -> ProjectList
+  - **breaking** error-added: 400: BadRequestError
+  - **breaking** error-type-changed: 401: UnauthorizedError<ErrorModel> -> UnauthorizedError<ErrorModel>
+  - **breaking** error-added: 403: ForbiddenError
+  - **breaking** error-added: 429: RateLimitedError
+- `projects.create()`
+  - **breaking** return-type-changed: nested response schema changed
+  - **breaking** error-type-changed: 400: BadRequestError<ErrorModel> -> BadRequestError<ErrorModel>
+  - **breaking** error-type-changed: 401: UnauthorizedError<ErrorModel> -> UnauthorizedError<ErrorModel>
+  - **breaking** error-type-changed: 402: PaymentRequiredError<ErrorModel> -> PaymentRequiredError<ErrorModel>
+  - **breaking** error-added: 403: ForbiddenError
+  - **breaking** error-added: 429: RateLimitedError
+- `projects.delete()`
+  - **breaking** param-type-changed: project_id: string -> ProjectId
+  - **breaking** return-type-changed: { deleted: true; } -> DeletedProject
+  - **breaking** error-type-changed: 401: UnauthorizedError<ErrorModel> -> UnauthorizedError<ErrorModel>
+  - **breaking** error-added: 403: ForbiddenError
+  - **breaking** error-type-changed: 404: NotFoundError<ErrorModel> -> NotFoundError<ErrorModel>
+  - **breaking** error-added: 429: RateLimitedError
+- `projects.update()`
+  - **breaking** param-type-changed: project_id: string -> ProjectId
+  - **breaking** return-type-changed: nested response schema changed
+  - **breaking** error-type-changed: 400: BadRequestError<ErrorModel> -> BadRequestError<ErrorModel>
+  - **breaking** error-type-changed: 401: UnauthorizedError<ErrorModel> -> UnauthorizedError<ErrorModel>
+  - **breaking** error-type-changed: 402: PaymentRequiredError<ErrorModel> -> PaymentRequiredError<ErrorModel>
+  - **breaking** error-added: 403: ForbiddenError
+  - **breaking** error-type-changed: 404: NotFoundError<ErrorModel> -> NotFoundError<ErrorModel>
+  - **breaking** error-added: 429: RateLimitedError
+- `projects.listGenerations()`
+  - **breaking** param-type-changed: project_id: string -> ProjectId
+  - **breaking** return-type-changed: { data: Generation[]; next_cursor?: string | null; } -> GenerationList
+  - **breaking** error-added: 400: BadRequestError
+  - **breaking** error-type-changed: 401: UnauthorizedError<ErrorModel> -> UnauthorizedError<ErrorModel>
+  - **breaking** error-added: 403: ForbiddenError
+  - **breaking** error-type-changed: 404: NotFoundError<ErrorModel> -> NotFoundError<ErrorModel>
+  - **breaking** error-added: 429: RateLimitedError
+- `projects.generate()`
+  - **breaking** param-type-changed: project_id: string -> ProjectId
+  - **breaking** return-type-changed: nested response schema changed
+  - **breaking** error-type-changed: 401: UnauthorizedError<ErrorModel> -> UnauthorizedError<ErrorModel>
+  - **breaking** error-type-changed: 402: PaymentRequiredError<ErrorModel> -> PaymentRequiredError<ErrorModel>
+  - **breaking** error-added: 403: ForbiddenError
+  - **breaking** error-type-changed: 404: NotFoundError<ErrorModel> -> NotFoundError<ErrorModel>
+  - **breaking** error-type-changed: 422: UnprocessableEntityError<ErrorModel> -> UnprocessableEntityError<ErrorModel>
+  - **breaking** error-added: 429: RateLimitedError
+  - **breaking** error-type-changed: 500: InternalServerError<ErrorModel> -> InternalServerError<ErrorModel>
+- `specVersions.list()`
+  - **breaking** param-type-changed: project_id: string -> ProjectId
+  - **breaking** return-type-changed: { data: SpecVersion[]; next_cursor?: string | null; } -> SpecVersionList
+  - **breaking** error-added: 400: BadRequestError
+  - **breaking** error-type-changed: 401: UnauthorizedError<ErrorModel> -> UnauthorizedError<ErrorModel>
+  - **breaking** error-added: 403: ForbiddenError
+  - **breaking** error-type-changed: 404: NotFoundError<ErrorModel> -> NotFoundError<ErrorModel>
+  - **breaking** error-added: 429: RateLimitedError
+- `apiKeys.list()`
+  - **breaking** return-type-changed: { data: ApiKey[]; next_cursor?: string | null; } -> ApiKeyList
+  - **breaking** error-added: 400: BadRequestError
+  - **breaking** error-type-changed: 401: UnauthorizedError<ErrorModel> -> UnauthorizedError<ErrorModel>
+  - **breaking** error-added: 403: ForbiddenError
+  - **breaking** error-added: 429: RateLimitedError
+- `apiKeys.revoke()`
+  - **breaking** return-type-changed: nested response schema changed
+  - **breaking** error-type-changed: 401: UnauthorizedError<ErrorModel> -> UnauthorizedError<ErrorModel>
+  - **breaking** error-added: 403: ForbiddenError
+  - **breaking** error-type-changed: 404: NotFoundError<ErrorModel> -> NotFoundError<ErrorModel>
+  - **breaking** error-added: 429: RateLimitedError
+
 ## 0.3.0 (2026-08-22)
 
 ### Changed

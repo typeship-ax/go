@@ -11,18 +11,18 @@ type AccountService struct {
 	core *core
 }
 
-// Me — the account behind the presented credentials.
+// Retrieve — the account behind the presented credentials.
 //
 // Returns the account that owns the presented API key. This is also the
 // identity endpoint the generated typeship CLI's `whoami` calls.
 //
 // GET /me
-func (s *AccountService) Me(ctx context.Context, opts ...RequestOption) (*Account, error) {
+func (s *AccountService) Retrieve(ctx context.Context, opts ...RequestOption) (*Account, error) {
 	req := request{
 		Method:     "GET",
 		Path:       "/me",
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError},
-		SchemaKey:  "account.me",
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "429": newRateLimitedError},
+		SchemaKey:  "account.retrieve",
 		Idempotent: true,
 	}
 	var out Account

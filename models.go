@@ -338,33 +338,41 @@ type GenerationResultClaim struct {
 	ExpiresAt string `json:"expires_at"`
 }
 
-type ProjectsListResponse struct {
-	Data       []Project `json:"data"`
-	NextCursor *string   `json:"next_cursor,omitempty"`
+type ProjectList struct {
+	Object ListObject `json:"object"`
+	Data   []Project  `json:"data"`
+	// HasMore Whether another page is available after this one.
+	HasMore bool `json:"has_more"`
+	// NextCursor Pass this value as cursor to retrieve the next page; null on the last page.
+	NextCursor string `json:"next_cursor"`
 }
 
+type ListObject string
+
 type Project struct {
-	ID     string `json:"id"`
-	Object string `json:"object"`
-	Name   string `json:"name"`
+	ID     ProjectID `json:"id"`
+	Object string    `json:"object"`
+	Name   string    `json:"name"`
 	// SpecURL The source URL when the source kind is url; null otherwise.
-	SpecURL  *string  `json:"spec_url,omitempty"`
+	SpecURL  string   `json:"spec_url"`
 	Source   Source   `json:"source"`
 	Packages Packages `json:"packages"`
 	// AutoRegen Regenerate when the spec changes: on every push to the default branch for a repository source, every 30 minutes for a URL source. Off by default: the first generation is always one you asked for. Off means only "generate now" and POST /projects/{project_id}/generations regenerate.
 	AutoRegen   bool        `json:"auto_regen"`
-	SpecPatches []SpecPatch `json:"spec_patches,omitempty"`
-	Config      *Config     `json:"config,omitempty"`
+	SpecPatches []SpecPatch `json:"spec_patches"`
+	Config      Config      `json:"config"`
 	// MCPEnabled Whether the hosted MCP endpoint is on. Requires the MCP output and Enterprise; turning the output off turns this off.
-	MCPEnabled *bool `json:"mcp_enabled,omitempty"`
+	MCPEnabled bool `json:"mcp_enabled"`
 	// MCPURL Path of the hosted MCP endpoint while it is on; read-only.
-	MCPURL *string `json:"mcp_url,omitempty"`
+	MCPURL string `json:"mcp_url"`
 	// RelayEnabled Whether the webhook relay is on, letting the generated CLI's webhooks listen command mint relay sessions. Requires the cli output and Pro; turning the output off turns this off.
-	RelayEnabled *bool `json:"relay_enabled,omitempty"`
+	RelayEnabled bool `json:"relay_enabled"`
 	// Outputs First-class generated outputs. Any non-empty combination is valid. Free keeps every selected output current for the first 25 operations in one linked project. On Pro, each selected output is billed once; shared implementation runtimes are included.
 	Outputs   []OutputID `json:"outputs"`
 	CreatedAt string     `json:"created_at"`
 }
+
+type ProjectID string
 
 // Source Where the project's spec lives.
 type Source struct {
@@ -429,8 +437,10 @@ const (
 	SpecPatchOpRename SpecPatchOp = "rename"
 )
 
-type ProjectsDeleteResponse struct {
-	Deleted bool `json:"deleted"`
+type DeletedProject struct {
+	ID      ProjectID `json:"id"`
+	Object  string    `json:"object"`
+	Deleted bool      `json:"deleted"`
 }
 
 // Language is one of "typescript", "python", "go".
@@ -442,18 +452,22 @@ const (
 	LanguageGo         Language = "go"
 )
 
-type ProjectsListGenerationsResponse struct {
-	Data       []Generation `json:"data"`
-	NextCursor *string      `json:"next_cursor,omitempty"`
+type GenerationList struct {
+	Object ListObject   `json:"object"`
+	Data   []Generation `json:"data"`
+	// HasMore Whether another page is available after this one.
+	HasMore bool `json:"has_more"`
+	// NextCursor Pass this value as cursor to retrieve the next page; null on the last page.
+	NextCursor string `json:"next_cursor"`
 }
 
 type Generation struct {
-	ID     string `json:"id"`
-	Object string `json:"object"`
+	ID     GenerationID `json:"id"`
+	Object string       `json:"object"`
 	// FilesOmitted Present and true when the generated output was too large to inline; files_index lists paths, fetched one at a time via GET /generations/{generation_id}/file.
 	FilesOmitted *bool             `json:"files_omitted,omitempty"`
 	FilesIndex   []FileStub        `json:"files_index,omitempty"`
-	ProjectID    *string           `json:"project_id,omitempty"`
+	ProjectID    *ProjectID        `json:"project_id,omitempty"`
 	Status       GenerationStatus  `json:"status"`
 	Trigger      GenerationTrigger `json:"trigger"`
 	// Language Language this run generated. Null on generations recorded before projects had a language axis.
@@ -465,6 +479,8 @@ type Generation struct {
 	Error     *string         `json:"error,omitempty"`
 	CreatedAt string          `json:"created_at"`
 }
+
+type GenerationID string
 
 type FileStub struct {
 	Path  string `json:"path"`
@@ -561,39 +577,19 @@ type GenerationFailure struct {
 	Error    string   `json:"error"`
 }
 
-type MCPUsage struct {
-	Object    string `json:"object"`
-	ProjectID string `json:"project_id"`
-	// MCPURL The hosted endpoint URL, or null when it is off.
-	MCPURL *string `json:"mcp_url,omitempty"`
-	// Days The window these numbers cover.
-	Days int64 `json:"days"`
-	// Calls Tool calls served, including ones that returned an error.
-	Calls int64 `json:"calls"`
-	// Errors Calls whose result was a tool error (API failures, bad arguments).
-	Errors int64 `json:"errors"`
-	// RateLimited Calls turned away by the per-caller or per-endpoint limit.
-	RateLimited int64 `json:"rate_limited"`
-	// AvgDurationMs Mean upstream request time across served calls.
-	AvgDurationMs int64                `json:"avg_duration_ms"`
-	ByTool        []MCPUsageByToolItem `json:"by_tool"`
-}
-
-type MCPUsageByToolItem struct {
-	Tool   string `json:"tool"`
-	Calls  int64  `json:"calls"`
-	Errors int64  `json:"errors"`
-}
-
-type SpecVersionsListResponse struct {
-	Data       []SpecVersion `json:"data"`
-	NextCursor *string       `json:"next_cursor,omitempty"`
+type SpecVersionList struct {
+	Object ListObject    `json:"object"`
+	Data   []SpecVersion `json:"data"`
+	// HasMore Whether another page is available after this one.
+	HasMore bool `json:"has_more"`
+	// NextCursor Pass this value as cursor to retrieve the next page; null on the last page.
+	NextCursor string `json:"next_cursor"`
 }
 
 type SpecVersion struct {
-	ID        string `json:"id"`
-	Object    string `json:"object"`
-	ProjectID string `json:"project_id"`
+	ID        SpecVersionID `json:"id"`
+	Object    string        `json:"object"`
+	ProjectID ProjectID     `json:"project_id"`
 	// Hash sha256 of the raw spec text; the version's identity.
 	Hash  string `json:"hash"`
 	Bytes *int64 `json:"bytes,omitempty"`
@@ -605,6 +601,8 @@ type SpecVersion struct {
 	ContentOmitted *bool  `json:"content_omitted,omitempty"`
 	CreatedAt      string `json:"created_at"`
 }
+
+type SpecVersionID string
 
 // Account The organization an API key belongs to. Members share its projects, keys, and plan; sign-in identity is not part of the API.
 type Account struct {
@@ -625,39 +623,13 @@ const (
 	AccountPlanEnterprise AccountPlan = "enterprise"
 )
 
-type Usage struct {
-	Object string `json:"object"`
-	// HostedGenerations Cumulative linked-project runs. No plan caps the number of runs; included and remaining are null for every plan.
-	HostedGenerations UsageHostedGenerations `json:"hosted_generations"`
-	// IncludedEndpoints Endpoints included before per-endpoint billing applies.
-	IncludedEndpoints int64 `json:"included_endpoints"`
-	// Requests Who called the API in the last 30 days, read from the User-Agent the generated tooling sends: by surface (cli, mcp, sdk, http) and by agent harness (claude-code, codex, cursor, ...), and the share of requests that came through an agent.
-	Requests *UsageRequests `json:"requests,omitempty"`
-}
-
-// UsageHostedGenerations Cumulative linked-project runs. No plan caps the number of runs; included and remaining are null for every plan.
-type UsageHostedGenerations struct {
-	// Used Cumulative linked-project generations recorded for the organization.
-	Used int64 `json:"used"`
-	// Included Always null; retained for response compatibility.
-	Included *int64 `json:"included,omitempty"`
-	// Remaining Always null; generations have no count quota.
-	Remaining *int64 `json:"remaining,omitempty"`
-}
-
-// UsageRequests Who called the API in the last 30 days, read from the User-Agent the generated tooling sends: by surface (cli, mcp, sdk, http) and by agent harness (claude-code, codex, cursor, ...), and the share of requests that came through an agent.
-type UsageRequests struct {
-	Days      int64            `json:"days"`
-	Requests  int64            `json:"requests"`
-	BySurface map[string]int64 `json:"by_surface"`
-	ByHarness map[string]int64 `json:"by_harness"`
-	// AgentShare 0 to 1.
-	AgentShare float64 `json:"agent_share"`
-}
-
-type APIKeysListResponse struct {
-	Data       []APIKey `json:"data"`
-	NextCursor *string  `json:"next_cursor,omitempty"`
+type APIKeyList struct {
+	Object ListObject `json:"object"`
+	Data   []APIKey   `json:"data"`
+	// HasMore Whether another page is available after this one.
+	HasMore bool `json:"has_more"`
+	// NextCursor Pass this value as cursor to retrieve the next page; null on the last page.
+	NextCursor string `json:"next_cursor"`
 }
 
 type APIKey struct {
@@ -665,8 +637,8 @@ type APIKey struct {
 	Object string `json:"object"`
 	Name   string `json:"name"`
 	// Last4 Last four characters of the secret; the secret itself is never stored.
-	Last4      string  `json:"last4"`
-	Revoked    bool    `json:"revoked"`
-	LastUsedAt *string `json:"last_used_at,omitempty"`
-	CreatedAt  string  `json:"created_at"`
+	Last4      string `json:"last4"`
+	Revoked    bool   `json:"revoked"`
+	LastUsedAt string `json:"last_used_at"`
+	CreatedAt  string `json:"created_at"`
 }

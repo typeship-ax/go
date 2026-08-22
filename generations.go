@@ -13,23 +13,23 @@ type GenerationsService struct {
 	core *core
 }
 
-// GenerationsGetFileParams are the inputs for GenerationsService.GetFile.
-type GenerationsGetFileParams struct {
+// GenerationsRetrieveFileParams are the inputs for GenerationsService.RetrieveFile.
+type GenerationsRetrieveFileParams struct {
 	// Path Repo-relative path inside the generated package.
 	Path string `json:"-"`
 }
 
-// Get — retrieve a generation.
+// Retrieve a generation.
 //
 // Includes the generated files when the generation succeeded.
 //
 // GET /generations/{generation_id}
-func (s *GenerationsService) Get(ctx context.Context, generationID string, opts ...RequestOption) (*Generation, error) {
+func (s *GenerationsService) Retrieve(ctx context.Context, generationID string, opts ...RequestOption) (*Generation, error) {
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/generations/%s", url.PathEscape(generationID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "404": newNotFoundError},
-		SchemaKey:  "generations.get",
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		SchemaKey:  "generations.retrieve",
 		Idempotent: true,
 	}
 	var out Generation
@@ -39,20 +39,20 @@ func (s *GenerationsService) Get(ctx context.Context, generationID string, opts 
 	return &out, nil
 }
 
-// GetFile — fetch one file from a generation.
+// RetrieveFile — fetch one file from a generation.
 //
 // Raw file content, for generations whose output was too large to inline (files_omitted true). The generation's files_index lists valid paths.
 //
 // GET /generations/{generation_id}/file
-func (s *GenerationsService) GetFile(ctx context.Context, generationID string, params GenerationsGetFileParams, opts ...RequestOption) (string, error) {
+func (s *GenerationsService) RetrieveFile(ctx context.Context, generationID string, params GenerationsRetrieveFileParams, opts ...RequestOption) (string, error) {
 	query := map[string]any{}
 	query["path"] = params.Path
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/generations/%s/file", url.PathEscape(generationID)),
 		Query:      query,
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "404": newNotFoundError},
-		SchemaKey:  "generations.getFile",
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		SchemaKey:  "generations.retrieveFile",
 		Idempotent: true,
 	}
 	var out string

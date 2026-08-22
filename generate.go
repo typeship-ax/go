@@ -38,7 +38,7 @@ func (s *GenerateService) Run(ctx context.Context, params GenerateRunParams, opt
 		Method:    "POST",
 		Path:      "/generate",
 		Body:      params,
-		Errors:    map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "413": newPayloadTooLargeError, "422": newUnprocessableEntityError, "default": newAPIResponseError},
+		Errors:    map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "413": newPayloadTooLargeError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "default": newAPIResponseError},
 		SchemaKey: "generate.run",
 	}
 	var out GenerationResult

@@ -10,9 +10,9 @@ import (
 )
 
 // Version is this package's version, also sent as the User-Agent.
-const Version = "0.3.0"
+const Version = "0.4.0"
 
-const userAgent = "typeship/0.3.0 (typeship)"
+const userAgent = "typeship/0.4.0 (typeship)"
 
 // Option configures a Client at construction.
 type Option func(*core)
@@ -105,7 +105,6 @@ type Client struct {
 	Generations  *GenerationsService
 	SpecVersions *SpecVersionsService
 	Account      *AccountService
-	Usage        *UsageService
 	APIKeys      *APIKeysService
 
 	core *core
@@ -141,7 +140,6 @@ func New(opts ...Option) (*Client, error) {
 	client.Generations = &GenerationsService{core: c}
 	client.SpecVersions = &SpecVersionsService{core: c}
 	client.Account = &AccountService{core: c}
-	client.Usage = &UsageService{core: c}
 	client.APIKeys = &APIKeysService{core: c}
 	return client, nil
 }
