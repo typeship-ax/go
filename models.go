@@ -227,6 +227,10 @@ type PackageBehavior struct {
 	Version *string `json:"version,omitempty"`
 	// Homepage Homepage written into registry metadata.
 	Homepage *string `json:"homepage,omitempty"`
+	// License SPDX identifier written into registry metadata. Defaults to info.license.
+	License *string `json:"license,omitempty"`
+	// LicenseText Exact LICENSE file contents. Supply this for licences the engine does not build in; MIT is built in when copyright is also set.
+	LicenseText *string `json:"license_text,omitempty"`
 	// Copyright Copyright line used in generated license files.
 	Copyright *string `json:"copyright,omitempty"`
 	// BinName CLI executable name when it differs from the npm package name.
