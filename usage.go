@@ -13,7 +13,7 @@ type UsageService struct {
 
 // Retrieve usage for this account.
 //
-// What this account has consumed and what remains. A hosted generation can cost more than one unit: a project generating TypeScript, Python, and Go consumes three, so callers that would otherwise discover the limit by receiving a 402 can check first.
+// Cumulative linked-project generation telemetry, the endpoint allowance for the current plan, and which generated surfaces have called the API. Generations have no count quota; hosted_generations.included and hosted_generations.remaining are always null.
 //
 // GET /usage
 func (s *UsageService) Retrieve(ctx context.Context, opts ...RequestOption) (*Usage, error) {
