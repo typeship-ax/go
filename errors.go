@@ -44,7 +44,7 @@ type BadRequestError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *BadRequestError) Unwrap() error { return &e.APIError }
 
-// PaymentRequiredError is returned for 402 responses. The plan does not include this.
+// PaymentRequiredError is returned for 402 responses. The plan does not include another project or the requested output configuration.
 type PaymentRequiredError struct {
 	APIError
 }
@@ -59,6 +59,14 @@ type NotFoundError struct {
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *NotFoundError) Unwrap() error { return &e.APIError }
+
+// InternalServerError is returned for 500 responses. Generation or pull-request setup failed unexpectedly.
+type InternalServerError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *InternalServerError) Unwrap() error { return &e.APIError }
 
 // apiError maps a status onto the documented error type for an operation.
 func apiError(status int, body []byte, requestID string, errs map[string]func(int, []byte, string) error) error {
@@ -100,4 +108,8 @@ func newPaymentRequiredError(status int, body []byte, requestID string) error {
 
 func newNotFoundError(status int, body []byte, requestID string) error {
 	return &NotFoundError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+}
+
+func newInternalServerError(status int, body []byte, requestID string) error {
+	return &InternalServerError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }

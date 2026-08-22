@@ -12,25 +12,18 @@ type SpecInput struct {
 	Inline *string `json:"inline,omitempty"`
 }
 
-// Platform is one of "sdk", "cli", "mcp".
-type Platform string
+// OutputID is one of "typescript-sdk", "python-sdk", "go-sdk", "cli", "mcp". One customer-selected output. CLI and MCP include the private TypeScript request runtime they need; that dependency is not a selected or billable TypeScript SDK.
+type OutputID string
 
 const (
-	PlatformSDK Platform = "sdk"
-	PlatformCLI Platform = "cli"
-	PlatformMCP Platform = "mcp"
+	OutputIDTypescriptSDK OutputID = "typescript-sdk"
+	OutputIDPythonSDK     OutputID = "python-sdk"
+	OutputIDGoSDK         OutputID = "go-sdk"
+	OutputIDCLI           OutputID = "cli"
+	OutputIDMCP           OutputID = "mcp"
 )
 
-// Language is one of "typescript", "python", "go".
-type Language string
-
-const (
-	LanguageTypescript Language = "typescript"
-	LanguagePython     Language = "python"
-	LanguageGo         Language = "go"
-)
-
-// Config Everything typeship needs beyond the spec, in one object: generation customization (globals, retries, pagination) and how the generated tooling behaves (cli, mcp, docs_url). Plain configuration. typeship never requires vendor extensions inside the spec itself. The same shape is accepted on a project and on POST /generate.
+// Config Everything typeship needs beyond the spec, in one object: generation customization (globals, retries, pagination) and how the generated tooling behaves (cli, mcp, package, docs_url). Plain configuration. typeship never requires vendor extensions inside the spec itself. The same shape is accepted on a project and on POST /generate.
 type Config struct {
 	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
 	Globals []string     `json:"globals,omitempty"`
@@ -40,6 +33,7 @@ type Config struct {
 	Graphql    *GraphqlSettings                 `json:"graphql,omitempty"`
 	CLI        *CLIBehavior                     `json:"cli,omitempty"`
 	MCP        *MCPBehavior                     `json:"mcp,omitempty"`
+	Package    *PackageBehavior                 `json:"package,omitempty"`
 	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the spec's externalDocs URL.
 	DocsURL *string `json:"docs_url,omitempty"`
 }
@@ -185,6 +179,12 @@ type CLIBehavior struct {
 	UpdateNotice *bool `json:"update_notice,omitempty"`
 	// SupportURL Where the generated CLI's feedback command sends users. GitHub issues/new URLs get a prefilled title and environment details.
 	SupportURL *string `json:"support_url,omitempty"`
+	// AuthURL Base URL of the browser-approval endpoint pair used by CLI login. The CLI keeps the verifier and receives the credential directly; no key is pasted through a conversation.
+	AuthURL *string `json:"auth_url,omitempty"`
+	// MCPURL Hosted MCP endpoint installed by the generated CLI instead of launching the package's local stdio server.
+	MCPURL *string `json:"mcp_url,omitempty"`
+	// SkillsRepo GitHub owner/name of the skills package the generated CLI offers to install during init.
+	SkillsRepo *string `json:"skills_repo,omitempty"`
 }
 
 // MCPBehavior How the generated MCP server and the hosted endpoint behave. Part of Config.
@@ -206,12 +206,28 @@ const (
 	MCPBehaviorToolModeMeta       MCPBehaviorToolMode = "meta"
 )
 
+// PackageBehavior Published-package metadata the API spec does not own. Use version only when the client intentionally releases on a different cadence from info.version; repository is derived from each destination.
+type PackageBehavior struct {
+	// Version Semantic version for the generated packages. Defaults to info.version.
+	Version *string `json:"version,omitempty"`
+	// Homepage Homepage written into registry metadata.
+	Homepage *string `json:"homepage,omitempty"`
+	// Copyright Copyright line used in generated license files.
+	Copyright *string `json:"copyright,omitempty"`
+	// BinName CLI executable name when it differs from the npm package name.
+	BinName *string `json:"bin_name,omitempty"`
+	// GoPackageName Go identifier when the destination repository name is unsuitable.
+	GoPackageName *string `json:"go_package_name,omitempty"`
+	// MCPName Official MCP registry name written into package.json.
+	MCPName *string `json:"mcp_name,omitempty"`
+}
+
 type GenerationResult struct {
 	Files    []GeneratedFile   `json:"files"`
 	Warnings []string          `json:"warnings"`
 	Meta     GenerationMeta    `json:"meta"`
 	Limits   *GenerationLimits `json:"limits,omitempty"`
-	// Claim Anonymous, URL-sourced generations only. A link a signed-in person can open to turn this run into a project in their organization (same spec, language, platforms, config). Lasts seven days. Null for inline specs; absent on keyed calls.
+	// Claim Anonymous, URL-sourced generations only. A link a signed-in person can open to turn this run into a project in their organization (same spec, outputs, and config). Lasts seven days. Null for inline specs; absent on keyed calls.
 	Claim *GenerationResultClaim `json:"claim,omitempty"`
 }
 
@@ -228,10 +244,11 @@ type GenerationMeta struct {
 	// OasVersion Detected spec version, "2.0", "3.0", or "3.1".
 	OasVersion string `json:"oas_version"`
 	// Converted True when the input was Swagger 2.0 and was converted.
-	Converted               *bool      `json:"converted,omitempty"`
-	PackageName             string     `json:"package_name"`
-	ClientName              string     `json:"client_name"`
-	Targets                 []Platform `json:"targets"`
+	Converted   *bool  `json:"converted,omitempty"`
+	PackageName string `json:"package_name"`
+	ClientName  string `json:"client_name"`
+	// Outputs Customer-selected outputs present in this delivery package.
+	Outputs                 []OutputID `json:"outputs"`
 	ResourceCount           *int64     `json:"resource_count,omitempty"`
 	OperationCount          *int64     `json:"operation_count,omitempty"`
 	SchemaCount             *int64     `json:"schema_count,omitempty"`
@@ -241,6 +258,8 @@ type GenerationMeta struct {
 	// PrURL Pull request opened by this regeneration, when one was.
 	PrURL    *string `json:"pr_url,omitempty"`
 	PrNumber *int64  `json:"pr_number,omitempty"`
+	// PrError Why the configured destination pull request was not opened. Generation itself still succeeded; fix this action and regenerate.
+	PrError *string `json:"pr_error,omitempty"`
 	// Changelog Markdown changelog entry for this regeneration, from the API surface diff. Absent on a first generation or when nothing changed.
 	Changelog *string `json:"changelog,omitempty"`
 	// BreakingCount Breaking changes in the diff; removed methods and fields, changed types, inputs that became required.
@@ -318,29 +337,21 @@ type Project struct {
 	Object string `json:"object"`
 	Name   string `json:"name"`
 	// SpecURL The source URL when the source kind is url; null otherwise.
-	SpecURL     *string      `json:"spec_url,omitempty"`
-	Source      Source       `json:"source"`
-	Destination *Destination `json:"destination,omitempty"`
-	// Languages Languages this project generates. Each is a separate package, a separate pull request, and a separate hosted generation. Defaults to typescript alone.
-	Languages []Language `json:"languages,omitempty"`
-	// Destinations Where each language's pull request lands, keyed by language. A repository each is the convention API vendors follow, and Go requires it since `go get` resolves a module to the repository root. Several languages may share a repository with different directories, producing one pull request.
-	Destinations map[string]Destination `json:"destinations,omitempty"`
-	// PackageNames Registry name per language. The ecosystems disagree about what a name is: npm takes an optional @scope, PyPI normalizes to lowercase-with-hyphens, and Go's name is the module path that `go get` resolves. Unset means the name is derived from the API's title.
-	PackageNames map[string]string `json:"package_names,omitempty"`
+	SpecURL  *string  `json:"spec_url,omitempty"`
+	Source   Source   `json:"source"`
+	Packages Packages `json:"packages"`
 	// AutoRegen Regenerate when the spec changes: on every push to the default branch for a repository source, every 30 minutes for a URL source. Off by default: the first generation is always one you asked for. Off means only "generate now" and POST /projects/{project_id}/generations regenerate.
-	AutoRegen bool `json:"auto_regen"`
-	// PackageName npm name override for generated output; supports @scope/name.
-	PackageName *string     `json:"package_name,omitempty"`
+	AutoRegen   bool        `json:"auto_regen"`
 	SpecPatches []SpecPatch `json:"spec_patches,omitempty"`
 	Config      *Config     `json:"config,omitempty"`
-	// MCPEnabled Whether the hosted MCP endpoint is on. Requires the mcp platform and Enterprise; turning the platform off turns this off.
+	// MCPEnabled Whether the hosted MCP endpoint is on. Requires the MCP output and Enterprise; turning the output off turns this off.
 	MCPEnabled *bool `json:"mcp_enabled,omitempty"`
 	// MCPURL Path of the hosted MCP endpoint while it is on; read-only.
 	MCPURL *string `json:"mcp_url,omitempty"`
-	// RelayEnabled Whether the webhook relay is on, letting the generated CLI's webhooks listen command mint relay sessions. Requires the cli platform and Pro; turning the platform off turns this off.
+	// RelayEnabled Whether the webhook relay is on, letting the generated CLI's webhooks listen command mint relay sessions. Requires the cli output and Pro; turning the output off turns this off.
 	RelayEnabled *bool `json:"relay_enabled,omitempty"`
-	// Platforms Artifacts this project builds from its spec. sdk is always present and stands for the SDK in each of `languages`; cli and mcp are built on the TypeScript SDK and ship in its package, so they require typescript among the languages. Each SDK language and each of cli and mcp is one platform for billing.
-	Platforms []Platform `json:"platforms"`
+	// Outputs First-class generated outputs. Any non-empty combination is valid. Free keeps every selected output current for the first 25 operations in one linked project. On Pro, each selected output is billed once; shared implementation runtimes are included.
+	Outputs   []OutputID `json:"outputs"`
 	CreatedAt string     `json:"created_at"`
 }
 
@@ -362,6 +373,20 @@ const (
 	SourceKindURL  SourceKind = "url"
 	SourceKindRepo SourceKind = "repo"
 )
+
+// Packages Delivery packages keyed by registry ecosystem. TypeScript SDK, CLI, and MCP share npm delivery without becoming the same output. Python and Go SDKs use their own package ecosystems.
+type Packages struct {
+	Npm    *PackageDelivery `json:"npm,omitempty"`
+	Python *PackageDelivery `json:"python,omitempty"`
+	Go     *PackageDelivery `json:"go,omitempty"`
+}
+
+// PackageDelivery Registry identity and reviewed pull-request destination for one delivery package.
+type PackageDelivery struct {
+	// Name npm package name, Python distribution name, or Go module path. Null derives a name from the API title.
+	Name        *string      `json:"name,omitempty"`
+	Destination *Destination `json:"destination,omitempty"`
+}
 
 // Destination Where regeneration pull requests land.
 type Destination struct {
@@ -396,6 +421,15 @@ const (
 type ProjectsDeleteResponse struct {
 	Deleted bool `json:"deleted"`
 }
+
+// Language is one of "typescript", "python", "go".
+type Language string
+
+const (
+	LanguageTypescript Language = "typescript"
+	LanguagePython     Language = "python"
+	LanguageGo         Language = "go"
+)
 
 type ProjectsListGenerationsResponse struct {
 	Data       []Generation `json:"data"`
@@ -581,7 +615,8 @@ const (
 )
 
 type Usage struct {
-	Object            string                 `json:"object"`
+	Object string `json:"object"`
+	// HostedGenerations Cumulative linked-project runs. No plan caps the number of runs; included and remaining are null for every plan.
 	HostedGenerations UsageHostedGenerations `json:"hosted_generations"`
 	// IncludedEndpoints Endpoints included before per-endpoint billing applies.
 	IncludedEndpoints int64 `json:"included_endpoints"`
@@ -589,10 +624,13 @@ type Usage struct {
 	Requests *UsageRequests `json:"requests,omitempty"`
 }
 
+// UsageHostedGenerations Cumulative linked-project runs. No plan caps the number of runs; included and remaining are null for every plan.
 type UsageHostedGenerations struct {
+	// Used Cumulative linked-project generations recorded for the organization.
 	Used int64 `json:"used"`
-	// Included Null on paid plans, which meter rather than cap.
-	Included  *int64 `json:"included,omitempty"`
+	// Included Always null; retained for response compatibility.
+	Included *int64 `json:"included,omitempty"`
+	// Remaining Always null; generations have no count quota.
 	Remaining *int64 `json:"remaining,omitempty"`
 }
 
