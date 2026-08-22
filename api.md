@@ -67,13 +67,13 @@ Body (required):
 | `params.Languages` | `[]Language` | no | Languages to generate. Each is a separate package, a separate pull request, a separate hosted generation, and one platform for billing. Defaults to typescript alone. |
 | `params.Destinations` | `map[string]Destination` | no | Per-language pull-request destination, keyed by language. |
 | `params.PackageNames` | `map[string]string` | no | Registry name per language; unset derives from the API title. |
-| `params.Destination` | `*Destination` | no |  |
+| `params.Destination` | `*Nullable[Destination]` | no |  |
 | `params.AutoRegen` | `*bool` | no |  |
-| `params.PackageName` | `*string` | no |  |
+| `params.PackageName` | `*Nullable[string]` | no |  |
 | `params.SpecPatches` | `[]SpecPatch` | no |  |
 | `params.MCPEnabled` | `*bool` | no | Requires the mcp platform and Enterprise. |
 | `params.RelayEnabled` | `*bool` | no | Requires the cli platform and Pro. |
-| `params.Config` | `*Config` | no |  |
+| `params.Config` | `*Nullable[Config]` | no |  |
 
 Returns: `(*Project, error)`
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredError` (402)
@@ -122,16 +122,16 @@ Body (required):
 | `params.SpecURL` | `*string` | no |  |
 | `params.Source` | `*Source` | no |  |
 | `params.Platforms` | `[]Platform` | no | Artifacts to build; replaces the list. Dropping cli or mcp turns off the hosted feature it serves. cli and mcp require typescript among the languages. Turning a platform off stops generating it; nothing already delivered is removed. |
-| `params.Destination` | `*Destination` | no |  |
+| `params.Destination` | `*Nullable[Destination]` | no |  |
 | `params.Languages` | `[]Language` | no | Languages to generate; replaces the list. Each is its own hosted generation and one platform for billing. |
 | `params.Destinations` | `map[string]Destination` | no | Per-language pull-request destination, keyed by language. |
 | `params.PackageNames` | `map[string]string` | no | Registry name per language; unset derives from the API title. |
 | `params.AutoRegen` | `*bool` | no |  |
-| `params.PackageName` | `*string` | no |  |
+| `params.PackageName` | `*Nullable[string]` | no |  |
 | `params.SpecPatches` | `[]SpecPatch` | no |  |
 | `params.MCPEnabled` | `*bool` | no | Serve this project as a hosted remote MCP endpoint. Requires the mcp platform and Enterprise. |
 | `params.RelayEnabled` | `*bool` | no | Enable the webhook relay so the generated CLI's webhooks listen command works for this API's users. Requires the cli platform and Pro. |
-| `params.Config` | `*Config` | no | Replaces the whole config. Pass null to clear it. |
+| `params.Config` | `*Nullable[Config]` | no | Replaces the whole config. Pass null to clear it. |
 
 Returns: `(*Project, error)`
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredError` (402), `*NotFoundError` (404)
@@ -215,7 +215,7 @@ Raw file content, for generations whose output was too large to inline (files_om
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `generationID` | path | `string` | yes |  |
-| `params.Path` | query | `*string` | yes | Repo-relative path inside the generated package. |
+| `params.Path` | query | `string` | yes | Repo-relative path inside the generated package. |
 
 Returns: `(string, error)`
 Errors: `*UnauthorizedError` (401), `*NotFoundError` (404)

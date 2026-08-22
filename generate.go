@@ -35,7 +35,7 @@ type GenerateRunParams struct {
 // 401, not a downgrade to anonymous.
 //
 // POST /generate
-func (s *GenerateService) Run(ctx context.Context, params *GenerateRunParams, opts ...RequestOption) (*GenerationResult, error) {
+func (s *GenerateService) Run(ctx context.Context, params GenerateRunParams, opts ...RequestOption) (*GenerationResult, error) {
 	req := request{
 		Method:    "POST",
 		Path:      "/generate",

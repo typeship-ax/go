@@ -16,7 +16,7 @@ type GenerationsService struct {
 // GenerationsGetFileParams are the inputs for GenerationsService.GetFile.
 type GenerationsGetFileParams struct {
 	// Path Repo-relative path inside the generated package.
-	Path *string `json:"-"`
+	Path string `json:"-"`
 }
 
 // Get — retrieve a generation.
@@ -44,13 +44,9 @@ func (s *GenerationsService) Get(ctx context.Context, generationID string, opts 
 // Raw file content, for generations whose output was too large to inline (files_omitted true). The generation's files_index lists valid paths.
 //
 // GET /generations/{generation_id}/file
-func (s *GenerationsService) GetFile(ctx context.Context, generationID string, params *GenerationsGetFileParams, opts ...RequestOption) (string, error) {
+func (s *GenerationsService) GetFile(ctx context.Context, generationID string, params GenerationsGetFileParams, opts ...RequestOption) (string, error) {
 	query := map[string]any{}
-	if params != nil {
-		if params.Path != nil {
-			query["path"] = *params.Path
-		}
-	}
+	query["path"] = params.Path
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/generations/%s/file", url.PathEscape(generationID)),

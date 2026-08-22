@@ -132,6 +132,28 @@ type core struct {
 //	params.Limit = Ptr(int64(10))
 func Ptr[T any](v T) *T { return &v }
 
+// Nullable represents an optional JSON field with three states: omitted when
+// the *Nullable is nil, explicit null from NullableNull, and a concrete value
+// from NullableValue.
+type Nullable[T any] struct {
+	value T
+	null  bool
+}
+
+// NullableValue returns a nullable field containing v.
+func NullableValue[T any](v T) *Nullable[T] { return &Nullable[T]{value: v} }
+
+// NullableNull returns a nullable field that marshals as JSON null.
+func NullableNull[T any]() *Nullable[T] { return &Nullable[T]{null: true} }
+
+// MarshalJSON preserves the explicit-null state on the wire.
+func (n Nullable[T]) MarshalJSON() ([]byte, error) {
+	if n.null {
+		return []byte("null"), nil
+	}
+	return json.Marshal(n.value)
+}
+
 // ValidateMode controls optional runtime validation of JSON bodies
 // against the spec's schemas.
 type ValidateMode int
