@@ -154,8 +154,10 @@ Generate outputs and open pull requests
 Resolves the project's URL or repository source, generates every
 configured delivery package, stores each result in the project's history,
 and attempts to open a pull request in every configured destination.
-This is the same
-pipeline automatic regeneration runs after a source change.
+When the complete generated tree already matches a destination, no
+commit, branch, or pull request is created and that generation reports
+`pr_status: no_changes`. This is the same pipeline automatic
+regeneration runs after a source change.
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
