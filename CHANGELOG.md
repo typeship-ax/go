@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.0 (2026-08-22)
+
+### Changed
+- `generate.run()`
+  - body-field-type-changed: config: nested schema changed
+- `projects.list()`
+  - return-type-changed: nested response schema changed
+- `projects.create()`
+  - body-field-type-changed: config: nested schema changed
+  - return-type-changed: nested response schema changed
+- `projects.retrieve()`
+  - return-type-changed: nested response schema changed
+- `projects.update()`
+  - body-field-type-changed: config: nested schema changed
+  - return-type-changed: nested response schema changed
+
 ## 0.5.0 (2026-08-22) (18 breaking)
 
 ### Added
