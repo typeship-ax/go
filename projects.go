@@ -25,21 +25,14 @@ type ProjectsCreateParams struct {
 	// SpecURL Spec location for a URL-sourced project. Provide this or source; a project with neither has nothing to generate.
 	SpecURL *string `json:"spec_url,omitempty"`
 	Source  *Source `json:"source,omitempty"`
-	// Platforms Artifacts to build. sdk is implied; cli and mcp require typescript among the languages. Free projects run one platform in total (one SDK language); more is a 402 until the account is on Pro.
-	Platforms []Platform `json:"platforms,omitempty"`
-	// Languages Languages to generate. Each is a separate package, a separate pull request, a separate hosted generation, and one platform for billing. Defaults to typescript alone.
-	Languages []Language `json:"languages,omitempty"`
-	// Destinations Per-language pull-request destination, keyed by language.
-	Destinations map[string]Destination `json:"destinations,omitempty"`
-	// PackageNames Registry name per language; unset derives from the API title.
-	PackageNames map[string]string      `json:"package_names,omitempty"`
-	Destination  *Nullable[Destination] `json:"destination,omitempty"`
-	AutoRegen    *bool                  `json:"auto_regen,omitempty"`
-	PackageName  *Nullable[string]      `json:"package_name,omitempty"`
-	SpecPatches  []SpecPatch            `json:"spec_patches,omitempty"`
-	// MCPEnabled Requires the mcp platform and Enterprise.
+	// Outputs First-class outputs to keep current. Any non-empty combination is valid.
+	Outputs     []OutputID  `json:"outputs"`
+	Packages    *Packages   `json:"packages,omitempty"`
+	AutoRegen   *bool       `json:"auto_regen,omitempty"`
+	SpecPatches []SpecPatch `json:"spec_patches,omitempty"`
+	// MCPEnabled Requires the MCP output and Enterprise.
 	MCPEnabled *bool `json:"mcp_enabled,omitempty"`
-	// RelayEnabled Requires the cli platform and Pro.
+	// RelayEnabled Requires the CLI output and Pro.
 	RelayEnabled *bool             `json:"relay_enabled,omitempty"`
 	Config       *Nullable[Config] `json:"config,omitempty"`
 }
@@ -49,21 +42,14 @@ type ProjectsUpdateParams struct {
 	Name    *string `json:"name,omitempty"`
 	SpecURL *string `json:"spec_url,omitempty"`
 	Source  *Source `json:"source,omitempty"`
-	// Platforms Artifacts to build; replaces the list. Dropping cli or mcp turns off the hosted feature it serves. cli and mcp require typescript among the languages. Turning a platform off stops generating it; nothing already delivered is removed.
-	Platforms   []Platform             `json:"platforms,omitempty"`
-	Destination *Nullable[Destination] `json:"destination,omitempty"`
-	// Languages Languages to generate; replaces the list. Each is its own hosted generation and one platform for billing.
-	Languages []Language `json:"languages,omitempty"`
-	// Destinations Per-language pull-request destination, keyed by language.
-	Destinations map[string]Destination `json:"destinations,omitempty"`
-	// PackageNames Registry name per language; unset derives from the API title.
-	PackageNames map[string]string `json:"package_names,omitempty"`
-	AutoRegen    *bool             `json:"auto_regen,omitempty"`
-	PackageName  *Nullable[string] `json:"package_name,omitempty"`
-	SpecPatches  []SpecPatch       `json:"spec_patches,omitempty"`
-	// MCPEnabled Serve this project as a hosted remote MCP endpoint. Requires the mcp platform and Enterprise.
+	// Outputs First-class outputs; replaces the selection. Turning one off stops generating it; nothing already delivered is removed.
+	Outputs     []OutputID  `json:"outputs,omitempty"`
+	Packages    *Packages   `json:"packages,omitempty"`
+	AutoRegen   *bool       `json:"auto_regen,omitempty"`
+	SpecPatches []SpecPatch `json:"spec_patches,omitempty"`
+	// MCPEnabled Serve this project as a hosted remote MCP endpoint. Requires the MCP output and Enterprise.
 	MCPEnabled *bool `json:"mcp_enabled,omitempty"`
-	// RelayEnabled Enable the webhook relay so the generated CLI's webhooks listen command works for this API's users. Requires the cli platform and Pro.
+	// RelayEnabled Enable the webhook relay so the generated CLI's webhooks listen command works for this API's users. Requires the CLI output and Pro.
 	RelayEnabled *bool `json:"relay_enabled,omitempty"`
 	// Config Replaces the whole config. Pass null to clear it.
 	Config *Nullable[Config] `json:"config,omitempty"`
@@ -122,6 +108,8 @@ func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, 
 }
 
 // Create a project.
+//
+// Stores a URL- or repository-sourced project. Free includes one stored project, every selected output, and the first 25 operations, while keeping manual and automatic regeneration, history, destination pull requests, and preview checks. Stateless POST /generate does not consume this slot. Pro adds projects and the whole spec.
 //
 // POST /projects
 func (s *ProjectsService) Create(ctx context.Context, params ProjectsCreateParams, opts ...RequestOption) (*Project, error) {
@@ -234,20 +222,20 @@ func (s *ProjectsService) ListGenerations(ctx context.Context, projectID string,
 	})
 }
 
-// Generate — run a hosted generation.
+// Generate outputs and open pull requests.
 //
-// Fetches the project's spec URL, generates every configured language,
-// and stores each result in the project's history. Each language
-// counts as one hosted generation. Does not open pull requests. Only
-// URL-sourced projects can be regenerated this way; repository sources
-// regenerate on push.
+// Resolves the project's URL or repository source, generates every
+// configured delivery package, stores each result in the project's history,
+// and attempts to open a pull request in every configured destination.
+// This is the same
+// pipeline automatic regeneration runs after a source change.
 //
 // POST /projects/{project_id}/generations
 func (s *ProjectsService) Generate(ctx context.Context, projectID string, opts ...RequestOption) (*ProjectsGenerateResponse, error) {
 	req := request{
 		Method:    "POST",
 		Path:      fmt.Sprintf("/projects/%s/generations", url.PathEscape(projectID)),
-		Errors:    map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "402": newPaymentRequiredError, "404": newNotFoundError, "422": newUnprocessableEntityError},
+		Errors:    map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "402": newPaymentRequiredError, "404": newNotFoundError, "422": newUnprocessableEntityError, "500": newInternalServerError},
 		SchemaKey: "projects.generate",
 	}
 	var out ProjectsGenerateResponse
