@@ -15,7 +15,9 @@ type APIKeysService struct {
 
 // APIKeysListParams are the inputs for APIKeysService.List.
 type APIKeysListParams struct {
-	Limit  *int64  `json:"-"`
+	// Limit Maximum number of resources to return.
+	Limit *int64 `json:"-"`
+	// Cursor Opaque cursor from the preceding page's next_cursor.
 	Cursor *string `json:"-"`
 }
 
@@ -46,7 +48,7 @@ func (s *APIKeysService) List(ctx context.Context, params *APIKeysListParams, op
 		Method:     "GET",
 		Path:       "/api_keys",
 		Query:      query,
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError},
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "429": newRateLimitedError},
 		SchemaKey:  "apiKeys.list",
 		Idempotent: true,
 	}
@@ -55,6 +57,7 @@ func (s *APIKeysService) List(ctx context.Context, params *APIKeysListParams, op
 		ItemsField:      "data",
 		CursorParam:     "cursor",
 		NextCursorField: "next_cursor",
+		HasMoreField:    "has_more",
 		LimitParam:      "limit",
 	})
 }
@@ -68,7 +71,7 @@ func (s *APIKeysService) Revoke(ctx context.Context, apiKeyID string, opts ...Re
 	req := request{
 		Method:     "DELETE",
 		Path:       fmt.Sprintf("/api_keys/%s", url.PathEscape(apiKeyID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "404": newNotFoundError},
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
 		SchemaKey:  "apiKeys.revoke",
 		Idempotent: true,
 	}

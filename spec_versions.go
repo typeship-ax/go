@@ -15,7 +15,9 @@ type SpecVersionsService struct {
 
 // SpecVersionsListParams are the inputs for SpecVersionsService.List.
 type SpecVersionsListParams struct {
-	Limit  *int64  `json:"-"`
+	// Limit Maximum number of resources to return.
+	Limit *int64 `json:"-"`
+	// Cursor Opaque cursor from the preceding page's next_cursor.
 	Cursor *string `json:"-"`
 }
 
@@ -46,7 +48,7 @@ func (s *SpecVersionsService) List(ctx context.Context, projectID string, params
 		Method:     "GET",
 		Path:       fmt.Sprintf("/projects/%s/spec_versions", url.PathEscape(projectID)),
 		Query:      query,
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "404": newNotFoundError},
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
 		SchemaKey:  "specVersions.list",
 		Idempotent: true,
 	}
@@ -55,21 +57,22 @@ func (s *SpecVersionsService) List(ctx context.Context, projectID string, params
 		ItemsField:      "data",
 		CursorParam:     "cursor",
 		NextCursorField: "next_cursor",
+		HasMoreField:    "has_more",
 		LimitParam:      "limit",
 	})
 }
 
-// Get — retrieve a spec version.
+// Retrieve a spec version.
 //
 // One recorded spec, with its content. Storing every spec a project has generated from is only an audit trail if you can read one back and diff it against what shipped.
 //
 // GET /spec_versions/{spec_version_id}
-func (s *SpecVersionsService) Get(ctx context.Context, specVersionID string, opts ...RequestOption) (*SpecVersion, error) {
+func (s *SpecVersionsService) Retrieve(ctx context.Context, specVersionID string, opts ...RequestOption) (*SpecVersion, error) {
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/spec_versions/%s", url.PathEscape(specVersionID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "404": newNotFoundError},
-		SchemaKey:  "specVersions.get",
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		SchemaKey:  "specVersions.retrieve",
 		Idempotent: true,
 	}
 	var out SpecVersion
@@ -79,17 +82,17 @@ func (s *SpecVersionsService) Get(ctx context.Context, specVersionID string, opt
 	return &out, nil
 }
 
-// GetContent — retrieve a spec version's raw text.
+// RetrieveContent — retrieve a spec version's raw text.
 //
 // The escape hatch for specs too large to inline, and the endpoint to pipe straight into a diff.
 //
 // GET /spec_versions/{spec_version_id}/content
-func (s *SpecVersionsService) GetContent(ctx context.Context, specVersionID string, opts ...RequestOption) (string, error) {
+func (s *SpecVersionsService) RetrieveContent(ctx context.Context, specVersionID string, opts ...RequestOption) (string, error) {
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/spec_versions/%s/content", url.PathEscape(specVersionID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "404": newNotFoundError},
-		SchemaKey:  "specVersions.getContent",
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		SchemaKey:  "specVersions.retrieveContent",
 		Idempotent: true,
 	}
 	var out string
