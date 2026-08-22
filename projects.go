@@ -15,7 +15,9 @@ type ProjectsService struct {
 
 // ProjectsListParams are the inputs for ProjectsService.List.
 type ProjectsListParams struct {
-	Limit  *int64  `json:"-"`
+	// Limit Maximum number of resources to return.
+	Limit *int64 `json:"-"`
+	// Cursor Opaque cursor from the preceding page's next_cursor.
 	Cursor *string `json:"-"`
 }
 
@@ -23,8 +25,8 @@ type ProjectsListParams struct {
 type ProjectsCreateParams struct {
 	Name string `json:"name"`
 	// SpecURL Spec location for a URL-sourced project. Provide this or source; a project with neither has nothing to generate.
-	SpecURL *string `json:"spec_url,omitempty"`
-	Source  *Source `json:"source,omitempty"`
+	SpecURL *string      `json:"spec_url,omitempty"`
+	Source  *SourceInput `json:"source,omitempty"`
 	// Outputs First-class outputs to keep current. Any non-empty combination is valid.
 	Outputs     []OutputID  `json:"outputs"`
 	Packages    *Packages   `json:"packages,omitempty"`
@@ -39,9 +41,9 @@ type ProjectsCreateParams struct {
 
 // ProjectsUpdateParams are the inputs for ProjectsService.Update.
 type ProjectsUpdateParams struct {
-	Name    *string `json:"name,omitempty"`
-	SpecURL *string `json:"spec_url,omitempty"`
-	Source  *Source `json:"source,omitempty"`
+	Name    *string      `json:"name,omitempty"`
+	SpecURL *string      `json:"spec_url,omitempty"`
+	Source  *SourceInput `json:"source,omitempty"`
 	// Outputs First-class outputs; replaces the selection. Turning one off stops generating it; nothing already delivered is removed.
 	Outputs     []OutputID  `json:"outputs,omitempty"`
 	Packages    *Packages   `json:"packages,omitempty"`
@@ -57,16 +59,12 @@ type ProjectsUpdateParams struct {
 
 // ProjectsListGenerationsParams are the inputs for ProjectsService.ListGenerations.
 type ProjectsListGenerationsParams struct {
-	Limit  *int64  `json:"-"`
+	// Limit Maximum number of resources to return.
+	Limit *int64 `json:"-"`
+	// Cursor Opaque cursor from the preceding page's next_cursor.
 	Cursor *string `json:"-"`
 	// Language Only generations for this language.
 	Language *Language `json:"-"`
-}
-
-// ProjectsMCPUsageParams are the inputs for ProjectsService.MCPUsage.
-type ProjectsMCPUsageParams struct {
-	// Days Window in days, 1 to 90.
-	Days *int64 `json:"-"`
 }
 
 // List projects.
@@ -94,7 +92,7 @@ func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, 
 		Method:     "GET",
 		Path:       "/projects",
 		Query:      query,
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError},
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "429": newRateLimitedError},
 		SchemaKey:  "projects.list",
 		Idempotent: true,
 	}
@@ -103,6 +101,7 @@ func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, 
 		ItemsField:      "data",
 		CursorParam:     "cursor",
 		NextCursorField: "next_cursor",
+		HasMoreField:    "has_more",
 		LimitParam:      "limit",
 	})
 }
@@ -117,7 +116,7 @@ func (s *ProjectsService) Create(ctx context.Context, params ProjectsCreateParam
 		Method:    "POST",
 		Path:      "/projects",
 		Body:      params,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError},
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "429": newRateLimitedError},
 		SchemaKey: "projects.create",
 	}
 	var out Project
@@ -127,15 +126,15 @@ func (s *ProjectsService) Create(ctx context.Context, params ProjectsCreateParam
 	return &out, nil
 }
 
-// Get — retrieve a project.
+// Retrieve a project.
 //
 // GET /projects/{project_id}
-func (s *ProjectsService) Get(ctx context.Context, projectID string, opts ...RequestOption) (*Project, error) {
+func (s *ProjectsService) Retrieve(ctx context.Context, projectID string, opts ...RequestOption) (*Project, error) {
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "404": newNotFoundError},
-		SchemaKey:  "projects.get",
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		SchemaKey:  "projects.retrieve",
 		Idempotent: true,
 	}
 	var out Project
@@ -148,15 +147,15 @@ func (s *ProjectsService) Get(ctx context.Context, projectID string, opts ...Req
 // Delete a project.
 //
 // DELETE /projects/{project_id}
-func (s *ProjectsService) Delete(ctx context.Context, projectID string, opts ...RequestOption) (*ProjectsDeleteResponse, error) {
+func (s *ProjectsService) Delete(ctx context.Context, projectID string, opts ...RequestOption) (*DeletedProject, error) {
 	req := request{
 		Method:     "DELETE",
 		Path:       fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "404": newNotFoundError},
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
 		SchemaKey:  "projects.delete",
 		Idempotent: true,
 	}
-	var out ProjectsDeleteResponse
+	var out DeletedProject
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}
@@ -171,7 +170,7 @@ func (s *ProjectsService) Update(ctx context.Context, projectID string, params *
 		Method:    "PATCH",
 		Path:      fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
 		Body:      params,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "404": newNotFoundError},
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
 		SchemaKey: "projects.update",
 	}
 	var out Project
@@ -209,7 +208,7 @@ func (s *ProjectsService) ListGenerations(ctx context.Context, projectID string,
 		Method:     "GET",
 		Path:       fmt.Sprintf("/projects/%s/generations", url.PathEscape(projectID)),
 		Query:      query,
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "404": newNotFoundError},
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
 		SchemaKey:  "projects.listGenerations",
 		Idempotent: true,
 	}
@@ -218,6 +217,7 @@ func (s *ProjectsService) ListGenerations(ctx context.Context, projectID string,
 		ItemsField:      "data",
 		CursorParam:     "cursor",
 		NextCursorField: "next_cursor",
+		HasMoreField:    "has_more",
 		LimitParam:      "limit",
 	})
 }
@@ -237,37 +237,10 @@ func (s *ProjectsService) Generate(ctx context.Context, projectID string, opts .
 	req := request{
 		Method:    "POST",
 		Path:      fmt.Sprintf("/projects/%s/generations", url.PathEscape(projectID)),
-		Errors:    map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "402": newPaymentRequiredError, "404": newNotFoundError, "422": newUnprocessableEntityError, "500": newInternalServerError},
+		Errors:    map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
 		SchemaKey: "projects.generate",
 	}
 	var out ProjectsGenerateResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// MCPUsage — retrieve hosted MCP endpoint usage for a project.
-//
-// What the project's hosted MCP endpoint has served over the last `days` (default 30, max 90): tool calls, calls that returned an error, calls turned away by the rate limit, mean upstream latency, and a per-tool breakdown. The same numbers the console shows next to the endpoint URL. Zeroes when the endpoint is off or unused.
-//
-// GET /projects/{project_id}/mcp_usage
-func (s *ProjectsService) MCPUsage(ctx context.Context, projectID string, params *ProjectsMCPUsageParams, opts ...RequestOption) (*MCPUsage, error) {
-	query := map[string]any{}
-	if params != nil {
-		if params.Days != nil {
-			query["days"] = *params.Days
-		}
-	}
-	req := request{
-		Method:     "GET",
-		Path:       fmt.Sprintf("/projects/%s/mcp_usage", url.PathEscape(projectID)),
-		Query:      query,
-		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "404": newNotFoundError},
-		SchemaKey:  "projects.mcpUsage",
-		Idempotent: true,
-	}
-	var out MCPUsage
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}
