@@ -4,14 +4,86 @@ package typeship
 
 import "encoding/json"
 
-// SpecInput The spec to generate from. Provide exactly one of url or inline.
+type GenerateRequest struct {
+	Spec SpecInput `json:"spec"`
+	// Outputs Outputs for one delivery package. Choose one SDK output, or TypeScript SDK, CLI, and MCP in any combination. Linked projects can generate outputs in all ecosystems.
+	Outputs []OutputID `json:"outputs"`
+	// PackageName Registry name for the selected delivery package: an npm package, Python distribution, or Go module path. Defaults to a name derived from the API title.
+	PackageName *string `json:"package_name,omitempty"`
+	Config      *Config `json:"config,omitempty"`
+}
+
+// SpecInput is one of URLSpecInput, InlineSpecInput — The specification for stateless generation, provided as exactly one URL or inline document.
+// Go has no sum types, so it holds the JSON as received and decodes on
+// request: try the As* accessors, or switch on Discriminator() when the
+// spec names one.
 type SpecInput struct {
+	union json.RawMessage
+}
+
+// MarshalJSON writes the value as it was set or received.
+func (u SpecInput) MarshalJSON() ([]byte, error) {
+	if u.union == nil {
+		return []byte("null"), nil
+	}
+	return u.union, nil
+}
+
+// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
+func (u *SpecInput) UnmarshalJSON(data []byte) error {
+	u.union = append(u.union[:0], data...)
+	return nil
+}
+
+// Raw returns the JSON exactly as received.
+func (u SpecInput) Raw() json.RawMessage {
+	return u.union
+}
+
+// AsURLSpecInput decodes the value as URLSpecInput.
+func (u SpecInput) AsURLSpecInput() (URLSpecInput, error) {
+	var v URLSpecInput
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromURLSpecInput sets the value to a URLSpecInput.
+func (u *SpecInput) FromURLSpecInput(v URLSpecInput) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AsInlineSpecInput decodes the value as InlineSpecInput.
+func (u SpecInput) AsInlineSpecInput() (InlineSpecInput, error) {
+	var v InlineSpecInput
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromInlineSpecInput sets the value to a InlineSpecInput.
+func (u *SpecInput) FromInlineSpecInput(v InlineSpecInput) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+type URLSpecInput struct {
 	// URL URL of an OpenAPI document, a GraphQL SDL file, or a GraphQL endpoint (introspected automatically). Fetched server-side.
-	URL *string `json:"url,omitempty"`
-	// Inline Raw spec text (OpenAPI JSON/YAML or GraphQL SDL). Up to 10MB.
-	Inline *string `json:"inline,omitempty"`
-	// Headers Request headers for a protected URL. Sent on the document GET and GraphQL introspection POST, never returned or retained by stateless generation. Only valid with url.
+	URL string `json:"url"`
+	// Headers Request headers for a protected URL. Sent on the document GET and GraphQL introspection POST, never returned or retained by stateless generation.
 	Headers map[string]string `json:"headers,omitempty"`
+}
+
+type InlineSpecInput struct {
+	// Inline Raw spec text (OpenAPI JSON/YAML or GraphQL SDL). Up to 10MB.
+	Inline string `json:"inline"`
 }
 
 // OutputID is one of "typescript-sdk", "python-sdk", "go-sdk", "cli", "mcp". One customer-selected output. CLI and MCP include the private TypeScript request runtime they need; that dependency is not a selected or billable TypeScript SDK.
@@ -287,10 +359,10 @@ type GenerationMeta struct {
 	BreakingCount *int64 `json:"breaking_count,omitempty"`
 	// Baseline What the diff was measured against; "destination" means the .typeship/surface.json merged in the destination repository.
 	Baseline *GenerationMetaBaseline `json:"baseline,omitempty"`
-	// Semver The typeship/semver verdict on the regeneration pull request; failure means breaking changes without a major version bump.
-	Semver *GenerationMetaSemver `json:"semver,omitempty"`
-	// SemverNote The verdict in one line, as the commit status describes it.
-	SemverNote *string `json:"semver_note,omitempty"`
+	// PackageCompatibility The package compatibility verdict on the regeneration pull request; failure means breaking changes without a major version bump.
+	PackageCompatibility *GenerationMetaPackageCompatibility `json:"package_compatibility,omitempty"`
+	// PackageCompatibilityNote The verdict in one line, as the commit status describes it.
+	PackageCompatibilityNote *string `json:"package_compatibility_note,omitempty"`
 	// PreviousVersion The package version the destination had before this regeneration.
 	PreviousVersion *string `json:"previous_version,omitempty"`
 	FileCount       *int64  `json:"file_count,omitempty"`
@@ -323,12 +395,12 @@ const (
 	GenerationMetaBaselineNone           GenerationMetaBaseline = "none"
 )
 
-// GenerationMetaSemver is one of "success", "failure". The typeship/semver verdict on the regeneration pull request; failure means breaking changes without a major version bump.
-type GenerationMetaSemver string
+// GenerationMetaPackageCompatibility is one of "success", "failure". The package compatibility verdict on the regeneration pull request; failure means breaking changes without a major version bump.
+type GenerationMetaPackageCompatibility string
 
 const (
-	GenerationMetaSemverSuccess GenerationMetaSemver = "success"
-	GenerationMetaSemverFailure GenerationMetaSemver = "failure"
+	GenerationMetaPackageCompatibilitySuccess GenerationMetaPackageCompatibility = "success"
+	GenerationMetaPackageCompatibilityFailure GenerationMetaPackageCompatibility = "failure"
 )
 
 // GenerationLimits Present when the generation was capped: by the free plan, or because the call was anonymous. Absent on uncapped generations.
@@ -369,13 +441,11 @@ type ProjectList struct {
 type ListObject string
 
 type Project struct {
-	ID     ProjectID `json:"id"`
-	Object string    `json:"object"`
-	Name   string    `json:"name"`
-	// SpecURL The source URL when the source kind is url; null otherwise.
-	SpecURL  string   `json:"spec_url"`
-	Source   Source   `json:"source"`
-	Packages Packages `json:"packages"`
+	ID       ProjectID       `json:"id"`
+	Object   string          `json:"object"`
+	Name     string          `json:"name"`
+	Source   ProjectSource   `json:"source"`
+	Packages ProjectPackages `json:"packages"`
 	// AutoRegen Regenerate when the spec changes: on every push to the default branch for a repository source, every 30 minutes for a URL source. Off by default: the first generation is always one you asked for. Off means only "generate now" and POST /projects/{project_id}/generations regenerate.
 	AutoRegen   bool        `json:"auto_regen"`
 	SpecPatches []SpecPatch `json:"spec_patches"`
@@ -389,51 +459,115 @@ type Project struct {
 	// Outputs First-class generated outputs. Any non-empty combination is valid. Free keeps every selected output current for the first 25 operations in one linked project. On Pro, each selected output is billed once; shared implementation runtimes are included.
 	Outputs   []OutputID `json:"outputs"`
 	CreatedAt string     `json:"created_at"`
+	// UpdatedAt When the project configuration last changed.
+	UpdatedAt string `json:"updated_at"`
 }
 
 type ProjectID string
 
-// Source Where the project's spec lives. Request credentials are never returned.
-type Source struct {
-	Kind Kind `json:"kind"`
-	// URL kind url. Fetched server-side for every generation.
-	URL *string `json:"url,omitempty"`
-	// HeadersConfigured Whether write-only request headers are stored.
-	HeadersConfigured *bool `json:"headers_configured,omitempty"`
-	// Repo kind repo, "owner/name". Watched via the GitHub App.
-	Repo *string `json:"repo,omitempty"`
-	// Path Path of the spec file inside the repository.
-	Path *string `json:"path,omitempty"`
+// ProjectSource is one of URLProjectSource, GithubProjectSource — The single source of truth for where a project's specification lives.
+// Go has no sum types, so it holds the JSON as received and decodes on
+// request: try the As* accessors, or switch on Discriminator() when the
+// spec names one.
+type ProjectSource struct {
+	union json.RawMessage
 }
 
-// Kind is one of "url", "repo".
-type Kind string
-
-const (
-	KindURL  Kind = "url"
-	KindRepo Kind = "repo"
-)
-
-// Packages Delivery packages keyed by registry ecosystem. TypeScript SDK, CLI, and MCP share npm delivery without becoming the same output. Python and Go SDKs use their own package ecosystems.
-type Packages struct {
-	Npm    *PackageDelivery `json:"npm,omitempty"`
-	Python *PackageDelivery `json:"python,omitempty"`
-	Go     *PackageDelivery `json:"go,omitempty"`
+// MarshalJSON writes the value as it was set or received.
+func (u ProjectSource) MarshalJSON() ([]byte, error) {
+	if u.union == nil {
+		return []byte("null"), nil
+	}
+	return u.union, nil
 }
 
-// PackageDelivery Registry identity and reviewed pull-request destination for one delivery package.
-type PackageDelivery struct {
-	// Name npm package name, Python distribution name, or Go module path. Null derives a name from the API title.
-	Name        *string      `json:"name,omitempty"`
-	Destination *Destination `json:"destination,omitempty"`
+// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
+func (u *ProjectSource) UnmarshalJSON(data []byte) error {
+	u.union = append(u.union[:0], data...)
+	return nil
 }
 
-// Destination Where regeneration pull requests land.
-type Destination struct {
-	// Repo Defaults to the source repository when the source is a repo.
-	Repo *string `json:"repo,omitempty"`
-	// Directory Directory the generated package is written to.
-	Directory *string `json:"directory,omitempty"`
+// Raw returns the JSON exactly as received.
+func (u ProjectSource) Raw() json.RawMessage {
+	return u.union
+}
+
+// Discriminator returns the "kind" field, which names the variant.
+func (u ProjectSource) Discriminator() (string, error) {
+	var probe struct {
+		Kind string `json:"kind"`
+	}
+	if err := json.Unmarshal(u.union, &probe); err != nil {
+		return "", err
+	}
+	return probe.Kind, nil
+}
+
+// AsURLProjectSource decodes the value as URLProjectSource.
+func (u ProjectSource) AsURLProjectSource() (URLProjectSource, error) {
+	var v URLProjectSource
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromURLProjectSource sets the value to a URLProjectSource.
+func (u *ProjectSource) FromURLProjectSource(v URLProjectSource) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AsGithubProjectSource decodes the value as GithubProjectSource.
+func (u ProjectSource) AsGithubProjectSource() (GithubProjectSource, error) {
+	var v GithubProjectSource
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromGithubProjectSource sets the value to a GithubProjectSource.
+func (u *ProjectSource) FromGithubProjectSource(v GithubProjectSource) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+type URLProjectSource struct {
+	Kind string `json:"kind"`
+	// URL URL fetched for every generation.
+	URL string `json:"url"`
+	// HeadersConfigured Whether Typeship has stored write-only request headers for this URL.
+	HeadersConfigured bool `json:"headers_configured"`
+}
+
+type GithubProjectSource struct {
+	Kind string `json:"kind"`
+	// Repository GitHub repository in owner/name form.
+	Repository string `json:"repository"`
+	// Path Repository-relative path to the specification.
+	Path string `json:"path"`
+}
+
+// ProjectPackages Complete package configuration. All ecosystems are returned even when their output is not selected, so saved delivery settings do not disappear when an output is disabled.
+type ProjectPackages struct {
+	Npm    ProjectPackageDelivery `json:"npm"`
+	Python ProjectPackageDelivery `json:"python"`
+	Go     ProjectPackageDelivery `json:"go"`
+}
+
+type ProjectPackageDelivery struct {
+	Name        string             `json:"name"`
+	Destination ProjectDestination `json:"destination"`
+}
+
+type ProjectDestination struct {
+	Repo      string `json:"repo"`
+	Directory string `json:"directory"`
 }
 
 // SpecPatch A fix applied to the spec before generation. Targets are JSON Pointers into the document. A patch whose target no longer exists is skipped and reported as a warning on the generation, never silently.
@@ -458,23 +592,156 @@ const (
 	SpecPatchOpRename SpecPatchOp = "rename"
 )
 
-// SourceInput Where a project's spec lives, including optional write-only fetch credentials.
-type SourceInput struct {
-	Kind Kind `json:"kind"`
-	// URL kind url. Fetched server-side for every generation.
-	URL *string `json:"url,omitempty"`
-	// Headers Request headers for a protected URL. Values are write-only and are never returned, included in generation history, or emitted into generated code. Omit on update to keep the current values; pass null to remove them.
+type CreateProjectRequest struct {
+	Name   string             `json:"name"`
+	Source ProjectSourceInput `json:"source"`
+	// Outputs First-class outputs Typeship will keep current for this project.
+	Outputs []OutputID `json:"outputs"`
+	// Packages Initial package names and destinations. Omitted ecosystems use derived names and no destination.
+	Packages *Packages `json:"packages,omitempty"`
+	// AutoRegen Whether Typeship should regenerate automatically when the source changes.
+	AutoRegen *bool `json:"auto_regen,omitempty"`
+	// SpecPatches Initial patches. Omit or pass an empty array for none.
+	SpecPatches []SpecPatch `json:"spec_patches,omitempty"`
+	// MCPEnabled Serve this project as a hosted MCP endpoint. Requires the MCP output and Enterprise.
+	MCPEnabled *bool `json:"mcp_enabled,omitempty"`
+	// RelayEnabled Enable webhook relay sessions. Requires the CLI output and Pro.
+	RelayEnabled *bool             `json:"relay_enabled,omitempty"`
+	Config       *Nullable[Config] `json:"config,omitempty"`
+}
+
+// ProjectSourceInput is one of URLProjectSourceInput, GithubProjectSourceInput.
+// Go has no sum types, so it holds the JSON as received and decodes on
+// request: try the As* accessors, or switch on Discriminator() when the
+// spec names one.
+type ProjectSourceInput struct {
+	union json.RawMessage
+}
+
+// MarshalJSON writes the value as it was set or received.
+func (u ProjectSourceInput) MarshalJSON() ([]byte, error) {
+	if u.union == nil {
+		return []byte("null"), nil
+	}
+	return u.union, nil
+}
+
+// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
+func (u *ProjectSourceInput) UnmarshalJSON(data []byte) error {
+	u.union = append(u.union[:0], data...)
+	return nil
+}
+
+// Raw returns the JSON exactly as received.
+func (u ProjectSourceInput) Raw() json.RawMessage {
+	return u.union
+}
+
+// Discriminator returns the "kind" field, which names the variant.
+func (u ProjectSourceInput) Discriminator() (string, error) {
+	var probe struct {
+		Kind string `json:"kind"`
+	}
+	if err := json.Unmarshal(u.union, &probe); err != nil {
+		return "", err
+	}
+	return probe.Kind, nil
+}
+
+// AsURLProjectSourceInput decodes the value as URLProjectSourceInput.
+func (u ProjectSourceInput) AsURLProjectSourceInput() (URLProjectSourceInput, error) {
+	var v URLProjectSourceInput
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromURLProjectSourceInput sets the value to a URLProjectSourceInput.
+func (u *ProjectSourceInput) FromURLProjectSourceInput(v URLProjectSourceInput) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AsGithubProjectSourceInput decodes the value as GithubProjectSourceInput.
+func (u ProjectSourceInput) AsGithubProjectSourceInput() (GithubProjectSourceInput, error) {
+	var v GithubProjectSourceInput
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromGithubProjectSourceInput sets the value to a GithubProjectSourceInput.
+func (u *ProjectSourceInput) FromGithubProjectSourceInput(v GithubProjectSourceInput) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+type URLProjectSourceInput struct {
+	Kind string `json:"kind"`
+	// URL URL of an OpenAPI document, GraphQL SDL file, or GraphQL endpoint.
+	URL string `json:"url"`
+	// Headers Request headers for a protected URL. Values are never returned or recorded in revision history. When updating the same URL, omit headers to preserve the stored values or pass null to remove them. Changing the URL without headers clears the old values so a credential is never forwarded to a different source.
 	Headers map[string]string `json:"headers,omitempty"`
-	// Repo kind repo, "owner/name". Watched via the GitHub App.
+}
+
+type GithubProjectSourceInput struct {
+	Kind string `json:"kind"`
+	// Repository GitHub repository in owner/name form.
+	Repository string `json:"repository"`
+	// Path Repository-relative path to the specification.
+	Path string `json:"path"`
+}
+
+// Packages Delivery packages keyed by registry ecosystem. TypeScript SDK, CLI, and MCP share npm delivery without becoming the same output. Python and Go SDKs use their own package ecosystems.
+type Packages struct {
+	Npm    *PackageDelivery `json:"npm,omitempty"`
+	Python *PackageDelivery `json:"python,omitempty"`
+	Go     *PackageDelivery `json:"go,omitempty"`
+}
+
+// PackageDelivery Registry identity and reviewed pull-request destination for one delivery package.
+type PackageDelivery struct {
+	// Name npm package name, Python distribution name, or Go module path. Null derives a name from the API title.
+	Name        *string      `json:"name,omitempty"`
+	Destination *Destination `json:"destination,omitempty"`
+}
+
+// Destination Where regeneration pull requests land.
+type Destination struct {
+	// Repo Defaults to the source repository when the source is a repo.
 	Repo *string `json:"repo,omitempty"`
-	// Path Path of the spec file inside the repository.
-	Path *string `json:"path,omitempty"`
+	// Directory Directory the generated package is written to.
+	Directory *string `json:"directory,omitempty"`
 }
 
 type DeletedProject struct {
 	ID      ProjectID `json:"id"`
 	Object  string    `json:"object"`
 	Deleted bool      `json:"deleted"`
+}
+
+type UpdateProjectRequest struct {
+	Name   *string             `json:"name,omitempty"`
+	Source *ProjectSourceInput `json:"source,omitempty"`
+	// Outputs Replaces the selected outputs; delivered files are not deleted.
+	Outputs []OutputID `json:"outputs,omitempty"`
+	// Packages Replaces package configuration for every ecosystem. Include any existing ecosystem settings you want to keep.
+	Packages  *Packages `json:"packages,omitempty"`
+	AutoRegen *bool     `json:"auto_regen,omitempty"`
+	// SpecPatches Replaces the full patch list. Pass an empty array to clear it.
+	SpecPatches []SpecPatch `json:"spec_patches,omitempty"`
+	// MCPEnabled Serve this project as a hosted MCP endpoint. Requires the MCP output and Enterprise.
+	MCPEnabled *bool `json:"mcp_enabled,omitempty"`
+	// RelayEnabled Enable webhook relay sessions. Requires the CLI output and Pro.
+	RelayEnabled *bool `json:"relay_enabled,omitempty"`
+	// Config Replaces the entire configuration; pass null to clear it.
+	Config *Nullable[Config] `json:"config,omitempty"`
 }
 
 // Language is one of "typescript", "python", "go".
@@ -501,16 +768,17 @@ type Generation struct {
 	// FilesOmitted Present and true when the generated output was too large to inline; files_index lists paths, fetched one at a time via GET /generations/{generation_id}/file.
 	FilesOmitted *bool             `json:"files_omitted,omitempty"`
 	FilesIndex   []FileStub        `json:"files_index,omitempty"`
-	ProjectID    *ProjectID        `json:"project_id,omitempty"`
+	ProjectID    ProjectID         `json:"project_id"`
 	Status       GenerationStatus  `json:"status"`
 	Trigger      GenerationTrigger `json:"trigger"`
 	// Language Language this run generated. Null on generations recorded before projects had a language axis.
-	Language *Language       `json:"language,omitempty"`
-	Meta     *GenerationMeta `json:"meta,omitempty"`
-	Warnings []string        `json:"warnings,omitempty"`
+	Language Language `json:"language"`
+	// Meta Null only for a failed or legacy generation that produced no metadata.
+	Meta     GenerationMeta `json:"meta"`
+	Warnings []string       `json:"warnings"`
 	// Files Present on retrieve and create; omitted in lists.
 	Files     []GeneratedFile `json:"files,omitempty"`
-	Error     *string         `json:"error,omitempty"`
+	Error     string          `json:"error"`
 	CreatedAt string          `json:"created_at"`
 }
 
@@ -539,20 +807,20 @@ const (
 	GenerationTriggerPreview GenerationTrigger = "preview"
 )
 
-type ProjectsGenerateResponse struct {
-	Data []ProjectsGenerateResponseDataItem `json:"data"`
+type GenerationBatch struct {
+	Data []GenerationBatchDataItem `json:"data"`
 }
 
-// ProjectsGenerateResponseDataItem is one of Generation, GenerationFailure.
+// GenerationBatchDataItem is one of Generation, GenerationFailure.
 // Go has no sum types, so it holds the JSON as received and decodes on
 // request: try the As* accessors, or switch on Discriminator() when the
 // spec names one.
-type ProjectsGenerateResponseDataItem struct {
+type GenerationBatchDataItem struct {
 	union json.RawMessage
 }
 
 // MarshalJSON writes the value as it was set or received.
-func (u ProjectsGenerateResponseDataItem) MarshalJSON() ([]byte, error) {
+func (u GenerationBatchDataItem) MarshalJSON() ([]byte, error) {
 	if u.union == nil {
 		return []byte("null"), nil
 	}
@@ -560,25 +828,25 @@ func (u ProjectsGenerateResponseDataItem) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *ProjectsGenerateResponseDataItem) UnmarshalJSON(data []byte) error {
+func (u *GenerationBatchDataItem) UnmarshalJSON(data []byte) error {
 	u.union = append(u.union[:0], data...)
 	return nil
 }
 
 // Raw returns the JSON exactly as received.
-func (u ProjectsGenerateResponseDataItem) Raw() json.RawMessage {
+func (u GenerationBatchDataItem) Raw() json.RawMessage {
 	return u.union
 }
 
 // AsGeneration decodes the value as Generation.
-func (u ProjectsGenerateResponseDataItem) AsGeneration() (Generation, error) {
+func (u GenerationBatchDataItem) AsGeneration() (Generation, error) {
 	var v Generation
 	err := json.Unmarshal(u.union, &v)
 	return v, err
 }
 
 // FromGeneration sets the value to a Generation.
-func (u *ProjectsGenerateResponseDataItem) FromGeneration(v Generation) error {
+func (u *GenerationBatchDataItem) FromGeneration(v Generation) error {
 	encoded, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -588,14 +856,14 @@ func (u *ProjectsGenerateResponseDataItem) FromGeneration(v Generation) error {
 }
 
 // AsGenerationFailure decodes the value as GenerationFailure.
-func (u ProjectsGenerateResponseDataItem) AsGenerationFailure() (GenerationFailure, error) {
+func (u GenerationBatchDataItem) AsGenerationFailure() (GenerationFailure, error) {
 	var v GenerationFailure
 	err := json.Unmarshal(u.union, &v)
 	return v, err
 }
 
 // FromGenerationFailure sets the value to a GenerationFailure.
-func (u *ProjectsGenerateResponseDataItem) FromGenerationFailure(v GenerationFailure) error {
+func (u *GenerationBatchDataItem) FromGenerationFailure(v GenerationFailure) error {
 	encoded, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -611,32 +879,118 @@ type GenerationFailure struct {
 	Error    string   `json:"error"`
 }
 
-type SpecVersionList struct {
-	Object ListObject    `json:"object"`
-	Data   []SpecVersion `json:"data"`
+type SpecRevisionList struct {
+	Object ListObject     `json:"object"`
+	Data   []SpecRevision `json:"data"`
 	// HasMore Whether another page is available after this one.
 	HasMore bool `json:"has_more"`
 	// NextCursor Pass this value as cursor to retrieve the next page; null on the last page.
 	NextCursor string `json:"next_cursor"`
 }
 
-type SpecVersion struct {
-	ID        SpecVersionID `json:"id"`
-	Object    string        `json:"object"`
-	ProjectID ProjectID     `json:"project_id"`
-	// Hash sha256 of the raw spec text; the version's identity.
-	Hash  string `json:"hash"`
-	Bytes *int64 `json:"bytes,omitempty"`
-	// Source Where this spec came from — a URL, or a repo and path.
-	Source map[string]any `json:"source,omitempty"`
-	// Content The raw spec text. Present on retrieve, omitted from lists, and replaced by content_omitted when the spec is too large to inline.
-	Content *string `json:"content,omitempty"`
-	// ContentOmitted Present and true when the spec was too large to inline; fetch it from /spec_versions/{spec_version_id}/content.
-	ContentOmitted *bool  `json:"content_omitted,omitempty"`
-	CreatedAt      string `json:"created_at"`
+type SpecRevision struct {
+	ID        SpecRevisionID `json:"id"`
+	Object    string         `json:"object"`
+	ProjectID ProjectID      `json:"project_id"`
+	// Sha256 SHA-256 digest of the exact raw specification text.
+	Sha256 string `json:"sha256"`
+	// SizeBytes Size of the raw specification text in bytes.
+	SizeBytes int64 `json:"size_bytes"`
+	// Source Origin recorded when this immutable revision was created.
+	Source    SpecRevisionSource `json:"source"`
+	CreatedAt string             `json:"created_at"`
 }
 
-type SpecVersionID string
+type SpecRevisionID string
+
+// SpecRevisionSource is one of URLSpecRevisionSource, GithubSpecRevisionSource.
+// Go has no sum types, so it holds the JSON as received and decodes on
+// request: try the As* accessors, or switch on Discriminator() when the
+// spec names one.
+type SpecRevisionSource struct {
+	union json.RawMessage
+}
+
+// MarshalJSON writes the value as it was set or received.
+func (u SpecRevisionSource) MarshalJSON() ([]byte, error) {
+	if u.union == nil {
+		return []byte("null"), nil
+	}
+	return u.union, nil
+}
+
+// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
+func (u *SpecRevisionSource) UnmarshalJSON(data []byte) error {
+	u.union = append(u.union[:0], data...)
+	return nil
+}
+
+// Raw returns the JSON exactly as received.
+func (u SpecRevisionSource) Raw() json.RawMessage {
+	return u.union
+}
+
+// Discriminator returns the "kind" field, which names the variant.
+func (u SpecRevisionSource) Discriminator() (string, error) {
+	var probe struct {
+		Kind string `json:"kind"`
+	}
+	if err := json.Unmarshal(u.union, &probe); err != nil {
+		return "", err
+	}
+	return probe.Kind, nil
+}
+
+// AsURLSpecRevisionSource decodes the value as URLSpecRevisionSource.
+func (u SpecRevisionSource) AsURLSpecRevisionSource() (URLSpecRevisionSource, error) {
+	var v URLSpecRevisionSource
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromURLSpecRevisionSource sets the value to a URLSpecRevisionSource.
+func (u *SpecRevisionSource) FromURLSpecRevisionSource(v URLSpecRevisionSource) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AsGithubSpecRevisionSource decodes the value as GithubSpecRevisionSource.
+func (u SpecRevisionSource) AsGithubSpecRevisionSource() (GithubSpecRevisionSource, error) {
+	var v GithubSpecRevisionSource
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromGithubSpecRevisionSource sets the value to a GithubSpecRevisionSource.
+func (u *SpecRevisionSource) FromGithubSpecRevisionSource(v GithubSpecRevisionSource) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+type URLSpecRevisionSource struct {
+	Kind string `json:"kind"`
+	URL  string `json:"url"`
+}
+
+type GithubSpecRevisionSource struct {
+	Kind string `json:"kind"`
+	// Repository GitHub repository in owner/name form.
+	Repository string `json:"repository"`
+	// Path Repository-relative specification path.
+	Path string `json:"path"`
+	// Ref Git ref resolved for this revision, when recorded.
+	Ref *string `json:"ref,omitempty"`
+	// CommitSha Exact Git commit consumed, when recorded.
+	CommitSha *string `json:"commit_sha,omitempty"`
+}
 
 // Account The organization an API key belongs to. Members share its projects, keys, and plan; sign-in identity is not part of the API.
 type Account struct {

@@ -23,38 +23,8 @@ type ProjectsListParams struct {
 
 // ProjectsCreateParams are the inputs for ProjectsService.Create.
 type ProjectsCreateParams struct {
-	Name string `json:"name"`
-	// SpecURL Spec location for a URL-sourced project. Provide this or source; a project with neither has nothing to generate.
-	SpecURL *string      `json:"spec_url,omitempty"`
-	Source  *SourceInput `json:"source,omitempty"`
-	// Outputs First-class outputs to keep current. Any non-empty combination is valid.
-	Outputs     []OutputID  `json:"outputs"`
-	Packages    *Packages   `json:"packages,omitempty"`
-	AutoRegen   *bool       `json:"auto_regen,omitempty"`
-	SpecPatches []SpecPatch `json:"spec_patches,omitempty"`
-	// MCPEnabled Requires the MCP output and Enterprise.
-	MCPEnabled *bool `json:"mcp_enabled,omitempty"`
-	// RelayEnabled Requires the CLI output and Pro.
-	RelayEnabled *bool             `json:"relay_enabled,omitempty"`
-	Config       *Nullable[Config] `json:"config,omitempty"`
-}
-
-// ProjectsUpdateParams are the inputs for ProjectsService.Update.
-type ProjectsUpdateParams struct {
-	Name    *string      `json:"name,omitempty"`
-	SpecURL *string      `json:"spec_url,omitempty"`
-	Source  *SourceInput `json:"source,omitempty"`
-	// Outputs First-class outputs; replaces the selection. Turning one off stops generating it; nothing already delivered is removed.
-	Outputs     []OutputID  `json:"outputs,omitempty"`
-	Packages    *Packages   `json:"packages,omitempty"`
-	AutoRegen   *bool       `json:"auto_regen,omitempty"`
-	SpecPatches []SpecPatch `json:"spec_patches,omitempty"`
-	// MCPEnabled Serve this project as a hosted remote MCP endpoint. Requires the MCP output and Enterprise.
-	MCPEnabled *bool `json:"mcp_enabled,omitempty"`
-	// RelayEnabled Enable the webhook relay so the generated CLI's webhooks listen command works for this API's users. Requires the CLI output and Pro.
-	RelayEnabled *bool `json:"relay_enabled,omitempty"`
-	// Config Replaces the whole config. Pass null to clear it.
-	Config *Nullable[Config] `json:"config,omitempty"`
+	// IdempotencyKey Uniquely identifies this creation attempt. Retrying the same request with the same key returns the original response instead of creating another project. Reusing a key with different parameters returns 409.
+	IdempotencyKey *string `json:"-"`
 }
 
 // ProjectsListGenerationsParams are the inputs for ProjectsService.ListGenerations.
@@ -108,16 +78,24 @@ func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, 
 
 // Create a project.
 //
-// Stores a URL- or repository-sourced project. Free includes one stored project, every selected output, and the first 25 operations, while keeping manual and automatic regeneration, history, destination pull requests, and preview checks. Stateless POST /generate does not consume this slot. Pro adds projects and the whole spec.
+// Stores a URL- or GitHub-sourced project. Free includes one stored project, every selected output, and the first 25 operations, while keeping manual and automatic regeneration, history, destination pull requests, and preview checks. Stateless POST /generate does not consume this slot. Pro adds projects and the whole spec.
 //
 // POST /projects
-func (s *ProjectsService) Create(ctx context.Context, params ProjectsCreateParams, opts ...RequestOption) (*Project, error) {
+func (s *ProjectsService) Create(ctx context.Context, body CreateProjectRequest, params *ProjectsCreateParams, opts ...RequestOption) (*Project, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IdempotencyKey != nil {
+			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
+		}
+	}
 	req := request{
-		Method:    "POST",
-		Path:      "/projects",
-		Body:      params,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "429": newRateLimitedError},
-		SchemaKey: "projects.create",
+		Method:            "POST",
+		Path:              "/projects",
+		Headers:           headers,
+		Body:              body,
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError},
+		SchemaKey:         "projects.create",
+		IdempotencyHeader: "Idempotency-Key",
 	}
 	var out Project
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
@@ -165,11 +143,11 @@ func (s *ProjectsService) Delete(ctx context.Context, projectID string, opts ...
 // Update a project.
 //
 // PATCH /projects/{project_id}
-func (s *ProjectsService) Update(ctx context.Context, projectID string, params *ProjectsUpdateParams, opts ...RequestOption) (*Project, error) {
+func (s *ProjectsService) Update(ctx context.Context, projectID string, body UpdateProjectRequest, opts ...RequestOption) (*Project, error) {
 	req := request{
 		Method:    "PATCH",
 		Path:      fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
-		Body:      params,
+		Body:      body,
 		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
 		SchemaKey: "projects.update",
 	}
@@ -233,14 +211,14 @@ func (s *ProjectsService) ListGenerations(ctx context.Context, projectID string,
 // regeneration runs after a source change.
 //
 // POST /projects/{project_id}/generations
-func (s *ProjectsService) Generate(ctx context.Context, projectID string, opts ...RequestOption) (*ProjectsGenerateResponse, error) {
+func (s *ProjectsService) Generate(ctx context.Context, projectID string, opts ...RequestOption) (*GenerationBatch, error) {
 	req := request{
 		Method:    "POST",
 		Path:      fmt.Sprintf("/projects/%s/generations", url.PathEscape(projectID)),
 		Errors:    map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
 		SchemaKey: "projects.generate",
 	}
-	var out ProjectsGenerateResponse
+	var out GenerationBatch
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}

@@ -68,9 +68,9 @@ Every documented error response has its own type, so you can match at
 whichever precision you need:
 
 ```go
-var unauthorized *typeship.UnauthorizedError
-if errors.As(err, &unauthorized) {
-	// handle the documented 401
+var badRequest *typeship.BadRequestError
+if errors.As(err, &badRequest) {
+	// handle the documented 400
 }
 
 var apiErr *typeship.APIError
