@@ -11,16 +11,6 @@ type GenerateService struct {
 	core *core
 }
 
-// GenerateRunParams are the inputs for GenerateService.Run.
-type GenerateRunParams struct {
-	Spec SpecInput `json:"spec"`
-	// Outputs Outputs for one delivery package. Choose one SDK output, or TypeScript SDK, CLI, and MCP in any combination. Linked projects can generate outputs in all ecosystems.
-	Outputs []OutputID `json:"outputs"`
-	// PackageName npm name override for the generated package.
-	PackageName *string `json:"package_name,omitempty"`
-	Config      *Config `json:"config,omitempty"`
-}
-
 // Run — generate a package from a spec.
 //
 // Stateless generation: nothing is stored. Returns the full generated
@@ -33,12 +23,12 @@ type GenerateRunParams struct {
 // 401, not a downgrade to anonymous.
 //
 // POST /generate
-func (s *GenerateService) Run(ctx context.Context, params GenerateRunParams, opts ...RequestOption) (*GenerationResult, error) {
+func (s *GenerateService) Run(ctx context.Context, body GenerateRequest, opts ...RequestOption) (*GenerationResult, error) {
 	req := request{
 		Method:    "POST",
 		Path:      "/generate",
-		Body:      params,
-		Errors:    map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "413": newPayloadTooLargeError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "default": newAPIResponseError},
+		Body:      body,
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "413": newPayloadTooLargeError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "default": newAPIResponseError},
 		SchemaKey: "generate.run",
 	}
 	var out GenerationResult
