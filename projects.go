@@ -33,8 +33,8 @@ type ProjectsListGenerationsParams struct {
 	Limit *int64 `json:"-"`
 	// Cursor Opaque cursor from the preceding page's next_cursor.
 	Cursor *string `json:"-"`
-	// Language Only generations for this language.
-	Language *Language `json:"-"`
+	// Output Only generations for this output.
+	Output *OutputID `json:"-"`
 }
 
 // List projects.
@@ -198,8 +198,8 @@ func (s *ProjectsService) ListGenerations(ctx context.Context, projectID string,
 		if params.Cursor != nil {
 			query["cursor"] = *params.Cursor
 		}
-		if params.Language != nil {
-			query["language"] = *params.Language
+		if params.Output != nil {
+			query["output"] = *params.Output
 		}
 	}
 	req := request{

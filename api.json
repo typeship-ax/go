@@ -60,8 +60,9 @@
             ]
           },
           "outputs": {
-            "description": "Outputs for one delivery package. Choose one SDK output, or TypeScript SDK, CLI, and MCP in any combination. Linked projects can generate outputs in all ecosystems.",
+            "description": "The one output package to generate. Linked projects can select any combination of outputs and keep each package current.",
             "minItems": 1,
+            "maxItems": 1,
             "uniqueItems": true,
             "items": {
               "enum": [
@@ -361,7 +362,7 @@
                 "description": "Published-package metadata the API spec does not own. Repository is derived from each destination; release versions belong to packages.",
                 "properties": {
                   "version": {
-                    "description": "Legacy lockstep version fallback. Prefer packages.<ecosystem>.version so npm, PyPI, and Go releases can advance independently.",
+                    "description": "Lockstep version fallback. Prefer packages.<output>.version so every SDK, CLI, and MCP package can advance independently.",
                     "deprecated": true,
                     "type": [
                       "string",
@@ -755,7 +756,7 @@
                 "packages": {
                   "description": "Complete package configuration.",
                   "properties": {
-                    "npm": {
+                    "typescript-sdk": {
                       "properties": {
                         "name": {
                           "type": [
@@ -782,7 +783,7 @@
                       },
                       "type": "object"
                     },
-                    "python": {
+                    "python-sdk": {
                       "properties": {
                         "name": {
                           "type": [
@@ -809,7 +810,61 @@
                       },
                       "type": "object"
                     },
-                    "go": {
+                    "go-sdk": {
+                      "properties": {
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "destination": {
+                          "anyOf": [
+                            {
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "cli": {
+                      "properties": {
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "destination": {
+                          "anyOf": [
+                            {
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "mcp": {
                       "properties": {
                         "name": {
                           "type": [
@@ -1113,9 +1168,9 @@
             "type": "array"
           },
           "packages": {
-            "description": "Delivery packages keyed by registry ecosystem. TypeScript SDK, CLI, and MCP share npm delivery without becoming the same output. Python and Go SDKs use their own package ecosystems.",
+            "description": "Independent delivery packages keyed by output. Every selected output owns its registry identity, version, destination pull request, and release lifecycle. Selected outputs must resolve to distinct repository-and-directory trees; the TypeScript SDK, CLI, and MCP packages must also have distinct npm names.",
             "properties": {
-              "npm": {
+              "typescript-sdk": {
                 "description": "Registry identity and reviewed pull-request destination for one delivery package.",
                 "properties": {
                   "name": {
@@ -1126,7 +1181,7 @@
                     ]
                   },
                   "version": {
-                    "description": "Release version for this ecosystem package. Null falls back to the legacy config.package.version, then the specification version.",
+                    "description": "Release version for this output package. Null falls back to the legacy config.package.version, then the specification version.",
                     "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
                     "type": [
                       "string",
@@ -1165,7 +1220,7 @@
                 "additionalProperties": false,
                 "type": "object"
               },
-              "python": {
+              "python-sdk": {
                 "description": "Registry identity and reviewed pull-request destination for one delivery package.",
                 "properties": {
                   "name": {
@@ -1176,7 +1231,7 @@
                     ]
                   },
                   "version": {
-                    "description": "Release version for this ecosystem package. Null falls back to the legacy config.package.version, then the specification version.",
+                    "description": "Release version for this output package. Null falls back to the legacy config.package.version, then the specification version.",
                     "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
                     "type": [
                       "string",
@@ -1215,7 +1270,7 @@
                 "additionalProperties": false,
                 "type": "object"
               },
-              "go": {
+              "go-sdk": {
                 "description": "Registry identity and reviewed pull-request destination for one delivery package.",
                 "properties": {
                   "name": {
@@ -1226,7 +1281,107 @@
                     ]
                   },
                   "version": {
-                    "description": "Release version for this ecosystem package. Null falls back to the legacy config.package.version, then the specification version.",
+                    "description": "Release version for this output package. Null falls back to the legacy config.package.version, then the specification version.",
+                    "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "destination": {
+                    "anyOf": [
+                      {
+                        "description": "Where regeneration pull requests land.",
+                        "properties": {
+                          "repo": {
+                            "description": "Defaults to the source repository when the source is a repo.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "directory": {
+                            "description": "Directory the generated package is written to.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "additionalProperties": false,
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "type": "object"
+              },
+              "cli": {
+                "description": "Registry identity and reviewed pull-request destination for one delivery package.",
+                "properties": {
+                  "name": {
+                    "description": "npm package name, Python distribution name, or Go module path. Null derives a name from the API title.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "version": {
+                    "description": "Release version for this output package. Null falls back to the legacy config.package.version, then the specification version.",
+                    "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "destination": {
+                    "anyOf": [
+                      {
+                        "description": "Where regeneration pull requests land.",
+                        "properties": {
+                          "repo": {
+                            "description": "Defaults to the source repository when the source is a repo.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "directory": {
+                            "description": "Directory the generated package is written to.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "additionalProperties": false,
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "type": "object"
+              },
+              "mcp": {
+                "description": "Registry identity and reviewed pull-request destination for one delivery package.",
+                "properties": {
+                  "name": {
+                    "description": "npm package name, Python distribution name, or Go module path. Null derives a name from the API title.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "version": {
+                    "description": "Release version for this output package. Null falls back to the legacy config.package.version, then the specification version.",
                     "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
                     "type": [
                       "string",
@@ -1563,7 +1718,7 @@
                     "description": "Published-package metadata the API spec does not own. Repository is derived from each destination; release versions belong to packages.",
                     "properties": {
                       "version": {
-                        "description": "Legacy lockstep version fallback. Prefer packages.<ecosystem>.version so npm, PyPI, and Go releases can advance independently.",
+                        "description": "Lockstep version fallback. Prefer packages.<output>.version so every SDK, CLI, and MCP package can advance independently.",
                         "deprecated": true,
                         "type": [
                           "string",
@@ -1720,7 +1875,7 @@
           "packages": {
             "description": "Complete package configuration.",
             "properties": {
-              "npm": {
+              "typescript-sdk": {
                 "properties": {
                   "name": {
                     "type": [
@@ -1747,7 +1902,7 @@
                 },
                 "type": "object"
               },
-              "python": {
+              "python-sdk": {
                 "properties": {
                   "name": {
                     "type": [
@@ -1774,7 +1929,61 @@
                 },
                 "type": "object"
               },
-              "go": {
+              "go-sdk": {
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "destination": {
+                    "anyOf": [
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              "cli": {
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "destination": {
+                    "anyOf": [
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              "mcp": {
                 "properties": {
                   "name": {
                     "type": [
@@ -2052,7 +2261,7 @@
           "packages": {
             "description": "Complete package configuration.",
             "properties": {
-              "npm": {
+              "typescript-sdk": {
                 "properties": {
                   "name": {
                     "type": [
@@ -2079,7 +2288,7 @@
                 },
                 "type": "object"
               },
-              "python": {
+              "python-sdk": {
                 "properties": {
                   "name": {
                     "type": [
@@ -2106,7 +2315,61 @@
                 },
                 "type": "object"
               },
-              "go": {
+              "go-sdk": {
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "destination": {
+                    "anyOf": [
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              "cli": {
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "destination": {
+                    "anyOf": [
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              "mcp": {
                 "properties": {
                   "name": {
                     "type": [
@@ -2445,9 +2708,9 @@
             "type": "array"
           },
           "packages": {
-            "description": "Delivery packages keyed by registry ecosystem. TypeScript SDK, CLI, and MCP share npm delivery without becoming the same output. Python and Go SDKs use their own package ecosystems.",
+            "description": "Independent delivery packages keyed by output. Every selected output owns its registry identity, version, destination pull request, and release lifecycle. Selected outputs must resolve to distinct repository-and-directory trees; the TypeScript SDK, CLI, and MCP packages must also have distinct npm names.",
             "properties": {
-              "npm": {
+              "typescript-sdk": {
                 "description": "Registry identity and reviewed pull-request destination for one delivery package.",
                 "properties": {
                   "name": {
@@ -2458,7 +2721,7 @@
                     ]
                   },
                   "version": {
-                    "description": "Release version for this ecosystem package. Null falls back to the legacy config.package.version, then the specification version.",
+                    "description": "Release version for this output package. Null falls back to the legacy config.package.version, then the specification version.",
                     "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
                     "type": [
                       "string",
@@ -2497,7 +2760,7 @@
                 "additionalProperties": false,
                 "type": "object"
               },
-              "python": {
+              "python-sdk": {
                 "description": "Registry identity and reviewed pull-request destination for one delivery package.",
                 "properties": {
                   "name": {
@@ -2508,7 +2771,7 @@
                     ]
                   },
                   "version": {
-                    "description": "Release version for this ecosystem package. Null falls back to the legacy config.package.version, then the specification version.",
+                    "description": "Release version for this output package. Null falls back to the legacy config.package.version, then the specification version.",
                     "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
                     "type": [
                       "string",
@@ -2547,7 +2810,7 @@
                 "additionalProperties": false,
                 "type": "object"
               },
-              "go": {
+              "go-sdk": {
                 "description": "Registry identity and reviewed pull-request destination for one delivery package.",
                 "properties": {
                   "name": {
@@ -2558,7 +2821,107 @@
                     ]
                   },
                   "version": {
-                    "description": "Release version for this ecosystem package. Null falls back to the legacy config.package.version, then the specification version.",
+                    "description": "Release version for this output package. Null falls back to the legacy config.package.version, then the specification version.",
+                    "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "destination": {
+                    "anyOf": [
+                      {
+                        "description": "Where regeneration pull requests land.",
+                        "properties": {
+                          "repo": {
+                            "description": "Defaults to the source repository when the source is a repo.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "directory": {
+                            "description": "Directory the generated package is written to.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "additionalProperties": false,
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "type": "object"
+              },
+              "cli": {
+                "description": "Registry identity and reviewed pull-request destination for one delivery package.",
+                "properties": {
+                  "name": {
+                    "description": "npm package name, Python distribution name, or Go module path. Null derives a name from the API title.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "version": {
+                    "description": "Release version for this output package. Null falls back to the legacy config.package.version, then the specification version.",
+                    "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "destination": {
+                    "anyOf": [
+                      {
+                        "description": "Where regeneration pull requests land.",
+                        "properties": {
+                          "repo": {
+                            "description": "Defaults to the source repository when the source is a repo.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "directory": {
+                            "description": "Directory the generated package is written to.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "additionalProperties": false,
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "type": "object"
+              },
+              "mcp": {
+                "description": "Registry identity and reviewed pull-request destination for one delivery package.",
+                "properties": {
+                  "name": {
+                    "description": "npm package name, Python distribution name, or Go module path. Null derives a name from the API title.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "version": {
+                    "description": "Release version for this output package. Null falls back to the legacy config.package.version, then the specification version.",
                     "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
                     "type": [
                       "string",
@@ -2892,7 +3255,7 @@
                     "description": "Published-package metadata the API spec does not own. Repository is derived from each destination; release versions belong to packages.",
                     "properties": {
                       "version": {
-                        "description": "Legacy lockstep version fallback. Prefer packages.<ecosystem>.version so npm, PyPI, and Go releases can advance independently.",
+                        "description": "Lockstep version fallback. Prefer packages.<output>.version so every SDK, CLI, and MCP package can advance independently.",
                         "deprecated": true,
                         "type": [
                           "string",
@@ -3047,7 +3410,7 @@
           "packages": {
             "description": "Complete package configuration.",
             "properties": {
-              "npm": {
+              "typescript-sdk": {
                 "properties": {
                   "name": {
                     "type": [
@@ -3074,7 +3437,7 @@
                 },
                 "type": "object"
               },
-              "python": {
+              "python-sdk": {
                 "properties": {
                   "name": {
                     "type": [
@@ -3101,7 +3464,61 @@
                 },
                 "type": "object"
               },
-              "go": {
+              "go-sdk": {
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "destination": {
+                    "anyOf": [
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              "cli": {
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "destination": {
+                    "anyOf": [
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              "mcp": {
                 "properties": {
                   "name": {
                     "type": [
@@ -3473,14 +3890,16 @@
             "type": "string",
             "description": "Opaque cursor from the preceding page's next_cursor."
           },
-          "language": {
+          "output": {
             "enum": [
-              "typescript",
-              "python",
-              "go"
+              "typescript-sdk",
+              "python-sdk",
+              "go-sdk",
+              "cli",
+              "mcp"
             ],
-            "type": "string",
-            "description": "Only generations for this language."
+            "description": "One customer-selected output. CLI and MCP include the private TypeScript request runtime they need; that dependency is not a selected or billable TypeScript SDK.",
+            "type": "string"
           }
         },
         "required": [
@@ -3500,7 +3919,7 @@
                   "project_id": "prj_4f8k2m7x9q1v6b3n",
                   "status": "succeeded",
                   "trigger": "manual",
-                  "language": "typescript",
+                  "output": "typescript-sdk",
                   "meta": {
                     "title": "Acme Payments API",
                     "version": "1.0.0",
@@ -3571,18 +3990,16 @@
                   ],
                   "type": "string"
                 },
-                "language": {
+                "output": {
                   "enum": [
-                    "typescript",
-                    "python",
-                    "go",
-                    null
+                    "typescript-sdk",
+                    "python-sdk",
+                    "go-sdk",
+                    "cli",
+                    "mcp"
                   ],
-                  "description": "Language this run generated. Null on generations recorded before projects had a language axis.",
-                  "type": [
-                    "string",
-                    "null"
-                  ]
+                  "description": "One customer-selected output. CLI and MCP include the private TypeScript request runtime they need; that dependency is not a selected or billable TypeScript SDK.",
+                  "type": "string"
                 },
                 "meta": {
                   "description": "Null only for a failed or legacy generation that produced no metadata.",
@@ -3805,7 +4222,7 @@
                       "project_id": "prj_4f8k2m7x9q1v6b3n",
                       "status": "succeeded",
                       "trigger": "manual",
-                      "language": "typescript",
+                      "output": "typescript-sdk",
                       "meta": {
                         "title": "Acme Payments API",
                         "version": "1.0.0",
@@ -3865,18 +4282,16 @@
                       ],
                       "type": "string"
                     },
-                    "language": {
+                    "output": {
                       "enum": [
-                        "typescript",
-                        "python",
-                        "go",
-                        null
+                        "typescript-sdk",
+                        "python-sdk",
+                        "go-sdk",
+                        "cli",
+                        "mcp"
                       ],
-                      "description": "Language this run generated. Null on generations recorded before projects had a language axis.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
+                      "description": "One customer-selected output. CLI and MCP include the private TypeScript request runtime they need; that dependency is not a selected or billable TypeScript SDK.",
+                      "type": "string"
                     },
                     "meta": {
                       "description": "Null only for a failed or legacy generation that produced no metadata.",
@@ -3910,14 +4325,17 @@
                   "type": "object"
                 },
                 {
-                  "description": "A language that did not generate in a multi-language run.",
+                  "description": "A selected output that did not generate in a multi-output run.",
                   "properties": {
-                    "language": {
+                    "output": {
                       "enum": [
-                        "typescript",
-                        "python",
-                        "go"
+                        "typescript-sdk",
+                        "python-sdk",
+                        "go-sdk",
+                        "cli",
+                        "mcp"
                       ],
+                      "description": "One customer-selected output. CLI and MCP include the private TypeScript request runtime they need; that dependency is not a selected or billable TypeScript SDK.",
                       "type": "string"
                     },
                     "status": {
@@ -3975,7 +4393,7 @@
             "project_id": "prj_4f8k2m7x9q1v6b3n",
             "status": "succeeded",
             "trigger": "manual",
-            "language": "typescript",
+            "output": "typescript-sdk",
             "meta": {
               "title": "Acme Payments API",
               "version": "1.0.0",
@@ -4046,18 +4464,16 @@
             ],
             "type": "string"
           },
-          "language": {
+          "output": {
             "enum": [
-              "typescript",
-              "python",
-              "go",
-              null
+              "typescript-sdk",
+              "python-sdk",
+              "go-sdk",
+              "cli",
+              "mcp"
             ],
-            "description": "Language this run generated. Null on generations recorded before projects had a language axis.",
-            "type": [
-              "string",
-              "null"
-            ]
+            "description": "One customer-selected output. CLI and MCP include the private TypeScript request runtime they need; that dependency is not a selected or billable TypeScript SDK.",
+            "type": "string"
           },
           "meta": {
             "description": "Null only for a failed or legacy generation that produced no metadata.",

@@ -231,7 +231,7 @@ Safety: **read** · Authentication: **required**
 | `projectID` | path | `string` | yes | — |
 | `params.Limit` | query | `*int64` | no | Maximum number of resources to return. |
 | `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. |
-| `params.Language` | query | `*Language` | no | Only generations for this language. |
+| `params.Output` | query | `*OutputID` | no | Only generations for this output. |
 
 Returns: `*Iter[Generation]` — auto-paginating (`for it.Next()` walks every page)
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429)
