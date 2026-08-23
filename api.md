@@ -100,6 +100,21 @@ Body: `UpdateProjectRequest` (required)
 Returns: `(*Project, error)`
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredError` (402), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429)
 
+### `client.Projects.RetrieveGithubHealth(ctx, projectID)`
+
+Diagnose a project's GitHub integration
+
+`GET /projects/{project_id}/github`
+
+Returns machine-actionable source and destination access, spec readability, optional label setup, required status names, and the latest durable webhook delivery. The console renders this same result.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `projectID` | path | `string` | yes |  |
+
+Returns: `(*GithubIntegrationHealth, error)`
+Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429)
+
 ### `client.Projects.ListGenerations(ctx, projectID, params)`
 
 List a project's generations

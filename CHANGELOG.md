@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.6.0 (2026-08-23)
+
+### Added
+- `projects.retrieveGithubHealth()`: GET /projects/{project_id}/github
+
+### Changed
+- `projects.list()`
+  - return-type-changed: nested response schema changed
+- `projects.create()`
+  - body-field-type-changed: packages: nested schema changed
+  - return-type-changed: nested response schema changed
+- `projects.retrieve()`
+  - return-type-changed: nested response schema changed
+- `projects.update()`
+  - body-field-type-changed: packages: nested schema changed
+  - return-type-changed: nested response schema changed
+
 ## 0.6.0 (2026-08-23) (16 breaking)
 
 ### Added

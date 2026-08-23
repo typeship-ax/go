@@ -158,6 +158,26 @@ func (s *ProjectsService) Update(ctx context.Context, projectID string, body Upd
 	return &out, nil
 }
 
+// RetrieveGithubHealth — diagnose a project's GitHub integration.
+//
+// Returns machine-actionable source and destination access, spec readability, optional label setup, required status names, and the latest durable webhook delivery. The console renders this same result.
+//
+// GET /projects/{project_id}/github
+func (s *ProjectsService) RetrieveGithubHealth(ctx context.Context, projectID string, opts ...RequestOption) (*GithubIntegrationHealth, error) {
+	req := request{
+		Method:     "GET",
+		Path:       fmt.Sprintf("/projects/%s/github", url.PathEscape(projectID)),
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		SchemaKey:  "projects.retrieveGithubHealth",
+		Idempotent: true,
+	}
+	var out GithubIntegrationHealth
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ListGenerations — list a project's generations.
 //
 // GET /projects/{project_id}/generations

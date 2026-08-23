@@ -293,9 +293,9 @@ const (
 	MCPBehaviorToolModeMeta       MCPBehaviorToolMode = "meta"
 )
 
-// PackageBehavior Published-package metadata the API spec does not own. Use version only when the client intentionally releases on a different cadence from info.version; repository is derived from each destination.
+// PackageBehavior Published-package metadata the API spec does not own. Repository is derived from each destination; release versions belong to packages.
 type PackageBehavior struct {
-	// Version Semantic version for the generated packages. Defaults to info.version.
+	// Version Legacy lockstep version fallback. Prefer packages.<ecosystem>.version so npm, PyPI, and Go releases can advance independently. Deprecated.
 	Version *string `json:"version,omitempty"`
 	// Homepage Homepage written into registry metadata.
 	Homepage *string `json:"homepage,omitempty"`
@@ -562,6 +562,7 @@ type ProjectPackages struct {
 
 type ProjectPackageDelivery struct {
 	Name        string             `json:"name"`
+	Version     string             `json:"version"`
 	Destination ProjectDestination `json:"destination"`
 }
 
@@ -708,7 +709,9 @@ type Packages struct {
 // PackageDelivery Registry identity and reviewed pull-request destination for one delivery package.
 type PackageDelivery struct {
 	// Name npm package name, Python distribution name, or Go module path. Null derives a name from the API title.
-	Name        *string      `json:"name,omitempty"`
+	Name *string `json:"name,omitempty"`
+	// Version Release version for this ecosystem package. Null falls back to the legacy config.package.version, then the specification version.
+	Version     *string      `json:"version,omitempty"`
 	Destination *Destination `json:"destination,omitempty"`
 }
 
@@ -743,6 +746,91 @@ type UpdateProjectRequest struct {
 	// Config Replaces the entire configuration; pass null to clear it.
 	Config *Nullable[Config] `json:"config,omitempty"`
 }
+
+type GithubIntegrationHealth struct {
+	Object           string                                  `json:"object"`
+	ProjectID        ProjectID                               `json:"project_id"`
+	Status           Status                                  `json:"status"`
+	Repositories     []GithubRepositoryHealth                `json:"repositories"`
+	RequiredStatuses GithubIntegrationHealthRequiredStatuses `json:"required_statuses"`
+	LastDelivery     GithubDeliveryHealth                    `json:"last_delivery"`
+}
+
+// Status is one of "ready", "action_required".
+type Status string
+
+const (
+	StatusReady          Status = "ready"
+	StatusActionRequired Status = "action_required"
+)
+
+type GithubRepositoryHealth struct {
+	Repository    string                       `json:"repository"`
+	Roles         []GithubRepositoryHealthRole `json:"roles"`
+	Status        Status                       `json:"status"`
+	DefaultBranch *string                      `json:"default_branch,omitempty"`
+	CanRead       *bool                        `json:"can_read,omitempty"`
+	CanWrite      *bool                        `json:"can_write,omitempty"`
+	BreakingLabel *bool                        `json:"breaking_label,omitempty"`
+	Spec          *GithubRepositoryHealthSpec  `json:"spec,omitempty"`
+	Issues        []GithubHealthIssue          `json:"issues"`
+}
+
+// GithubRepositoryHealthRole is one of "source", "destination".
+type GithubRepositoryHealthRole string
+
+const (
+	GithubRepositoryHealthRoleSource      GithubRepositoryHealthRole = "source"
+	GithubRepositoryHealthRoleDestination GithubRepositoryHealthRole = "destination"
+)
+
+// GithubRepositoryHealthSpec is one of "readable", "missing".
+type GithubRepositoryHealthSpec string
+
+const (
+	GithubRepositoryHealthSpecReadable GithubRepositoryHealthSpec = "readable"
+	GithubRepositoryHealthSpecMissing  GithubRepositoryHealthSpec = "missing"
+)
+
+type GithubHealthIssue struct {
+	Code    GithubHealthIssueCode `json:"code"`
+	Message string                `json:"message"`
+}
+
+// GithubHealthIssueCode is one of "installation_missing", "spec_unreadable", "contents_write_missing", "breaking_label_missing", "github_unavailable".
+type GithubHealthIssueCode string
+
+const (
+	GithubHealthIssueCodeInstallationMissing  GithubHealthIssueCode = "installation_missing"
+	GithubHealthIssueCodeSpecUnreadable       GithubHealthIssueCode = "spec_unreadable"
+	GithubHealthIssueCodeContentsWriteMissing GithubHealthIssueCode = "contents_write_missing"
+	GithubHealthIssueCodeBreakingLabelMissing GithubHealthIssueCode = "breaking_label_missing"
+	GithubHealthIssueCodeGithubUnavailable    GithubHealthIssueCode = "github_unavailable"
+)
+
+type GithubIntegrationHealthRequiredStatuses struct {
+	Source      []string `json:"source"`
+	Destination []string `json:"destination"`
+}
+
+type GithubDeliveryHealth struct {
+	ID        string                     `json:"id"`
+	Event     string                     `json:"event"`
+	Status    GithubDeliveryHealthStatus `json:"status"`
+	Error     string                     `json:"error"`
+	CreatedAt string                     `json:"created_at"`
+}
+
+// GithubDeliveryHealthStatus is one of "queued", "processing", "succeeded", "failed", "superseded".
+type GithubDeliveryHealthStatus string
+
+const (
+	GithubDeliveryHealthStatusQueued     GithubDeliveryHealthStatus = "queued"
+	GithubDeliveryHealthStatusProcessing GithubDeliveryHealthStatus = "processing"
+	GithubDeliveryHealthStatusSucceeded  GithubDeliveryHealthStatus = "succeeded"
+	GithubDeliveryHealthStatusFailed     GithubDeliveryHealthStatus = "failed"
+	GithubDeliveryHealthStatusSuperseded GithubDeliveryHealthStatus = "superseded"
+)
 
 // Language is one of "typescript", "python", "go".
 type Language string
