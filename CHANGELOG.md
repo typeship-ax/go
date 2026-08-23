@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.7.0 (2026-08-23) (7 breaking)
+
+### Changed
+- `projects.list()`
+  - **breaking** `return-type-changed`: nested response schema changed
+- `projects.create()`
+  - **breaking** `body-field-type-changed`: packages: nested schema changed
+  - **breaking** `return-type-changed`: nested response schema changed
+- `projects.retrieve()`
+  - **breaking** `return-type-changed`: nested response schema changed
+- `projects.update()`
+  - **breaking** `body-field-type-changed`: packages: nested schema changed
+  - **breaking** `return-type-changed`: nested response schema changed
+- `projects.listGenerations()`
+  - `param-added`: output: OutputId
+  - **breaking** `param-removed`: language
+  - **breaking** `return-type-changed`: nested response schema changed
+- `projects.generate()`
+  - **breaking** `return-type-changed`: nested response schema changed
+- `generations.retrieve()`
+  - **breaking** `return-type-changed`: nested response schema changed
+
 ## 0.6.0 (2026-08-23)
 
 ### Added

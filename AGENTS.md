@@ -1,6 +1,6 @@
 # typeship — agent context
 
-This package contains the generated Go SDK for **typeship** (v0.6.0).
+This package contains the generated Go SDK for **typeship** (v0.7.0).
 
 Generate production SDKs, CLIs, and MCP servers from an OpenAPI or
 GraphQL spec, and keep every selected output current.

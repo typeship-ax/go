@@ -7,7 +7,7 @@ import "encoding/json"
 // GenerateRequest is an API model.
 type GenerateRequest struct {
 	Spec SpecInput `json:"spec"`
-	// Outputs Outputs for one delivery package. Choose one SDK output, or TypeScript SDK, CLI, and MCP in any combination. Linked projects can generate outputs in all ecosystems.
+	// Outputs The one output package to generate. Linked projects can select any combination of outputs and keep each package current.
 	Outputs []OutputID `json:"outputs"`
 	// PackageName Registry name for the selected delivery package: an npm package, Python distribution, or Go module path. Defaults to a name derived from the API title.
 	PackageName *string `json:"package_name,omitempty"`
@@ -300,7 +300,7 @@ const (
 
 // PackageBehavior is an API model. Published-package metadata the API spec does not own. Repository is derived from each destination; release versions belong to packages.
 type PackageBehavior struct {
-	// Version Legacy lockstep version fallback. Prefer packages.<ecosystem>.version so npm, PyPI, and Go releases can advance independently. Deprecated.
+	// Version Lockstep version fallback. Prefer packages.<output>.version so every SDK, CLI, and MCP package can advance independently. Deprecated.
 	Version *string `json:"version,omitempty"`
 	// Homepage Homepage written into registry metadata.
 	Homepage *string `json:"homepage,omitempty"`
@@ -568,11 +568,13 @@ type GithubProjectSource struct {
 	Path string `json:"path"`
 }
 
-// ProjectPackages is an API model. Complete package configuration. All ecosystems are returned even when their output is not selected, so saved delivery settings do not disappear when an output is disabled.
+// ProjectPackages is an API model. Complete package configuration. All outputs are returned even when their output is not selected, so saved delivery settings do not disappear when an output is disabled.
 type ProjectPackages struct {
-	Npm    ProjectPackageDelivery `json:"npm"`
-	Python ProjectPackageDelivery `json:"python"`
-	Go     ProjectPackageDelivery `json:"go"`
+	TypescriptSDK ProjectPackageDelivery `json:"typescript-sdk"`
+	PythonSDK     ProjectPackageDelivery `json:"python-sdk"`
+	GoSDK         ProjectPackageDelivery `json:"go-sdk"`
+	CLI           ProjectPackageDelivery `json:"cli"`
+	MCP           ProjectPackageDelivery `json:"mcp"`
 }
 
 // ProjectPackageDelivery is an API model.
@@ -616,7 +618,7 @@ type CreateProjectRequest struct {
 	Source ProjectSourceInput `json:"source"`
 	// Outputs First-class outputs Typeship will keep current for this project.
 	Outputs []OutputID `json:"outputs"`
-	// Packages Initial package names and destinations. Omitted ecosystems use derived names and no destination.
+	// Packages Initial package names, versions, and destinations. Omitted outputs use derived names and no destination.
 	Packages *Packages `json:"packages,omitempty"`
 	// AutoRegen Whether Typeship should regenerate automatically when the source changes.
 	AutoRegen *bool `json:"auto_regen,omitempty"`
@@ -719,18 +721,20 @@ type GithubProjectSourceInput struct {
 	Path string `json:"path"`
 }
 
-// Packages is an API model. Delivery packages keyed by registry ecosystem. TypeScript SDK, CLI, and MCP share npm delivery without becoming the same output. Python and Go SDKs use their own package ecosystems.
+// Packages is an API model. Independent delivery packages keyed by output. Every selected output owns its registry identity, version, destination pull request, and release lifecycle. Selected outputs must resolve to distinct repository-and-directory trees; the TypeScript SDK, CLI, and MCP packages must also have distinct npm names.
 type Packages struct {
-	Npm    *PackageDelivery `json:"npm,omitempty"`
-	Python *PackageDelivery `json:"python,omitempty"`
-	Go     *PackageDelivery `json:"go,omitempty"`
+	TypescriptSDK *PackageDelivery `json:"typescript-sdk,omitempty"`
+	PythonSDK     *PackageDelivery `json:"python-sdk,omitempty"`
+	GoSDK         *PackageDelivery `json:"go-sdk,omitempty"`
+	CLI           *PackageDelivery `json:"cli,omitempty"`
+	MCP           *PackageDelivery `json:"mcp,omitempty"`
 }
 
 // PackageDelivery is an API model. Registry identity and reviewed pull-request destination for one delivery package.
 type PackageDelivery struct {
 	// Name npm package name, Python distribution name, or Go module path. Null derives a name from the API title.
 	Name *string `json:"name,omitempty"`
-	// Version Release version for this ecosystem package. Null falls back to the legacy config.package.version, then the specification version.
+	// Version Release version for this output package. Null falls back to the legacy config.package.version, then the specification version.
 	Version     *string      `json:"version,omitempty"`
 	Destination *Destination `json:"destination,omitempty"`
 }
@@ -756,7 +760,7 @@ type UpdateProjectRequest struct {
 	Source *ProjectSourceInput `json:"source,omitempty"`
 	// Outputs Replaces the selected outputs; delivered files are not deleted.
 	Outputs []OutputID `json:"outputs,omitempty"`
-	// Packages Replaces package configuration for every ecosystem. Include any existing ecosystem settings you want to keep.
+	// Packages Replaces package configuration for every output. Include any existing output settings you want to keep.
 	Packages  *Packages `json:"packages,omitempty"`
 	AutoRegen *bool     `json:"auto_regen,omitempty"`
 	// SpecPatches Replaces the full patch list. Pass an empty array to clear it.
@@ -859,15 +863,6 @@ const (
 	GithubDeliveryHealthStatusSuperseded GithubDeliveryHealthStatus = "superseded"
 )
 
-// Language is one of "typescript", "python", "go".
-type Language string
-
-const (
-	LanguageTypescript Language = "typescript"
-	LanguagePython     Language = "python"
-	LanguageGo         Language = "go"
-)
-
 // GenerationList is an API model.
 type GenerationList struct {
 	Object ListObject   `json:"object"`
@@ -888,8 +883,8 @@ type Generation struct {
 	ProjectID    ProjectID         `json:"project_id"`
 	Status       GenerationStatus  `json:"status"`
 	Trigger      GenerationTrigger `json:"trigger"`
-	// Language Language this run generated. Null on generations recorded before projects had a language axis.
-	Language Language `json:"language"`
+	// Output The independently delivered output this run generated.
+	Output OutputID `json:"output"`
 	// Meta Null only for a failed or legacy generation that produced no metadata.
 	Meta     GenerationMeta `json:"meta"`
 	Warnings []string       `json:"warnings"`
@@ -992,11 +987,11 @@ func (u *GenerationBatchDataItem) FromGenerationFailure(v GenerationFailure) err
 	return nil
 }
 
-// GenerationFailure is an API model. A language that did not generate in a multi-language run.
+// GenerationFailure is an API model. A selected output that did not generate in a multi-output run.
 type GenerationFailure struct {
-	Language Language `json:"language"`
-	Status   string   `json:"status"`
-	Error    string   `json:"error"`
+	Output OutputID `json:"output"`
+	Status string   `json:"status"`
+	Error  string   `json:"error"`
 }
 
 // SpecRevisionList is an API model.
