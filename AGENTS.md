@@ -13,7 +13,7 @@ anonymously with the free plan's limits.
 ## Ground rules
 - Generated code: never edit files in this package by hand — changes are lost on regeneration. Wrap the client in your own code instead.
 - Zero dependencies: `go.mod` has no requires, so nothing third-party enters your dependency graph.
-- `api.md` in this package is the complete method reference: every operation, parameter, and error class. Read it before guessing.
+- `api.md` is the native method reference; `api.json` is the machine-readable operation, schema, safety, and example contract. Read them before guessing.
 
 ## Authentication
 - Bearer token: `TYPESHIP_TOKEN` env var, or the `WithBearerToken` option.
@@ -34,4 +34,4 @@ if err != nil {
 
 ## Documentation
 - The reference for this exact package: `api.md` (offline, always current with the code).
-- No docs site is configured for this API; the spec-derived reference above is the source of truth.
+- Conceptual guides live on the docs site. For questions about how the API's concepts fit together (flows, ordering, environments), fetch `https://typeship.dev/llms-full.txt` and read the relevant sections; `https://typeship.dev/llms.txt` is the page index.

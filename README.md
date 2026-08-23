@@ -36,7 +36,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	result, err := client.Projects.Retrieve(ctx, "id_123")
+	result, err := client.Account.Retrieve(ctx)
 	if err != nil {
 		var apiErr *typeship.APIError
 		if errors.As(err, &apiErr) {
@@ -101,7 +101,7 @@ Pass `WithAPIResponse` to read the status, headers, and request id of a call alo
 
 ```go
 var meta typeship.APIResponse
-result, err := client.Projects.Retrieve(ctx, "id_123", typeship.WithAPIResponse(&meta))
+result, err := client.Account.Retrieve(ctx, typeship.WithAPIResponse(&meta))
 fmt.Println(meta.StatusCode, meta.RequestID, meta.Header.Get("X-RateLimit-Remaining"))
 ```
 
