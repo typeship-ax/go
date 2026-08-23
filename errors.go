@@ -4,6 +4,14 @@ package typeship
 
 import "fmt"
 
+// BadRequestError is returned for 400 responses. The request body, specification source, output selection, or package name is invalid.
+type BadRequestError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *BadRequestError) Unwrap() error { return &e.APIError }
+
 // UnauthorizedError is returned for 401 responses. Missing, invalid, expired, or revoked credentials.
 type UnauthorizedError struct {
 	APIError
@@ -52,14 +60,6 @@ type APIResponseError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *APIResponseError) Unwrap() error { return &e.APIError }
 
-// BadRequestError is returned for 400 responses. The cursor is malformed.
-type BadRequestError struct {
-	APIError
-}
-
-// Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *BadRequestError) Unwrap() error { return &e.APIError }
-
 // PaymentRequiredError is returned for 402 responses. The plan does not include another project or the requested output configuration.
 type PaymentRequiredError struct {
 	APIError
@@ -68,6 +68,22 @@ type PaymentRequiredError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *PaymentRequiredError) Unwrap() error { return &e.APIError }
 
+// ConflictError is returned for 409 responses. The Idempotency-Key was already used with different request parameters.
+type ConflictError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *ConflictError) Unwrap() error { return &e.APIError }
+
+// InternalServerError is returned for 500 responses. The original idempotent request is temporarily unavailable.
+type InternalServerError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *InternalServerError) Unwrap() error { return &e.APIError }
+
 // NotFoundError is returned for 404 responses. No such resource in this account.
 type NotFoundError struct {
 	APIError
@@ -75,14 +91,6 @@ type NotFoundError struct {
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *NotFoundError) Unwrap() error { return &e.APIError }
-
-// InternalServerError is returned for 500 responses. Generation or pull-request setup failed unexpectedly.
-type InternalServerError struct {
-	APIError
-}
-
-// Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *InternalServerError) Unwrap() error { return &e.APIError }
 
 // apiError maps a status onto the documented error type for an operation.
 func apiError(status int, body []byte, requestID string, errs map[string]func(int, []byte, string) error) error {
@@ -96,6 +104,10 @@ func apiError(status int, body []byte, requestID string, errs map[string]func(in
 		}
 	}
 	return &base
+}
+
+func newBadRequestError(status int, body []byte, requestID string) error {
+	return &BadRequestError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
 func newUnauthorizedError(status int, body []byte, requestID string) error {
@@ -122,18 +134,18 @@ func newAPIResponseError(status int, body []byte, requestID string) error {
 	return &APIResponseError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
-func newBadRequestError(status int, body []byte, requestID string) error {
-	return &BadRequestError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
-}
-
 func newPaymentRequiredError(status int, body []byte, requestID string) error {
 	return &PaymentRequiredError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
-func newNotFoundError(status int, body []byte, requestID string) error {
-	return &NotFoundError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+func newConflictError(status int, body []byte, requestID string) error {
+	return &ConflictError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
 func newInternalServerError(status int, body []byte, requestID string) error {
 	return &InternalServerError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+}
+
+func newNotFoundError(status int, body []byte, requestID string) error {
+	return &NotFoundError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }

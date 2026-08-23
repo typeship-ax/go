@@ -51,7 +51,7 @@ func (s *GenerationsService) RetrieveFile(ctx context.Context, generationID stri
 		Method:     "GET",
 		Path:       fmt.Sprintf("/generations/%s/file", url.PathEscape(generationID)),
 		Query:      query,
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
 		SchemaKey:  "generations.retrieveFile",
 		Idempotent: true,
 	}
