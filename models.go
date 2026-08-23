@@ -4,6 +4,7 @@ package typeship
 
 import "encoding/json"
 
+// GenerateRequest is an API model.
 type GenerateRequest struct {
 	Spec SpecInput `json:"spec"`
 	// Outputs Outputs for one delivery package. Choose one SDK output, or TypeScript SDK, CLI, and MCP in any combination. Linked projects can generate outputs in all ecosystems.
@@ -74,6 +75,7 @@ func (u *SpecInput) FromInlineSpecInput(v InlineSpecInput) error {
 	return nil
 }
 
+// URLSpecInput is an API model.
 type URLSpecInput struct {
 	// URL URL of an OpenAPI document, a GraphQL SDL file, or a GraphQL endpoint (introspected automatically). Fetched server-side.
 	URL string `json:"url"`
@@ -81,6 +83,7 @@ type URLSpecInput struct {
 	Headers map[string]string `json:"headers,omitempty"`
 }
 
+// InlineSpecInput is an API model.
 type InlineSpecInput struct {
 	// Inline Raw spec text (OpenAPI JSON/YAML or GraphQL SDL). Up to 10MB.
 	Inline string `json:"inline"`
@@ -97,7 +100,7 @@ const (
 	OutputIDMCP           OutputID = "mcp"
 )
 
-// Config Everything typeship needs beyond the spec, in one object: generation customization (globals, retries, pagination) and how the generated tooling behaves (cli, mcp, package, docs_url). Plain configuration. typeship never requires vendor extensions inside the spec itself. The same shape is accepted on a project and on POST /generate.
+// Config is an API model. Everything typeship needs beyond the spec, in one object: generation customization (globals, retries, pagination) and how the generated tooling behaves (cli, mcp, package, docs_url). Plain configuration. typeship never requires vendor extensions inside the spec itself. The same shape is accepted on a project and on POST /generate.
 type Config struct {
 	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
 	Globals []string     `json:"globals,omitempty"`
@@ -112,7 +115,7 @@ type Config struct {
 	DocsURL *string `json:"docs_url,omitempty"`
 }
 
-// RetryTuning Retry behavior. Top-level fields adjust every operation; operations maps operationId or "METHOD /path" keys to per-operation overrides.
+// RetryTuning is an API model. Retry behavior. Top-level fields adjust every operation; operations maps operationId or "METHOD /path" keys to per-operation overrides.
 type RetryTuning struct {
 	MaxRetries *int64 `json:"max_retries,omitempty"`
 	// Statuses Replaces the default retryable set (408, 429, 500, 502, 503, 504).
@@ -187,6 +190,7 @@ func (u *ConfigPaginationValue) FromBool(v bool) error {
 	return nil
 }
 
+// PaginationRule is an API model.
 type PaginationRule struct {
 	Style *PaginationRuleStyle `json:"style,omitempty"`
 	// ItemsField Response field holding the item array.
@@ -210,7 +214,7 @@ const (
 	PaginationRuleStyleOffset           PaginationRuleStyle = "offset"
 )
 
-// GraphqlSettings What a GraphQL schema cannot say about itself. Ignored for OpenAPI specs.
+// GraphqlSettings is an API model. What a GraphQL schema cannot say about itself. Ignored for OpenAPI specs.
 type GraphqlSettings struct {
 	// Endpoint The URL every request is POSTed to; the generated client's default baseUrl. Defaults to the URL the schema was fetched from. Without either, baseUrl is a required client option.
 	Endpoint *string `json:"endpoint,omitempty"`
@@ -226,6 +230,7 @@ type GraphqlSettings struct {
 	Scalars map[string]GraphqlSettingsScalarsValue `json:"scalars,omitempty"`
 }
 
+// GraphqlSettingsEnvironmentsItem is an API model.
 type GraphqlSettingsEnvironmentsItem struct {
 	Name string `json:"name"`
 	URL  string `json:"url"`
@@ -252,7 +257,7 @@ const (
 	GraphqlSettingsScalarsValueJSON    GraphqlSettingsScalarsValue = "json"
 )
 
-// CLIBehavior How the generated CLI behaves. Part of Config.
+// CLIBehavior is an API model. How the generated CLI behaves. Part of Config.
 type CLIBehavior struct {
 	// WhoamiOperation resource.method of a zero-argument GET that the generated CLI's whoami command calls. Overrides auto-detection; a value that matches nothing is reported as a generation warning.
 	WhoamiOperation *string `json:"whoami_operation,omitempty"`
@@ -274,7 +279,7 @@ type CLIBehavior struct {
 	SkillsRepo *string `json:"skills_repo,omitempty"`
 }
 
-// MCPBehavior How the generated MCP server and the hosted endpoint behave. Part of Config.
+// MCPBehavior is an API model. How the generated MCP server and the hosted endpoint behave. Part of Config.
 type MCPBehavior struct {
 	// ToolMode MCP tool shape. meta collapses per-operation tools into search_docs, read_docs, and execute so large APIs don't flood an agent's context window. Auto considers the serialized tool schemas, switching near 10k tokens or above 100 operations.
 	ToolMode *MCPBehaviorToolMode `json:"tool_mode,omitempty"`
@@ -293,9 +298,9 @@ const (
 	MCPBehaviorToolModeMeta       MCPBehaviorToolMode = "meta"
 )
 
-// PackageBehavior Published-package metadata the API spec does not own. Use version only when the client intentionally releases on a different cadence from info.version; repository is derived from each destination.
+// PackageBehavior is an API model. Published-package metadata the API spec does not own. Repository is derived from each destination; release versions belong to packages.
 type PackageBehavior struct {
-	// Version Semantic version for the generated packages. Defaults to info.version.
+	// Version Legacy lockstep version fallback. Prefer packages.<ecosystem>.version so npm, PyPI, and Go releases can advance independently. Deprecated.
 	Version *string `json:"version,omitempty"`
 	// Homepage Homepage written into registry metadata.
 	Homepage *string `json:"homepage,omitempty"`
@@ -313,6 +318,7 @@ type PackageBehavior struct {
 	MCPName *string `json:"mcp_name,omitempty"`
 }
 
+// GenerationResult is an API model.
 type GenerationResult struct {
 	Files    []GeneratedFile   `json:"files"`
 	Warnings []string          `json:"warnings"`
@@ -322,12 +328,14 @@ type GenerationResult struct {
 	Claim *GenerationResultClaim `json:"claim,omitempty"`
 }
 
+// GeneratedFile is an API model.
 type GeneratedFile struct {
 	// Path Repo-relative path inside the generated package.
 	Path    string `json:"path"`
 	Content string `json:"content"`
 }
 
+// GenerationMeta is an API model.
 type GenerationMeta struct {
 	Title      string                    `json:"title"`
 	Version    string                    `json:"version"`
@@ -403,7 +411,7 @@ const (
 	GenerationMetaPackageCompatibilityFailure GenerationMetaPackageCompatibility = "failure"
 )
 
-// GenerationLimits Present when the generation was capped: by the free plan, or because the call was anonymous. Absent on uncapped generations.
+// GenerationLimits is an API model. Present when the generation was capped: by the free plan, or because the call was anonymous. Absent on uncapped generations.
 type GenerationLimits struct {
 	// MaxOperations How many operations this generation was allowed to include.
 	MaxOperations int64 `json:"max_operations"`
@@ -424,11 +432,13 @@ const (
 	GenerationLimitsReasonFreePlan  GenerationLimitsReason = "free_plan"
 )
 
+// GenerationResultClaim is an API model.
 type GenerationResultClaim struct {
 	URL       string `json:"url"`
 	ExpiresAt string `json:"expires_at"`
 }
 
+// ProjectList is an API model.
 type ProjectList struct {
 	Object ListObject `json:"object"`
 	Data   []Project  `json:"data"`
@@ -438,8 +448,10 @@ type ProjectList struct {
 	NextCursor string `json:"next_cursor"`
 }
 
+// ListObject is a generated API type.
 type ListObject string
 
+// Project is an API model.
 type Project struct {
 	ID       ProjectID       `json:"id"`
 	Object   string          `json:"object"`
@@ -463,6 +475,7 @@ type Project struct {
 	UpdatedAt string `json:"updated_at"`
 }
 
+// ProjectID is a generated API type.
 type ProjectID string
 
 // ProjectSource is one of URLProjectSource, GithubProjectSource — The single source of truth for where a project's specification lives.
@@ -537,6 +550,7 @@ func (u *ProjectSource) FromGithubProjectSource(v GithubProjectSource) error {
 	return nil
 }
 
+// URLProjectSource is an API model.
 type URLProjectSource struct {
 	Kind string `json:"kind"`
 	// URL URL fetched for every generation.
@@ -545,6 +559,7 @@ type URLProjectSource struct {
 	HeadersConfigured bool `json:"headers_configured"`
 }
 
+// GithubProjectSource is an API model.
 type GithubProjectSource struct {
 	Kind string `json:"kind"`
 	// Repository GitHub repository in owner/name form.
@@ -553,24 +568,27 @@ type GithubProjectSource struct {
 	Path string `json:"path"`
 }
 
-// ProjectPackages Complete package configuration. All ecosystems are returned even when their output is not selected, so saved delivery settings do not disappear when an output is disabled.
+// ProjectPackages is an API model. Complete package configuration. All ecosystems are returned even when their output is not selected, so saved delivery settings do not disappear when an output is disabled.
 type ProjectPackages struct {
 	Npm    ProjectPackageDelivery `json:"npm"`
 	Python ProjectPackageDelivery `json:"python"`
 	Go     ProjectPackageDelivery `json:"go"`
 }
 
+// ProjectPackageDelivery is an API model.
 type ProjectPackageDelivery struct {
 	Name        string             `json:"name"`
+	Version     string             `json:"version"`
 	Destination ProjectDestination `json:"destination"`
 }
 
+// ProjectDestination is an API model.
 type ProjectDestination struct {
 	Repo      string `json:"repo"`
 	Directory string `json:"directory"`
 }
 
-// SpecPatch A fix applied to the spec before generation. Targets are JSON Pointers into the document. A patch whose target no longer exists is skipped and reported as a warning on the generation, never silently.
+// SpecPatch is an API model. A fix applied to the spec before generation. Targets are JSON Pointers into the document. A patch whose target no longer exists is skipped and reported as a warning on the generation, never silently.
 type SpecPatch struct {
 	Op SpecPatchOp `json:"op"`
 	// Path JSON-Pointer-style path. Pattern segments enable bulk fixes: * (any child), ** (any depth), [key=value] (filter), e.g. /paths/**/parameters/[name=account_id]/schema/type. Renaming a schema under /components/schemas also rewrites its $refs.
@@ -592,6 +610,7 @@ const (
 	SpecPatchOpRename SpecPatchOp = "rename"
 )
 
+// CreateProjectRequest is an API model.
 type CreateProjectRequest struct {
 	Name   string             `json:"name"`
 	Source ProjectSourceInput `json:"source"`
@@ -682,6 +701,7 @@ func (u *ProjectSourceInput) FromGithubProjectSourceInput(v GithubProjectSourceI
 	return nil
 }
 
+// URLProjectSourceInput is an API model.
 type URLProjectSourceInput struct {
 	Kind string `json:"kind"`
 	// URL URL of an OpenAPI document, GraphQL SDL file, or GraphQL endpoint.
@@ -690,6 +710,7 @@ type URLProjectSourceInput struct {
 	Headers map[string]string `json:"headers,omitempty"`
 }
 
+// GithubProjectSourceInput is an API model.
 type GithubProjectSourceInput struct {
 	Kind string `json:"kind"`
 	// Repository GitHub repository in owner/name form.
@@ -698,21 +719,23 @@ type GithubProjectSourceInput struct {
 	Path string `json:"path"`
 }
 
-// Packages Delivery packages keyed by registry ecosystem. TypeScript SDK, CLI, and MCP share npm delivery without becoming the same output. Python and Go SDKs use their own package ecosystems.
+// Packages is an API model. Delivery packages keyed by registry ecosystem. TypeScript SDK, CLI, and MCP share npm delivery without becoming the same output. Python and Go SDKs use their own package ecosystems.
 type Packages struct {
 	Npm    *PackageDelivery `json:"npm,omitempty"`
 	Python *PackageDelivery `json:"python,omitempty"`
 	Go     *PackageDelivery `json:"go,omitempty"`
 }
 
-// PackageDelivery Registry identity and reviewed pull-request destination for one delivery package.
+// PackageDelivery is an API model. Registry identity and reviewed pull-request destination for one delivery package.
 type PackageDelivery struct {
 	// Name npm package name, Python distribution name, or Go module path. Null derives a name from the API title.
-	Name        *string      `json:"name,omitempty"`
+	Name *string `json:"name,omitempty"`
+	// Version Release version for this ecosystem package. Null falls back to the legacy config.package.version, then the specification version.
+	Version     *string      `json:"version,omitempty"`
 	Destination *Destination `json:"destination,omitempty"`
 }
 
-// Destination Where regeneration pull requests land.
+// Destination is an API model. Where regeneration pull requests land.
 type Destination struct {
 	// Repo Defaults to the source repository when the source is a repo.
 	Repo *string `json:"repo,omitempty"`
@@ -720,12 +743,14 @@ type Destination struct {
 	Directory *string `json:"directory,omitempty"`
 }
 
+// DeletedProject is an API model.
 type DeletedProject struct {
 	ID      ProjectID `json:"id"`
 	Object  string    `json:"object"`
 	Deleted bool      `json:"deleted"`
 }
 
+// UpdateProjectRequest is an API model.
 type UpdateProjectRequest struct {
 	Name   *string             `json:"name,omitempty"`
 	Source *ProjectSourceInput `json:"source,omitempty"`
@@ -744,6 +769,96 @@ type UpdateProjectRequest struct {
 	Config *Nullable[Config] `json:"config,omitempty"`
 }
 
+// GithubIntegrationHealth is an API model.
+type GithubIntegrationHealth struct {
+	Object           string                                  `json:"object"`
+	ProjectID        ProjectID                               `json:"project_id"`
+	Status           Status                                  `json:"status"`
+	Repositories     []GithubRepositoryHealth                `json:"repositories"`
+	RequiredStatuses GithubIntegrationHealthRequiredStatuses `json:"required_statuses"`
+	LastDelivery     GithubDeliveryHealth                    `json:"last_delivery"`
+}
+
+// Status is one of "ready", "action_required".
+type Status string
+
+const (
+	StatusReady          Status = "ready"
+	StatusActionRequired Status = "action_required"
+)
+
+// GithubRepositoryHealth is an API model.
+type GithubRepositoryHealth struct {
+	Repository    string                       `json:"repository"`
+	Roles         []GithubRepositoryHealthRole `json:"roles"`
+	Status        Status                       `json:"status"`
+	DefaultBranch *string                      `json:"default_branch,omitempty"`
+	CanRead       *bool                        `json:"can_read,omitempty"`
+	CanWrite      *bool                        `json:"can_write,omitempty"`
+	BreakingLabel *bool                        `json:"breaking_label,omitempty"`
+	Spec          *GithubRepositoryHealthSpec  `json:"spec,omitempty"`
+	Issues        []GithubHealthIssue          `json:"issues"`
+}
+
+// GithubRepositoryHealthRole is one of "source", "destination".
+type GithubRepositoryHealthRole string
+
+const (
+	GithubRepositoryHealthRoleSource      GithubRepositoryHealthRole = "source"
+	GithubRepositoryHealthRoleDestination GithubRepositoryHealthRole = "destination"
+)
+
+// GithubRepositoryHealthSpec is one of "readable", "missing".
+type GithubRepositoryHealthSpec string
+
+const (
+	GithubRepositoryHealthSpecReadable GithubRepositoryHealthSpec = "readable"
+	GithubRepositoryHealthSpecMissing  GithubRepositoryHealthSpec = "missing"
+)
+
+// GithubHealthIssue is an API model.
+type GithubHealthIssue struct {
+	Code    GithubHealthIssueCode `json:"code"`
+	Message string                `json:"message"`
+}
+
+// GithubHealthIssueCode is one of "installation_missing", "spec_unreadable", "contents_write_missing", "breaking_label_missing", "github_unavailable".
+type GithubHealthIssueCode string
+
+const (
+	GithubHealthIssueCodeInstallationMissing  GithubHealthIssueCode = "installation_missing"
+	GithubHealthIssueCodeSpecUnreadable       GithubHealthIssueCode = "spec_unreadable"
+	GithubHealthIssueCodeContentsWriteMissing GithubHealthIssueCode = "contents_write_missing"
+	GithubHealthIssueCodeBreakingLabelMissing GithubHealthIssueCode = "breaking_label_missing"
+	GithubHealthIssueCodeGithubUnavailable    GithubHealthIssueCode = "github_unavailable"
+)
+
+// GithubIntegrationHealthRequiredStatuses is an API model.
+type GithubIntegrationHealthRequiredStatuses struct {
+	Source      []string `json:"source"`
+	Destination []string `json:"destination"`
+}
+
+// GithubDeliveryHealth is an API model.
+type GithubDeliveryHealth struct {
+	ID        string                     `json:"id"`
+	Event     string                     `json:"event"`
+	Status    GithubDeliveryHealthStatus `json:"status"`
+	Error     string                     `json:"error"`
+	CreatedAt string                     `json:"created_at"`
+}
+
+// GithubDeliveryHealthStatus is one of "queued", "processing", "succeeded", "failed", "superseded".
+type GithubDeliveryHealthStatus string
+
+const (
+	GithubDeliveryHealthStatusQueued     GithubDeliveryHealthStatus = "queued"
+	GithubDeliveryHealthStatusProcessing GithubDeliveryHealthStatus = "processing"
+	GithubDeliveryHealthStatusSucceeded  GithubDeliveryHealthStatus = "succeeded"
+	GithubDeliveryHealthStatusFailed     GithubDeliveryHealthStatus = "failed"
+	GithubDeliveryHealthStatusSuperseded GithubDeliveryHealthStatus = "superseded"
+)
+
 // Language is one of "typescript", "python", "go".
 type Language string
 
@@ -753,6 +868,7 @@ const (
 	LanguageGo         Language = "go"
 )
 
+// GenerationList is an API model.
 type GenerationList struct {
 	Object ListObject   `json:"object"`
 	Data   []Generation `json:"data"`
@@ -762,6 +878,7 @@ type GenerationList struct {
 	NextCursor string `json:"next_cursor"`
 }
 
+// Generation is an API model.
 type Generation struct {
 	ID     GenerationID `json:"id"`
 	Object string       `json:"object"`
@@ -782,8 +899,10 @@ type Generation struct {
 	CreatedAt string          `json:"created_at"`
 }
 
+// GenerationID is a generated API type.
 type GenerationID string
 
+// FileStub is an API model.
 type FileStub struct {
 	Path  string `json:"path"`
 	Bytes int64  `json:"bytes"`
@@ -807,6 +926,7 @@ const (
 	GenerationTriggerPreview GenerationTrigger = "preview"
 )
 
+// GenerationBatch is an API model.
 type GenerationBatch struct {
 	Data []GenerationBatchDataItem `json:"data"`
 }
@@ -872,13 +992,14 @@ func (u *GenerationBatchDataItem) FromGenerationFailure(v GenerationFailure) err
 	return nil
 }
 
-// GenerationFailure A language that did not generate in a multi-language run.
+// GenerationFailure is an API model. A language that did not generate in a multi-language run.
 type GenerationFailure struct {
 	Language Language `json:"language"`
 	Status   string   `json:"status"`
 	Error    string   `json:"error"`
 }
 
+// SpecRevisionList is an API model.
 type SpecRevisionList struct {
 	Object ListObject     `json:"object"`
 	Data   []SpecRevision `json:"data"`
@@ -888,6 +1009,7 @@ type SpecRevisionList struct {
 	NextCursor string `json:"next_cursor"`
 }
 
+// SpecRevision is an API model.
 type SpecRevision struct {
 	ID        SpecRevisionID `json:"id"`
 	Object    string         `json:"object"`
@@ -901,6 +1023,7 @@ type SpecRevision struct {
 	CreatedAt string             `json:"created_at"`
 }
 
+// SpecRevisionID is a generated API type.
 type SpecRevisionID string
 
 // SpecRevisionSource is one of URLSpecRevisionSource, GithubSpecRevisionSource.
@@ -975,11 +1098,13 @@ func (u *SpecRevisionSource) FromGithubSpecRevisionSource(v GithubSpecRevisionSo
 	return nil
 }
 
+// URLSpecRevisionSource is an API model.
 type URLSpecRevisionSource struct {
 	Kind string `json:"kind"`
 	URL  string `json:"url"`
 }
 
+// GithubSpecRevisionSource is an API model.
 type GithubSpecRevisionSource struct {
 	Kind string `json:"kind"`
 	// Repository GitHub repository in owner/name form.
@@ -992,7 +1117,7 @@ type GithubSpecRevisionSource struct {
 	CommitSha *string `json:"commit_sha,omitempty"`
 }
 
-// Account The organization an API key belongs to. Members share its projects, keys, and plan; sign-in identity is not part of the API.
+// Account is an API model. The organization an API key belongs to. Members share its projects, keys, and plan; sign-in identity is not part of the API.
 type Account struct {
 	ID     string `json:"id"`
 	Object string `json:"object"`
@@ -1011,6 +1136,7 @@ const (
 	AccountPlanEnterprise AccountPlan = "enterprise"
 )
 
+// APIKeyList is an API model.
 type APIKeyList struct {
 	Object ListObject `json:"object"`
 	Data   []APIKey   `json:"data"`
@@ -1020,6 +1146,7 @@ type APIKeyList struct {
 	NextCursor string `json:"next_cursor"`
 }
 
+// APIKey is an API model.
 type APIKey struct {
 	ID     string `json:"id"`
 	Object string `json:"object"`
