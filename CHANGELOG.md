@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.0 (2026-08-23) (4 breaking)
+
+### Changed
+- `generate.run()`
+  - **breaking** return-type-changed: nested response schema changed
+- `projects.listGenerations()`
+  - **breaking** return-type-changed: nested response schema changed
+- `projects.generate()`
+  - **breaking** return-type-changed: nested response schema changed
+- `generations.retrieve()`
+  - **breaking** return-type-changed: nested response schema changed
+
 ## 0.5.0 (2026-08-22)
 
 ### Changed

@@ -287,10 +287,10 @@ type GenerationMeta struct {
 	BreakingCount *int64 `json:"breaking_count,omitempty"`
 	// Baseline What the diff was measured against; "destination" means the .typeship/surface.json merged in the destination repository.
 	Baseline *GenerationMetaBaseline `json:"baseline,omitempty"`
-	// Semver The typeship/semver verdict on the regeneration pull request; failure means breaking changes without a major version bump.
-	Semver *GenerationMetaSemver `json:"semver,omitempty"`
-	// SemverNote The verdict in one line, as the commit status describes it.
-	SemverNote *string `json:"semver_note,omitempty"`
+	// PackageCompatibility The package compatibility verdict on the regeneration pull request; failure means breaking changes without a major version bump.
+	PackageCompatibility *GenerationMetaPackageCompatibility `json:"package_compatibility,omitempty"`
+	// PackageCompatibilityNote The verdict in one line, as the commit status describes it.
+	PackageCompatibilityNote *string `json:"package_compatibility_note,omitempty"`
 	// PreviousVersion The package version the destination had before this regeneration.
 	PreviousVersion *string `json:"previous_version,omitempty"`
 	FileCount       *int64  `json:"file_count,omitempty"`
@@ -323,12 +323,12 @@ const (
 	GenerationMetaBaselineNone           GenerationMetaBaseline = "none"
 )
 
-// GenerationMetaSemver is one of "success", "failure". The typeship/semver verdict on the regeneration pull request; failure means breaking changes without a major version bump.
-type GenerationMetaSemver string
+// GenerationMetaPackageCompatibility is one of "success", "failure". The package compatibility verdict on the regeneration pull request; failure means breaking changes without a major version bump.
+type GenerationMetaPackageCompatibility string
 
 const (
-	GenerationMetaSemverSuccess GenerationMetaSemver = "success"
-	GenerationMetaSemverFailure GenerationMetaSemver = "failure"
+	GenerationMetaPackageCompatibilitySuccess GenerationMetaPackageCompatibility = "success"
+	GenerationMetaPackageCompatibilityFailure GenerationMetaPackageCompatibility = "failure"
 )
 
 // GenerationLimits Present when the generation was capped: by the free plan, or because the call was anonymous. Absent on uncapped generations.
