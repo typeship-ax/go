@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0 (2026-08-24)
+
+### Changed
+- `generate.run()`
+  - `return-type-changed`: nested response schema changed
+- `projects.generate()`
+  - `documentation-changed`: summary or description changed
+
 ## 0.7.0 (2026-08-23) (7 breaking)
 
 ### Changed

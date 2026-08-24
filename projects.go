@@ -222,7 +222,7 @@ func (s *ProjectsService) ListGenerations(ctx context.Context, projectID string,
 
 // Generate outputs and open pull requests.
 //
-// Resolves the project's URL or repository source, generates every
+// Resolves the project's URL or GitHub source, generates every
 // configured delivery package, stores each result in the project's history,
 // and attempts to open a pull request in every configured destination.
 // When the complete generated tree already matches a destination, no

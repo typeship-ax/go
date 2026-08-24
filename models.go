@@ -415,9 +415,13 @@ const (
 type GenerationLimits struct {
 	// MaxOperations How many operations this generation was allowed to include.
 	MaxOperations int64 `json:"max_operations"`
+	// GeneratedOperations How many operations are present in the generated package.
+	GeneratedOperations int64 `json:"generated_operations"`
 	// OmittedOperations How many operations in the spec were left out.
-	OmittedOperations int64                  `json:"omitted_operations"`
-	Reason            GenerationLimitsReason `json:"reason"`
+	OmittedOperations int64 `json:"omitted_operations"`
+	// TotalOperations How many operations Typeship found in the complete specification.
+	TotalOperations int64                  `json:"total_operations"`
+	Reason          GenerationLimitsReason `json:"reason"`
 	// SignupURL Anonymous calls only. Where to create an account.
 	SignupURL *string `json:"signup_url,omitempty"`
 	// UpgradeURL Where the cap is lifted.
