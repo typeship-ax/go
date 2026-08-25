@@ -8,6 +8,7 @@ Generated from the OpenAPI spec by [typeship](https://typeship.dev). Change the 
 - **Typed errors** — every documented error response is a type you can match with `errors.As`
 - **Context-aware** — every call takes a `context.Context`, so cancellation and deadlines work
 - **Retries built in** — idempotent requests retry with exponential backoff and `Retry-After` support
+- **Forward-compatible responses** — enum values decode even when new, union raw JSON remains available, and `WithAPIResponse` preserves the complete body
 
 ## Install
 
@@ -36,7 +37,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	result, err := client.Account.Retrieve(ctx)
+	result, err := client.Projects.Retrieve(ctx, "prj_4f8k2m7x9q1v6b3n")
 	if err != nil {
 		var apiErr *typeship.APIError
 		if errors.As(err, &apiErr) {
@@ -101,8 +102,8 @@ Pass `WithAPIResponse` to read the status, headers, and request id of a call alo
 
 ```go
 var meta typeship.APIResponse
-result, err := client.Account.Retrieve(ctx, typeship.WithAPIResponse(&meta))
-fmt.Println(meta.StatusCode, meta.RequestID, meta.Header.Get("X-RateLimit-Remaining"))
+result, err := client.Projects.Retrieve(ctx, "prj_4f8k2m7x9q1v6b3n", typeship.WithAPIResponse(&meta))
+fmt.Println(meta.StatusCode, meta.RequestID, meta.Header.Get("RateLimit-Remaining"))
 ```
 
 ## Configuration

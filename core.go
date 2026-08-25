@@ -13,12 +13,12 @@ import (
 	"io"
 	"math"
 	mathrand "math/rand"
-	"mime/multipart"
+
 	"net/http"
-	"net/textproto"
+
 	"net/url"
 	"os"
-	"reflect"
+
 	"sort"
 	"strconv"
 	"strings"
@@ -54,6 +54,9 @@ type APIResponse struct {
 	StatusCode int
 	Header     http.Header
 	RequestID  string
+	// Body preserves the raw response so fields and discriminator variants
+	// added after this SDK was generated remain recoverable.
+	Body []byte
 }
 
 // WithAPIResponse fills into with the metadata of the last HTTP response
@@ -61,7 +64,7 @@ type APIResponse struct {
 //
 //	var resp acme.APIResponse
 //	account, err := client.Accounts.Get(ctx, id, acme.WithAPIResponse(&resp))
-//	fmt.Println(resp.Header.Get("X-RateLimit-Remaining"))
+//	fmt.Println(resp.Header.Get("RateLimit-Remaining"))
 func WithAPIResponse(into *APIResponse) RequestOption {
 	return func(c *requestConfig) { c.response = into }
 }
@@ -289,12 +292,15 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 			return transportErr
 		}
 		readErr := err
-		requestID := resp.Header.Get("X-Request-Id")
+		requestID := resp.Header.Get("Request-Id")
 		if requestID == "" {
-			requestID = resp.Header.Get("Request-Id")
+			requestID = resp.Header.Get("X-Request-Id")
+		}
+		if requestID == "" {
+			requestID = requestIDFromBody(body)
 		}
 		if cfg.response != nil {
-			*cfg.response = APIResponse{StatusCode: resp.StatusCode, Header: resp.Header.Clone(), RequestID: requestID}
+			*cfg.response = APIResponse{StatusCode: resp.StatusCode, Header: resp.Header.Clone(), RequestID: requestID, Body: append([]byte(nil), body...)}
 		}
 		c.emitDebug(DebugEvent{
 			Method:     req.Method,
@@ -351,6 +357,22 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 	}
 
 	return &TransportError{Method: req.Method, URL: endpoint, Err: lastErr}
+}
+
+func requestIDFromBody(body []byte) string {
+	if len(body) == 0 {
+		return ""
+	}
+	var envelope map[string]any
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return ""
+	}
+	for _, key := range []string{"request_id", "requestId"} {
+		if value, ok := envelope[key].(string); ok && value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func (c *core) newRequest(
@@ -553,20 +575,6 @@ func jsonShape(value any) (any, bool) {
 	return generic, true
 }
 
-// Upload is a file for a multipart request: what the server receives as
-// the file's name and content type, and where the bytes come from.
-//
-//	params.Document = &Upload{Name: "report.pdf", Reader: f}
-type Upload struct {
-	Name        string
-	ContentType string
-	Reader      io.Reader
-}
-
-// MarshalJSON keeps an Upload out of the JSON shape of a params struct: file
-// parts are written separately by the multipart encoder.
-func (u Upload) MarshalJSON() ([]byte, error) { return []byte("null"), nil }
-
 func encodeBody(body any, kind string, contentType string) ([]byte, string, error) {
 	if body == nil {
 		return nil, "", nil
@@ -583,8 +591,7 @@ func encodeBody(body any, kind string, contentType string) ([]byte, string, erro
 			}
 		}
 		return []byte(values.Encode()), "application/x-www-form-urlencoded", nil
-	case "multipart":
-		return encodeMultipart(body)
+
 	case "text":
 		return []byte(fmt.Sprint(body)), "text/plain", nil
 	case "binary":
@@ -614,142 +621,6 @@ func encodeBody(body any, kind string, contentType string) ([]byte, string, erro
 		}
 		return encoded, "application/json", nil
 	}
-}
-
-// encodeMultipart writes a params struct (or map) as multipart/form-data:
-// Upload fields become file parts, everything else becomes a text part under
-// its JSON name, nested values as bracketed keys the way form bodies encode.
-func encodeMultipart(body any) ([]byte, string, error) {
-	var buf bytes.Buffer
-	writer := multipart.NewWriter(&buf)
-	files := collectFiles(body)
-	if generic, ok := jsonShape(body); ok {
-		if fields, ok := generic.(map[string]any); ok {
-			values := url.Values{}
-			encodeDeep(values, fields)
-			keys := make([]string, 0, len(values))
-			for key := range values {
-				keys = append(keys, key)
-			}
-			sort.Strings(keys)
-			for _, key := range keys {
-				for _, value := range values[key] {
-					if err := writer.WriteField(key, value); err != nil {
-						return nil, "", err
-					}
-				}
-			}
-		}
-	}
-	for _, part := range files {
-		header := textproto.MIMEHeader{}
-		name := part.file.Name
-		if name == "" {
-			name = part.field
-		}
-		header.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, escapeQuotes(part.field), escapeQuotes(name)))
-		contentType := part.file.ContentType
-		if contentType == "" {
-			contentType = "application/octet-stream"
-		}
-		header.Set("Content-Type", contentType)
-		w, err := writer.CreatePart(header)
-		if err != nil {
-			return nil, "", err
-		}
-		if part.file.Reader != nil {
-			if _, err := io.Copy(w, part.file.Reader); err != nil {
-				return nil, "", fmt.Errorf("read %s: %w", part.field, err)
-			}
-		}
-	}
-	if err := writer.Close(); err != nil {
-		return nil, "", err
-	}
-	return buf.Bytes(), writer.FormDataContentType(), nil
-}
-
-type filePart struct {
-	field string
-	file  Upload
-}
-
-// collectFiles finds the Upload-typed fields of a params struct (or the
-// Upload values of a map), in declaration order, keyed by their JSON names.
-func collectFiles(body any) []filePart {
-	var parts []filePart
-	value := reflect.ValueOf(body)
-	for value.Kind() == reflect.Pointer || value.Kind() == reflect.Interface {
-		if value.IsNil() {
-			return nil
-		}
-		value = value.Elem()
-	}
-	asFile := func(v reflect.Value) (Upload, bool) {
-		if v.Kind() == reflect.Pointer {
-			if v.IsNil() {
-				return Upload{}, false
-			}
-			v = v.Elem()
-		}
-		if v.Kind() == reflect.Interface {
-			if v.IsNil() {
-				return Upload{}, false
-			}
-			v = v.Elem()
-			if v.Kind() == reflect.Pointer {
-				if v.IsNil() {
-					return Upload{}, false
-				}
-				v = v.Elem()
-			}
-		}
-		if v.Type() == reflect.TypeOf(Upload{}) {
-			return v.Interface().(Upload), true
-		}
-		return Upload{}, false
-	}
-	add := func(field string, v reflect.Value) {
-		if file, ok := asFile(v); ok {
-			parts = append(parts, filePart{field, file})
-			return
-		}
-		if v.Kind() == reflect.Slice {
-			for i := 0; i < v.Len(); i++ {
-				if file, ok := asFile(v.Index(i)); ok {
-					parts = append(parts, filePart{field, file})
-				}
-			}
-		}
-	}
-	switch value.Kind() {
-	case reflect.Struct:
-		for i := 0; i < value.NumField(); i++ {
-			field := value.Type().Field(i)
-			if !field.IsExported() {
-				continue
-			}
-			name := strings.Split(field.Tag.Get("json"), ",")[0]
-			if name == "-" {
-				continue
-			}
-			if name == "" {
-				name = field.Name
-			}
-			add(name, value.Field(i))
-		}
-	case reflect.Map:
-		keys := value.MapKeys()
-		sort.Slice(keys, func(i, j int) bool { return keys[i].String() < keys[j].String() })
-		for _, key := range keys {
-			add(key.String(), value.MapIndex(key))
-		}
-	}
-	return parts
-}
-
-func escapeQuotes(s string) string {
-	return strings.NewReplacer("\\", "\\\\", `"`, "\\\"").Replace(s)
 }
 
 func mergeRetry(base, override RetryPolicy) RetryPolicy {
