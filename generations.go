@@ -41,7 +41,7 @@ func (s *GenerationsService) Retrieve(ctx context.Context, generationID string, 
 
 // RetrieveFile — fetch one file from a generation.
 //
-// Raw file content, for generations whose output was too large to inline (files_omitted true). The generation's files_index lists valid paths.
+// Raw file content, for generations whose target was too large to inline (files_omitted true). The generation's files_index lists valid paths.
 //
 // GET /generations/{generation_id}/file
 func (s *GenerationsService) RetrieveFile(ctx context.Context, generationID string, params GenerationsRetrieveFileParams, opts ...RequestOption) (string, error) {
