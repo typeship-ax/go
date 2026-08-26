@@ -33,8 +33,8 @@ type ProjectsListGenerationsParams struct {
 	Limit *int64 `json:"-"`
 	// Cursor Opaque cursor from the preceding page's next_cursor.
 	Cursor *string `json:"-"`
-	// Output Only generations for this output.
-	Output *OutputID `json:"-"`
+	// TargetID Only generations for this persisted Target.
+	TargetID *TargetID `json:"-"`
 }
 
 // List projects.
@@ -48,7 +48,7 @@ type ProjectsListGenerationsParams struct {
 //		item := it.Value()
 //	}
 //	if err := it.Err(); err != nil { ... }
-func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, opts ...RequestOption) *Iter[Project] {
+func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, opts ...RequestOption) *Iter[ProjectSummary] {
 	query := map[string]any{}
 	if params != nil {
 		if params.Limit != nil {
@@ -66,7 +66,7 @@ func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, 
 		SchemaKey:  "projects.list",
 		Idempotent: true,
 	}
-	return newIter[Project](ctx, s.core, req, opts, pageConfig{
+	return newIter[ProjectSummary](ctx, s.core, req, opts, pageConfig{
 		Style:           "cursor",
 		ItemsField:      "data",
 		CursorParam:     "cursor",
@@ -78,7 +78,7 @@ func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, 
 
 // Create a project.
 //
-// Stores a URL- or GitHub-sourced project. Free includes one stored project, every selected output, and the first 25 operations, while keeping manual and automatic regeneration, history, destination pull requests, and preview checks. Stateless POST /generate does not consume this slot. Pro adds projects and the whole spec.
+// Stores a URL- or GitHub-sourced project. Free includes one stored project, every selected target, and the first 25 operations, while keeping manual and automatic regeneration, history, destination pull requests, and preview checks. Stateless POST /generate does not consume this slot. Pro adds projects and generates every operation in the Definition.
 //
 // POST /projects
 func (s *ProjectsService) Create(ctx context.Context, body CreateProjectRequest, params *ProjectsCreateParams, opts ...RequestOption) (*Project, error) {
@@ -93,7 +93,7 @@ func (s *ProjectsService) Create(ctx context.Context, body CreateProjectRequest,
 		Path:              "/projects",
 		Headers:           headers,
 		Body:              body,
-		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError},
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
 		SchemaKey:         "projects.create",
 		IdempotencyHeader: "Idempotency-Key",
 	}
@@ -148,7 +148,7 @@ func (s *ProjectsService) Update(ctx context.Context, projectID string, body Upd
 		Method:    "PATCH",
 		Path:      fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
 		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
 		SchemaKey: "projects.update",
 	}
 	var out Project
@@ -158,20 +158,79 @@ func (s *ProjectsService) Update(ctx context.Context, projectID string, body Upd
 	return &out, nil
 }
 
-// RetrieveGithubHealth — diagnose a project's GitHub integration.
+// RetrieveDiagnostics — analyze a project's latest Definition Revision.
 //
-// Returns machine-actionable source and destination access, spec readability, optional label setup, required status names, and the latest durable webhook delivery. The console renders this same result.
+// Runs deterministic OpenAPI or GraphQL authorship checks against the latest observed immutable Definition Revision after applying the Definition's existing patches. Diagnostics group every affected location under a stable rule. Exact patches are included only when Typeship can derive the change without inventing API behavior.
 //
-// GET /projects/{project_id}/github
-func (s *ProjectsService) RetrieveGithubHealth(ctx context.Context, projectID string, opts ...RequestOption) (*GithubIntegrationHealth, error) {
+// GET /projects/{project_id}/diagnostics
+func (s *ProjectsService) RetrieveDiagnostics(ctx context.Context, projectID string, opts ...RequestOption) (*DiagnosticReport, error) {
 	req := request{
 		Method:     "GET",
-		Path:       fmt.Sprintf("/projects/%s/github", url.PathEscape(projectID)),
+		Path:       fmt.Sprintf("/projects/%s/diagnostics", url.PathEscape(projectID)),
 		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
-		SchemaKey:  "projects.retrieveGithubHealth",
+		SchemaKey:  "projects.retrieveDiagnostics",
 		Idempotent: true,
 	}
-	var out GithubIntegrationHealth
+	var out DiagnosticReport
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// RefreshDiagnostics — refresh a project's Diagnostics from its configured source.
+//
+// Fetches the complete configured source, records a new immutable revision only when content changed, and returns its Diagnostics. This does not generate targets or consume a metered generation.
+//
+// POST /projects/{project_id}/diagnostics
+func (s *ProjectsService) RefreshDiagnostics(ctx context.Context, projectID string, opts ...RequestOption) (*DiagnosticReport, error) {
+	req := request{
+		Method:    "POST",
+		Path:      fmt.Sprintf("/projects/%s/diagnostics", url.PathEscape(projectID)),
+		Errors:    map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
+		SchemaKey: "projects.refreshDiagnostics",
+	}
+	var out DiagnosticReport
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// RemediateDiagnostics — apply exact, reviewed diagnostic remediations.
+//
+// Applies only deterministic patches. Repository sources receive an updateable source pull request; URL sources receive project overlays. Diagnostics that require API-owner intent return 422 and include an authoring_brief in the Diagnostic instead.
+//
+// POST /projects/{project_id}/diagnostics/remediations
+func (s *ProjectsService) RemediateDiagnostics(ctx context.Context, projectID string, body DiagnosticRemediationRequest, opts ...RequestOption) (*DiagnosticRemediation, error) {
+	req := request{
+		Method:    "POST",
+		Path:      fmt.Sprintf("/projects/%s/diagnostics/remediations", url.PathEscape(projectID)),
+		Body:      body,
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
+		SchemaKey: "projects.remediateDiagnostics",
+	}
+	var out DiagnosticRemediation
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// RetrieveIntegrationHealth — diagnose a project's repository integrations.
+//
+// Returns provider-neutral, machine-actionable source and destination access, Definition readability, source-approval label setup, required status names, and the latest durable webhook delivery. The Console renders this same result.
+//
+// GET /projects/{project_id}/integration-health
+func (s *ProjectsService) RetrieveIntegrationHealth(ctx context.Context, projectID string, opts ...RequestOption) (*RepositoryIntegrationHealth, error) {
+	req := request{
+		Method:     "GET",
+		Path:       fmt.Sprintf("/projects/%s/integration-health", url.PathEscape(projectID)),
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		SchemaKey:  "projects.retrieveIntegrationHealth",
+		Idempotent: true,
+	}
+	var out RepositoryIntegrationHealth
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}
@@ -198,8 +257,8 @@ func (s *ProjectsService) ListGenerations(ctx context.Context, projectID string,
 		if params.Cursor != nil {
 			query["cursor"] = *params.Cursor
 		}
-		if params.Output != nil {
-			query["output"] = *params.Output
+		if params.TargetID != nil {
+			query["target_id"] = *params.TargetID
 		}
 	}
 	req := request{
@@ -220,7 +279,7 @@ func (s *ProjectsService) ListGenerations(ctx context.Context, projectID string,
 	})
 }
 
-// Generate outputs and open pull requests.
+// Generate targets and open pull requests.
 //
 // Resolves the project's URL or GitHub source, generates every
 // configured delivery package, stores each result in the project's history,

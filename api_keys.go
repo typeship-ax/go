@@ -64,7 +64,7 @@ func (s *APIKeysService) List(ctx context.Context, params *APIKeysListParams, op
 
 // Revoke an API key.
 //
-// Idempotent: revoking an already-revoked key returns the same body, so a rotation script that re-runs does not have to special-case having already succeeded.
+// Idempotent: revoking an already-revoked key returns the same body, so a rotation script that re-runs does not have to special-case having already succeeded. An OAuth member may revoke a key they created; an organization admin may revoke any key. Organization API keys retain account-wide authority.
 //
 // DELETE /api_keys/{api_key_id}
 func (s *APIKeysService) Revoke(ctx context.Context, apiKeyID string, opts ...RequestOption) (*APIKey, error) {
