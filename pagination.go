@@ -50,8 +50,45 @@ func newIter[T any](ctx context.Context, c *core, req request, opts []RequestOpt
 		req.Query = map[string]any{}
 	}
 	it := &Iter[T]{ctx: ctx, core: c, req: req, opts: opts, cfg: cfg, page: 1}
-
+	// Start where the caller pointed: list(page=3) walks 3, 4, 5, ...
+	if cfg.PageParam != "" {
+		if page, ok := queryInt(req.Query[cfg.PageParam]); ok && page > 0 {
+			it.page = page
+		}
+	}
+	if cfg.OffsetParam != "" {
+		if offset, ok := queryInt(req.Query[cfg.OffsetParam]); ok && offset > 0 {
+			it.offset = offset
+		}
+	}
 	return it
+}
+
+// queryInt reads an integer query value however the params struct typed it.
+func queryInt(value any) (int, bool) {
+	switch typed := value.(type) {
+	case int:
+		return typed, true
+	case int32:
+		return int(typed), true
+	case int64:
+		return int(typed), true
+	case float64:
+		return int(typed), true
+	}
+	return 0, false
+}
+
+// pageExhausted reports whether a page/offset walk can stop early: a page
+// shorter than the requested limit is the last one, which spares a final
+// empty request — and ends the walk on servers that answer out-of-range
+// pages by repeating the last one.
+func (it *Iter[T]) pageExhausted(count int) bool {
+	if it.cfg.LimitParam == "" {
+		return false
+	}
+	limit, ok := queryInt(it.req.Query[it.cfg.LimitParam])
+	return ok && limit > 0 && count < limit
 }
 
 // Next advances to the next item, fetching another page when the current one
@@ -65,7 +102,7 @@ func (it *Iter[T]) Next() bool {
 		it.index++
 		return true
 	}
-	if it.done || (it.started && len(it.items) == 0 && it.cfg.Style != "cursor") {
+	if it.done || (it.started && len(it.items) == 0) {
 		return false
 	}
 	if !it.fetch() {
@@ -100,7 +137,7 @@ func (it *Iter[T]) fetch() bool {
 	}
 	it.items = items
 	it.index = 0
-	if len(items) == 0 && it.cfg.Style != "cursor" {
+	if len(items) == 0 {
 		it.done = true
 		return false
 	}
@@ -127,12 +164,37 @@ func (it *Iter[T]) fetch() bool {
 			it.done = true
 			return true
 		}
-		if current, ok := it.req.Query[it.cfg.CursorParam].(string); ok && current == *cursor {
+		it.req.Query[it.cfg.CursorParam] = *cursor
+	case "cursorFromLastId":
+		var rows []map[string]any
+		if err := json.Unmarshal(itemsRaw, &rows); err != nil || len(rows) == 0 {
 			it.done = true
 			return true
 		}
-		it.req.Query[it.cfg.CursorParam] = *cursor
-
+		field := it.cfg.IDField
+		if field == "" {
+			field = "id"
+		}
+		last, ok := rows[len(rows)-1][field].(string)
+		if !ok || last == "" {
+			it.done = true
+			return true
+		}
+		it.req.Query[it.cfg.CursorParam] = last
+	case "page":
+		if it.pageExhausted(len(items)) {
+			it.done = true
+			return true
+		}
+		it.page++
+		it.req.Query[it.cfg.PageParam] = it.page
+	case "offset":
+		if it.pageExhausted(len(items)) {
+			it.done = true
+			return true
+		}
+		it.offset += len(items)
+		it.req.Query[it.cfg.OffsetParam] = it.offset
 	default:
 		it.done = true
 	}

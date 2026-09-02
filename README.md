@@ -8,7 +8,6 @@ Generated from the OpenAPI spec by [typeship](https://typeship.dev). Change the 
 - **Typed errors** — every documented error response is a type you can match with `errors.As`
 - **Context-aware** — every call takes a `context.Context`, so cancellation and deadlines work
 - **Retries built in** — idempotent requests retry with exponential backoff and `Retry-After` support
-- **Forward-compatible responses** — enum values decode even when new, union raw JSON remains available, and `WithAPIResponse` preserves the complete body
 
 ## Install
 
@@ -103,7 +102,7 @@ Pass `WithAPIResponse` to read the status, headers, and request id of a call alo
 ```go
 var meta typeship.APIResponse
 result, err := client.Account.Retrieve(ctx, typeship.WithAPIResponse(&meta))
-fmt.Println(meta.StatusCode, meta.RequestID, meta.Header.Get("RateLimit-Remaining"))
+fmt.Println(meta.StatusCode, meta.RequestID, meta.Header.Get("X-RateLimit-Remaining"))
 ```
 
 ## Configuration

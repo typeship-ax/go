@@ -4,7 +4,7 @@ package typeship
 
 import "fmt"
 
-// BadRequestError is returned for 400 responses. The request body, Definition source, target selection, or package name is invalid.
+// BadRequestError is returned for 400 responses. The request body, specification source, output selection, or package name is invalid.
 type BadRequestError struct {
 	APIError
 }
@@ -36,7 +36,7 @@ type PayloadTooLargeError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *PayloadTooLargeError) Unwrap() error { return &e.APIError }
 
-// UnprocessableEntityError is returned for 422 responses. The Definition could not be resolved or understood.
+// UnprocessableEntityError is returned for 422 responses. The spec could not be understood.
 type UnprocessableEntityError struct {
 	APIError
 }
@@ -60,7 +60,7 @@ type APIResponseError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *APIResponseError) Unwrap() error { return &e.APIError }
 
-// PaymentRequiredError is returned for 402 responses. The plan does not include another project or the requested target configuration.
+// PaymentRequiredError is returned for 402 responses. The plan does not include another project or the requested output configuration.
 type PaymentRequiredError struct {
 	APIError
 }
