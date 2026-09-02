@@ -330,7 +330,8 @@ type GenerationResult struct {
 	Meta     GenerationMeta    `json:"meta"`
 	Limits   *GenerationLimits `json:"limits,omitempty"`
 	// Claim Anonymous, URL-sourced generations only. A link a signed-in person can open to turn this run into a project in their organization (same Definition, Target, and config). Lasts seven days. Null for inline Definitions; absent on keyed calls.
-	Claim *GenerationResultClaim `json:"claim,omitempty"`
+	Claim     *GenerationResultClaim `json:"claim,omitempty"`
+	RequestID RequestID              `json:"request_id"`
 }
 
 // GeneratedFile is an API model.
@@ -490,6 +491,9 @@ type GenerationResultClaim struct {
 	ExpiresAt string `json:"expires_at"`
 }
 
+// RequestID is a generated API type.
+type RequestID string
+
 // ProjectList is an API model.
 type ProjectList struct {
 	Object ListObject       `json:"object"`
@@ -497,7 +501,8 @@ type ProjectList struct {
 	// HasMore Whether another page is available after this one.
 	HasMore bool `json:"has_more"`
 	// NextCursor Pass this value as cursor to retrieve the next page; null on the last page.
-	NextCursor string `json:"next_cursor"`
+	NextCursor string    `json:"next_cursor"`
+	RequestID  RequestID `json:"request_id"`
 }
 
 // ListObject is a generated API type.
@@ -899,7 +904,8 @@ type Project struct {
 	Config    ProjectConfig `json:"config"`
 	CreatedAt string        `json:"created_at"`
 	// UpdatedAt When the project configuration last changed.
-	UpdatedAt string `json:"updated_at"`
+	UpdatedAt string    `json:"updated_at"`
+	RequestID RequestID `json:"request_id"`
 }
 
 // Target is an API model.
@@ -921,6 +927,7 @@ type Target struct {
 	Deliveries []Delivery    `json:"deliveries"`
 	CreatedAt  string        `json:"created_at"`
 	UpdatedAt  string        `json:"updated_at"`
+	RequestID  *RequestID    `json:"request_id,omitempty"`
 }
 
 // TargetID is a generated API type.
@@ -1036,9 +1043,10 @@ type HostedMCPDelivery struct {
 
 // DeletedProject is an API model.
 type DeletedProject struct {
-	ID      ProjectID `json:"id"`
-	Object  string    `json:"object"`
-	Deleted bool      `json:"deleted"`
+	ID        ProjectID `json:"id"`
+	Object    string    `json:"object"`
+	Deleted   bool      `json:"deleted"`
+	RequestID RequestID `json:"request_id"`
 }
 
 // UpdateProjectRequest is an API model.
@@ -1070,6 +1078,7 @@ type DiagnosticReport struct {
 	Policy      DiagnosticPolicy     `json:"policy"`
 	Evaluation  DiagnosticEvaluation `json:"evaluation"`
 	Delta       DiagnosticDelta      `json:"delta"`
+	RequestID   RequestID            `json:"request_id"`
 }
 
 // DefinitionRevisionID is a generated API type.
@@ -1202,7 +1211,8 @@ type DiagnosticRemediation struct {
 	Kind           DiagnosticRemediationKind `json:"kind"`
 	PatchesApplied int64                     `json:"patches_applied"`
 	// ReviewURL Source pull request for repository projects; absent for URL overlays.
-	ReviewURL *string `json:"review_url,omitempty"`
+	ReviewURL *string   `json:"review_url,omitempty"`
+	RequestID RequestID `json:"request_id"`
 }
 
 // DiagnosticRemediationKind is one of "overlay", "source_review".
@@ -1221,6 +1231,7 @@ type RepositoryIntegrationHealth struct {
 	Repositories   []RepositoryHealth                        `json:"repositories"`
 	RequiredChecks RepositoryIntegrationHealthRequiredChecks `json:"required_checks"`
 	LastEvent      RepositoryEventHealth                     `json:"last_event"`
+	RequestID      RequestID                                 `json:"request_id"`
 }
 
 // Status is one of "ready", "action_required".
@@ -1312,7 +1323,8 @@ type GenerationList struct {
 	// HasMore Whether another page is available after this one.
 	HasMore bool `json:"has_more"`
 	// NextCursor Pass this value as cursor to retrieve the next page; null on the last page.
-	NextCursor string `json:"next_cursor"`
+	NextCursor string    `json:"next_cursor"`
+	RequestID  RequestID `json:"request_id"`
 }
 
 // Generation is an API model.
@@ -1338,6 +1350,7 @@ type Generation struct {
 	Files     []GeneratedFile `json:"files,omitempty"`
 	Error     string          `json:"error"`
 	CreatedAt string          `json:"created_at"`
+	RequestID *RequestID      `json:"request_id,omitempty"`
 }
 
 // GenerationID is a generated API type.
@@ -1385,7 +1398,8 @@ type GenerationProvenance struct {
 
 // GenerationBatch is an API model.
 type GenerationBatch struct {
-	Data []GenerationBatchDataItem `json:"data"`
+	Data      []GenerationBatchDataItem `json:"data"`
+	RequestID RequestID                 `json:"request_id"`
 }
 
 // GenerationBatchDataItem is one of Generation, GenerationFailure.
@@ -1470,6 +1484,7 @@ type Definition struct {
 	LatestRevisionID DefinitionRevisionID `json:"latest_revision_id"`
 	CreatedAt        string               `json:"created_at"`
 	UpdatedAt        string               `json:"updated_at"`
+	RequestID        RequestID            `json:"request_id"`
 }
 
 // DefinitionSource is one of URLDefinitionSource, RepositoryDefinitionSource — The single source of truth for where a Project's Definition lives.
@@ -1575,6 +1590,7 @@ type TargetList struct {
 	Data       []Target   `json:"data"`
 	HasMore    bool       `json:"has_more"`
 	NextCursor string     `json:"next_cursor"`
+	RequestID  RequestID  `json:"request_id"`
 }
 
 // TargetFields is an API model.
@@ -1590,6 +1606,42 @@ type TargetFields struct {
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are rejected here and belong to the Definition.
 	Config     *ProjectConfig  `json:"config,omitempty"`
 	Deliveries []DeliveryInput `json:"deliveries,omitempty"`
+}
+
+// TargetResponse is an API model.
+type TargetResponse struct {
+	ID              TargetID                    `json:"id"`
+	Object          string                      `json:"object"`
+	ProjectID       ProjectID                   `json:"project_id"`
+	DefinitionID    DefinitionID                `json:"definition_id"`
+	Name            string                      `json:"name"`
+	Generator       GeneratorKind               `json:"generator"`
+	State           State                       `json:"state"`
+	Edition         string                      `json:"edition"`
+	ReleaseChannel  ReleaseChannel              `json:"release_channel"`
+	VersionPolicy   TargetResponseVersionPolicy `json:"version_policy"`
+	CurrentVersion  string                      `json:"current_version"`
+	ProposedVersion string                      `json:"proposed_version"`
+	// Config Target-specific overrides merged over Project.config. GraphQL settings are Definition-owned and never appear here.
+	Config     ProjectConfig `json:"config"`
+	Deliveries []Delivery    `json:"deliveries"`
+	CreatedAt  string        `json:"created_at"`
+	UpdatedAt  string        `json:"updated_at"`
+	RequestID  RequestID     `json:"request_id"`
+}
+
+// TargetResponseVersionPolicy is an API model.
+type TargetResponseVersionPolicy struct {
+	Mode         string `json:"mode"`
+	Pre1Breaking string `json:"pre1_breaking"`
+}
+
+// DeletedTarget is an API model.
+type DeletedTarget struct {
+	ID        TargetID  `json:"id"`
+	Object    string    `json:"object"`
+	Deleted   bool      `json:"deleted"`
+	RequestID RequestID `json:"request_id"`
 }
 
 // TargetUpdateRequest is an API model.
@@ -1610,6 +1662,7 @@ type TargetReleaseList struct {
 	Data       []TargetRelease `json:"data"`
 	HasMore    bool            `json:"has_more"`
 	NextCursor string          `json:"next_cursor"`
+	RequestID  RequestID       `json:"request_id"`
 }
 
 // TargetRelease is an API model.
@@ -1626,12 +1679,74 @@ type TargetRelease struct {
 	Repository           RepositoryReference  `json:"repository"`
 	DefinitionRevisionID DefinitionRevisionID `json:"definition_revision_id"`
 	// DeliveryRevision Immutable provider-native revision that was merged or published.
-	DeliveryRevision string `json:"delivery_revision"`
-	CreatedAt        string `json:"created_at"`
+	DeliveryRevision string     `json:"delivery_revision"`
+	CreatedAt        string     `json:"created_at"`
+	RequestID        *RequestID `json:"request_id,omitempty"`
 }
 
 // TargetReleaseID is a generated API type.
 type TargetReleaseID string
+
+// TargetReleaseResponse is an API model.
+type TargetReleaseResponse struct {
+	ID           TargetReleaseID `json:"id"`
+	Object       string          `json:"object"`
+	TargetID     TargetID        `json:"target_id"`
+	GenerationID GenerationID    `json:"generation_id"`
+	// Version Immutable package version released from this Target.
+	Version string         `json:"version"`
+	Channel ReleaseChannel `json:"channel"`
+	// Provider Delivery provider that accepted the release.
+	Provider             string               `json:"provider"`
+	Repository           RepositoryReference  `json:"repository"`
+	DefinitionRevisionID DefinitionRevisionID `json:"definition_revision_id"`
+	// DeliveryRevision Immutable provider-native revision that was merged or published.
+	DeliveryRevision string    `json:"delivery_revision"`
+	CreatedAt        string    `json:"created_at"`
+	RequestID        RequestID `json:"request_id"`
+}
+
+// GenerationResponse is an API model.
+type GenerationResponse struct {
+	ID     GenerationID `json:"id"`
+	Object string       `json:"object"`
+	// FilesOmitted Present and true when the generated target was too large to inline; files_index lists paths, fetched one at a time via GET /generations/{generation_id}/file.
+	FilesOmitted         *bool                `json:"files_omitted,omitempty"`
+	FilesIndex           []FileStub           `json:"files_index,omitempty"`
+	ProjectID            ProjectID            `json:"project_id"`
+	DefinitionRevisionID DefinitionRevisionID `json:"definition_revision_id"`
+	Status               GenerationStatus     `json:"status"`
+	Trigger              GenerationTrigger    `json:"trigger"`
+	// TargetID Persisted Target identity. Null only for stateless generation.
+	TargetID TargetID `json:"target_id"`
+	// Generator Resolved generator implementation; provenance rather than resource identity.
+	Generator  GeneratorKind                `json:"generator"`
+	Provenance GenerationResponseProvenance `json:"provenance"`
+	// Meta Null only for a failed or legacy generation that produced no metadata.
+	Meta     GenerationMeta `json:"meta"`
+	Warnings []string       `json:"warnings"`
+	// Files Present on retrieve and create; omitted in lists.
+	Files     []GeneratedFile `json:"files,omitempty"`
+	Error     string          `json:"error"`
+	CreatedAt string          `json:"created_at"`
+	RequestID RequestID       `json:"request_id"`
+}
+
+// GenerationResponseProvenance is an API model.
+type GenerationResponseProvenance struct {
+	// GeneratorEdition Pinned generator contract edition.
+	GeneratorEdition string `json:"generator_edition"`
+	// EngineBuild Exact engine build identifier used for replay and support.
+	EngineBuild string `json:"engine_build"`
+	// ResolvedConfig Immutable effective Target configuration used by this run; source credentials are never included.
+	ResolvedConfig map[string]any `json:"resolved_config"`
+	ConfigHash     string         `json:"config_hash"`
+	// SurfacePlan Resolved generator and entitlement plan used to select the emitted public surface.
+	SurfacePlan     map[string]any `json:"surface_plan"`
+	SurfacePlanHash string         `json:"surface_plan_hash"`
+	EntitlementCap  int64          `json:"entitlement_cap"`
+	PackageVersion  string         `json:"package_version"`
+}
 
 // DefinitionRevisionList is an API model.
 type DefinitionRevisionList struct {
@@ -1640,7 +1755,8 @@ type DefinitionRevisionList struct {
 	// HasMore Whether another page is available after this one.
 	HasMore bool `json:"has_more"`
 	// NextCursor Pass this value as cursor to retrieve the next page; null on the last page.
-	NextCursor string `json:"next_cursor"`
+	NextCursor string    `json:"next_cursor"`
+	RequestID  RequestID `json:"request_id"`
 }
 
 // DefinitionRevision is an API model.
@@ -1660,6 +1776,7 @@ type DefinitionRevision struct {
 	// Source Origin recorded when this immutable revision was created.
 	Source    DefinitionRevisionSource `json:"source"`
 	CreatedAt string                   `json:"created_at"`
+	RequestID *RequestID               `json:"request_id,omitempty"`
 }
 
 // DefinitionDocument is an API model.
@@ -1773,6 +1890,26 @@ type RepositoryDefinitionRevisionSource struct {
 	CommitSha *string `json:"commit_sha,omitempty"`
 }
 
+// DefinitionRevisionResponse is an API model.
+type DefinitionRevisionResponse struct {
+	ID            DefinitionRevisionID `json:"id"`
+	Object        string               `json:"object"`
+	ProjectID     ProjectID            `json:"project_id"`
+	DefinitionID  DefinitionID         `json:"definition_id"`
+	Format        Format               `json:"format"`
+	DocumentCount int64                `json:"document_count"`
+	// Documents Present on retrieve; list responses use document_count.
+	Documents []DefinitionDocument `json:"documents,omitempty"`
+	// Sha256 SHA-256 digest of every document coordinate, digest, and size in the resolved graph.
+	Sha256 string `json:"sha256"`
+	// SizeBytes Total bytes across all source documents.
+	SizeBytes int64 `json:"size_bytes"`
+	// Source Origin recorded when this immutable revision was created.
+	Source    DefinitionRevisionSource `json:"source"`
+	CreatedAt string                   `json:"created_at"`
+	RequestID RequestID                `json:"request_id"`
+}
+
 // Account is an API model. The organization an API key belongs to. Members share its projects, keys, and plan; sign-in identity is not part of the API.
 type Account struct {
 	ID     string `json:"id"`
@@ -1781,6 +1918,7 @@ type Account struct {
 	Name      string      `json:"name"`
 	Plan      AccountPlan `json:"plan"`
 	CreatedAt string      `json:"created_at"`
+	RequestID RequestID   `json:"request_id"`
 }
 
 // AccountPlan is one of "free", "pro", "enterprise".
@@ -1799,7 +1937,8 @@ type APIKeyList struct {
 	// HasMore Whether another page is available after this one.
 	HasMore bool `json:"has_more"`
 	// NextCursor Pass this value as cursor to retrieve the next page; null on the last page.
-	NextCursor string `json:"next_cursor"`
+	NextCursor string    `json:"next_cursor"`
+	RequestID  RequestID `json:"request_id"`
 }
 
 // APIKey is an API model.
@@ -1808,8 +1947,22 @@ type APIKey struct {
 	Object string `json:"object"`
 	Name   string `json:"name"`
 	// Last4 Last four characters of the secret; the secret itself is never stored.
-	Last4      string `json:"last4"`
-	Revoked    bool   `json:"revoked"`
-	LastUsedAt string `json:"last_used_at"`
-	CreatedAt  string `json:"created_at"`
+	Last4      string     `json:"last4"`
+	Revoked    bool       `json:"revoked"`
+	LastUsedAt string     `json:"last_used_at"`
+	CreatedAt  string     `json:"created_at"`
+	RequestID  *RequestID `json:"request_id,omitempty"`
+}
+
+// APIKeyResponse is an API model.
+type APIKeyResponse struct {
+	ID     string `json:"id"`
+	Object string `json:"object"`
+	Name   string `json:"name"`
+	// Last4 Last four characters of the secret; the secret itself is never stored.
+	Last4      string    `json:"last4"`
+	Revoked    bool      `json:"revoked"`
+	LastUsedAt string    `json:"last_used_at"`
+	CreatedAt  string    `json:"created_at"`
+	RequestID  RequestID `json:"request_id"`
 }

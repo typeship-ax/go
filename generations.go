@@ -24,7 +24,7 @@ type GenerationsRetrieveFileParams struct {
 // Includes the generated files when the generation succeeded.
 //
 // GET /generations/{generation_id}
-func (s *GenerationsService) Retrieve(ctx context.Context, generationID string, opts ...RequestOption) (*Generation, error) {
+func (s *GenerationsService) Retrieve(ctx context.Context, generationID string, opts ...RequestOption) (*GenerationResponse, error) {
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/generations/%s", url.PathEscape(generationID)),
@@ -32,7 +32,7 @@ func (s *GenerationsService) Retrieve(ctx context.Context, generationID string, 
 		SchemaKey:  "generations.retrieve",
 		Idempotent: true,
 	}
-	var out Generation
+	var out GenerationResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}

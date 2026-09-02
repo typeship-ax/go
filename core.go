@@ -292,12 +292,12 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 			return transportErr
 		}
 		readErr := err
-		requestID := resp.Header.Get("Request-Id")
+		requestID := requestIDFromBody(body)
 		if requestID == "" {
-			requestID = resp.Header.Get("X-Request-Id")
+			requestID = resp.Header.Get("Request-Id")
 		}
 		if requestID == "" {
-			requestID = requestIDFromBody(body)
+			requestID = resp.Header.Get("X-Request-Id")
 		}
 		if cfg.response != nil {
 			*cfg.response = APIResponse{StatusCode: resp.StatusCode, Header: resp.Header.Clone(), RequestID: requestID, Body: append([]byte(nil), body...)}

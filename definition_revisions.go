@@ -17,7 +17,7 @@ type DefinitionRevisionsService struct {
 type DefinitionRevisionsListParams struct {
 	// Limit Maximum number of resources to return.
 	Limit *int64 `json:"-"`
-	// Cursor Opaque cursor from the preceding page's next_cursor.
+	// Cursor Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it.
 	Cursor *string `json:"-"`
 }
 
@@ -67,7 +67,7 @@ func (s *DefinitionRevisionsService) List(ctx context.Context, definitionID stri
 // Metadata for one immutable resolved document graph. Fetch its canonical content or individual source documents from the content endpoints.
 //
 // GET /definition_revisions/{definition_revision_id}
-func (s *DefinitionRevisionsService) Retrieve(ctx context.Context, definitionRevisionID string, opts ...RequestOption) (*DefinitionRevision, error) {
+func (s *DefinitionRevisionsService) Retrieve(ctx context.Context, definitionRevisionID string, opts ...RequestOption) (*DefinitionRevisionResponse, error) {
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/definition_revisions/%s", url.PathEscape(definitionRevisionID)),
@@ -75,7 +75,7 @@ func (s *DefinitionRevisionsService) Retrieve(ctx context.Context, definitionRev
 		SchemaKey:  "definitionRevisions.retrieve",
 		Idempotent: true,
 	}
-	var out DefinitionRevision
+	var out DefinitionRevisionResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}

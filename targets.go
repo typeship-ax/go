@@ -13,22 +13,59 @@ type TargetsService struct {
 	core *core
 }
 
+// TargetsListParams are the inputs for TargetsService.List.
+type TargetsListParams struct {
+	// Limit Maximum number of resources to return.
+	Limit *int64 `json:"-"`
+	// Cursor Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it.
+	Cursor *string `json:"-"`
+}
+
+// TargetsListReleasesParams are the inputs for TargetsService.ListReleases.
+type TargetsListReleasesParams struct {
+	// Limit Maximum number of resources to return.
+	Limit *int64 `json:"-"`
+	// Cursor Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it.
+	Cursor *string `json:"-"`
+}
+
 // List a project's Targets.
 //
 // GET /projects/{project_id}/targets
-func (s *TargetsService) List(ctx context.Context, projectID string, opts ...RequestOption) (*TargetList, error) {
+//
+// Returns an iterator that fetches pages lazily:
+//
+//	it := client.Targets.List(ctx, id, nil)
+//	for it.Next() {
+//		item := it.Value()
+//	}
+//	if err := it.Err(); err != nil { ... }
+func (s *TargetsService) List(ctx context.Context, projectID string, params *TargetsListParams, opts ...RequestOption) *Iter[Target] {
+	query := map[string]any{}
+	if params != nil {
+		if params.Limit != nil {
+			query["limit"] = *params.Limit
+		}
+		if params.Cursor != nil {
+			query["cursor"] = *params.Cursor
+		}
+	}
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/projects/%s/targets", url.PathEscape(projectID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Query:      query,
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
 		SchemaKey:  "targets.list",
 		Idempotent: true,
 	}
-	var out TargetList
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
+	return newIter[Target](ctx, s.core, req, opts, pageConfig{
+		Style:           "cursor",
+		ItemsField:      "data",
+		CursorParam:     "cursor",
+		NextCursorField: "next_cursor",
+		HasMoreField:    "has_more",
+		LimitParam:      "limit",
+	})
 }
 
 // Create an independently configured Target.
@@ -36,7 +73,7 @@ func (s *TargetsService) List(ctx context.Context, projectID string, opts ...Req
 // Several Targets may use the same generator with distinct configuration, Deliveries, and release streams.
 //
 // POST /projects/{project_id}/targets
-func (s *TargetsService) Create(ctx context.Context, projectID string, body TargetFields, opts ...RequestOption) (*Target, error) {
+func (s *TargetsService) Create(ctx context.Context, projectID string, body TargetFields, opts ...RequestOption) (*TargetResponse, error) {
 	req := request{
 		Method:    "POST",
 		Path:      fmt.Sprintf("/projects/%s/targets", url.PathEscape(projectID)),
@@ -44,7 +81,7 @@ func (s *TargetsService) Create(ctx context.Context, projectID string, body Targ
 		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
 		SchemaKey: "targets.create",
 	}
-	var out Target
+	var out TargetResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}
@@ -54,7 +91,7 @@ func (s *TargetsService) Create(ctx context.Context, projectID string, body Targ
 // Retrieve a Target.
 //
 // GET /targets/{target_id}
-func (s *TargetsService) Retrieve(ctx context.Context, targetID string, opts ...RequestOption) (*Target, error) {
+func (s *TargetsService) Retrieve(ctx context.Context, targetID string, opts ...RequestOption) (*TargetResponse, error) {
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/targets/%s", url.PathEscape(targetID)),
@@ -62,7 +99,7 @@ func (s *TargetsService) Retrieve(ctx context.Context, targetID string, opts ...
 		SchemaKey:  "targets.retrieve",
 		Idempotent: true,
 	}
-	var out Target
+	var out TargetResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}
@@ -74,20 +111,25 @@ func (s *TargetsService) Retrieve(ctx context.Context, targetID string, opts ...
 // Targets with Generation or release history, or an active release candidate, must be disabled instead.
 //
 // DELETE /targets/{target_id}
-func (s *TargetsService) Delete(ctx context.Context, targetID string, opts ...RequestOption) error {
+func (s *TargetsService) Delete(ctx context.Context, targetID string, opts ...RequestOption) (*DeletedTarget, error) {
 	req := request{
 		Method:     "DELETE",
 		Path:       fmt.Sprintf("/targets/%s", url.PathEscape(targetID)),
 		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError},
+		SchemaKey:  "targets.delete",
 		Idempotent: true,
 	}
-	return s.core.do(ctx, req, nil, opts...)
+	var out DeletedTarget
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 // Update a Target, its Deliveries, or its next reviewed version.
 //
 // PATCH /targets/{target_id}
-func (s *TargetsService) Update(ctx context.Context, targetID string, body TargetUpdateRequest, opts ...RequestOption) (*Target, error) {
+func (s *TargetsService) Update(ctx context.Context, targetID string, body TargetUpdateRequest, opts ...RequestOption) (*TargetResponse, error) {
 	req := request{
 		Method:    "PATCH",
 		Path:      fmt.Sprintf("/targets/%s", url.PathEscape(targetID)),
@@ -95,7 +137,7 @@ func (s *TargetsService) Update(ctx context.Context, targetID string, body Targe
 		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
 		SchemaKey: "targets.update",
 	}
-	var out Target
+	var out TargetResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}
@@ -105,25 +147,46 @@ func (s *TargetsService) Update(ctx context.Context, targetID string, body Targe
 // ListReleases — list immutable releases for a Target.
 //
 // GET /targets/{target_id}/releases
-func (s *TargetsService) ListReleases(ctx context.Context, targetID string, opts ...RequestOption) (*TargetReleaseList, error) {
+//
+// Returns an iterator that fetches pages lazily:
+//
+//	it := client.Targets.ListReleases(ctx, id, nil)
+//	for it.Next() {
+//		item := it.Value()
+//	}
+//	if err := it.Err(); err != nil { ... }
+func (s *TargetsService) ListReleases(ctx context.Context, targetID string, params *TargetsListReleasesParams, opts ...RequestOption) *Iter[TargetRelease] {
+	query := map[string]any{}
+	if params != nil {
+		if params.Limit != nil {
+			query["limit"] = *params.Limit
+		}
+		if params.Cursor != nil {
+			query["cursor"] = *params.Cursor
+		}
+	}
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/targets/%s/releases", url.PathEscape(targetID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Query:      query,
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
 		SchemaKey:  "targets.listReleases",
 		Idempotent: true,
 	}
-	var out TargetReleaseList
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
+	return newIter[TargetRelease](ctx, s.core, req, opts, pageConfig{
+		Style:           "cursor",
+		ItemsField:      "data",
+		CursorParam:     "cursor",
+		NextCursorField: "next_cursor",
+		HasMoreField:    "has_more",
+		LimitParam:      "limit",
+	})
 }
 
 // RetrieveRelease — retrieve an immutable Target release.
 //
 // GET /target_releases/{target_release_id}
-func (s *TargetsService) RetrieveRelease(ctx context.Context, targetReleaseID string, opts ...RequestOption) (*TargetRelease, error) {
+func (s *TargetsService) RetrieveRelease(ctx context.Context, targetReleaseID string, opts ...RequestOption) (*TargetReleaseResponse, error) {
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/target_releases/%s", url.PathEscape(targetReleaseID)),
@@ -131,7 +194,7 @@ func (s *TargetsService) RetrieveRelease(ctx context.Context, targetReleaseID st
 		SchemaKey:  "targets.retrieveRelease",
 		Idempotent: true,
 	}
-	var out TargetRelease
+	var out TargetReleaseResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}

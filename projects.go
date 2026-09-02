@@ -17,7 +17,7 @@ type ProjectsService struct {
 type ProjectsListParams struct {
 	// Limit Maximum number of resources to return.
 	Limit *int64 `json:"-"`
-	// Cursor Opaque cursor from the preceding page's next_cursor.
+	// Cursor Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it.
 	Cursor *string `json:"-"`
 }
 
@@ -31,7 +31,7 @@ type ProjectsCreateParams struct {
 type ProjectsListGenerationsParams struct {
 	// Limit Maximum number of resources to return.
 	Limit *int64 `json:"-"`
-	// Cursor Opaque cursor from the preceding page's next_cursor.
+	// Cursor Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it.
 	Cursor *string `json:"-"`
 	// TargetID Only generations for this persisted Target.
 	TargetID *TargetID `json:"-"`

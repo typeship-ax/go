@@ -59,7 +59,7 @@ Safety: **read** · Authentication: **required**
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `params.Limit` | query | `*int64` | no | Maximum number of resources to return. |
-| `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. |
+| `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it. |
 
 Returns: `*Iter[ProjectSummary]` — auto-paginating (`for it.Next()` walks every page)
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*RateLimitedError` (429)
@@ -324,7 +324,7 @@ Safety: **read** · Authentication: **required**
 | --- | --- | --- | --- | --- |
 | `projectID` | path | `string` | yes | — |
 | `params.Limit` | query | `*int64` | no | Maximum number of resources to return. |
-| `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. |
+| `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it. |
 | `params.TargetID` | query | `*TargetID` | no | Only generations for this persisted Target. |
 
 Returns: `*Iter[Generation]` — auto-paginating (`for it.Next()` walks every page)
@@ -435,7 +435,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ## targets
 
-### `client.Targets.List(ctx, projectID)`
+### `client.Targets.List(ctx, projectID, params)`
 
 List a project's Targets
 
@@ -446,9 +446,11 @@ Safety: **read** · Authentication: **required**
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `projectID` | path | `string` | yes | — |
+| `params.Limit` | query | `*int64` | no | Maximum number of resources to return. |
+| `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it. |
 
-Returns: `(*TargetList, error)`
-Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429)
+Returns: `*Iter[Target]` — auto-paginating (`for it.Next()` walks every page)
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429)
 
 <details>
 <summary>Wire arguments (CLI and MCP)</summary>
@@ -477,7 +479,7 @@ Safety: **write** · Authentication: **required**
 
 Body: `TargetFields` (required)
 
-Returns: `(*Target, error)`
+Returns: `(*TargetResponse, error)`
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*UnprocessableEntityError` (422), `*RateLimitedError` (429)
 
 <details>
@@ -506,7 +508,7 @@ Safety: **read** · Authentication: **required**
 | --- | --- | --- | --- | --- |
 | `targetID` | path | `string` | yes | — |
 
-Returns: `(*Target, error)`
+Returns: `(*TargetResponse, error)`
 Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429)
 
 <details>
@@ -534,7 +536,7 @@ Safety: **destructive** · Authentication: **required**
 | --- | --- | --- | --- | --- |
 | `targetID` | path | `string` | yes | — |
 
-Returns: `error`
+Returns: `(*DeletedTarget, error)`
 Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*RateLimitedError` (429)
 
 <details>
@@ -562,7 +564,7 @@ Safety: **write** · Authentication: **required**
 
 Body: `TargetUpdateRequest` (required)
 
-Returns: `(*Target, error)`
+Returns: `(*TargetResponse, error)`
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*UnprocessableEntityError` (422), `*RateLimitedError` (429)
 
 <details>
@@ -576,7 +578,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 </details>
 
-### `client.Targets.ListReleases(ctx, targetID)`
+### `client.Targets.ListReleases(ctx, targetID, params)`
 
 List immutable releases for a Target
 
@@ -587,9 +589,11 @@ Safety: **read** · Authentication: **required**
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `targetID` | path | `string` | yes | — |
+| `params.Limit` | query | `*int64` | no | Maximum number of resources to return. |
+| `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it. |
 
-Returns: `(*TargetReleaseList, error)`
-Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429)
+Returns: `*Iter[TargetRelease]` — auto-paginating (`for it.Next()` walks every page)
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429)
 
 <details>
 <summary>Wire arguments (CLI and MCP)</summary>
@@ -614,7 +618,7 @@ Safety: **read** · Authentication: **required**
 | --- | --- | --- | --- | --- |
 | `targetReleaseID` | path | `string` | yes | — |
 
-Returns: `(*TargetRelease, error)`
+Returns: `(*TargetReleaseResponse, error)`
 Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429)
 
 <details>
@@ -644,7 +648,7 @@ Safety: **read** · Authentication: **required**
 | --- | --- | --- | --- | --- |
 | `generationID` | path | `string` | yes | — |
 
-Returns: `(*Generation, error)`
+Returns: `(*GenerationResponse, error)`
 Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429)
 
 <details>
@@ -704,7 +708,7 @@ Safety: **read** · Authentication: **required**
 | --- | --- | --- | --- | --- |
 | `definitionID` | path | `string` | yes | — |
 | `params.Limit` | query | `*int64` | no | Maximum number of resources to return. |
-| `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. |
+| `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it. |
 
 Returns: `*Iter[DefinitionRevision]` — auto-paginating (`for it.Next()` walks every page)
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429)
@@ -734,7 +738,7 @@ Safety: **read** · Authentication: **required**
 | --- | --- | --- | --- | --- |
 | `definitionRevisionID` | path | `string` | yes | — |
 
-Returns: `(*DefinitionRevision, error)`
+Returns: `(*DefinitionRevisionResponse, error)`
 Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429)
 
 <details>
@@ -844,7 +848,7 @@ Safety: **read** · Authentication: **required**
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `params.Limit` | query | `*int64` | no | Maximum number of resources to return. |
-| `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. |
+| `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it. |
 
 Returns: `*Iter[APIKey]` — auto-paginating (`for it.Next()` walks every page)
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*RateLimitedError` (429)
@@ -872,7 +876,7 @@ Safety: **destructive** · Authentication: **required**
 | --- | --- | --- | --- | --- |
 | `apiKeyID` | path | `string` | yes | — |
 
-Returns: `(*APIKey, error)`
+Returns: `(*APIKeyResponse, error)`
 Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429)
 
 <details>
