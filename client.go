@@ -10,9 +10,9 @@ import (
 )
 
 // Version is this package's version, also sent as the User-Agent.
-const Version = "0.7.0"
+const Version = "0.8.0"
 
-const userAgent = "typeship/0.7.0 (typeship)"
+const userAgent = "typeship/0.8.0 (typeship)"
 
 // Option configures a Client at construction.
 type Option func(*core)
@@ -100,12 +100,14 @@ func WithBearerTokenFunc(fn func() (string, error)) Option {
 
 // Client is the entry point for typeship.
 type Client struct {
-	Generate      *GenerateService
-	Projects      *ProjectsService
-	Generations   *GenerationsService
-	SpecRevisions *SpecRevisionsService
-	Account       *AccountService
-	APIKeys       *APIKeysService
+	Generate            *GenerateService
+	Projects            *ProjectsService
+	Definitions         *DefinitionsService
+	Targets             *TargetsService
+	Generations         *GenerationsService
+	DefinitionRevisions *DefinitionRevisionsService
+	Account             *AccountService
+	APIKeys             *APIKeysService
 
 	core *core
 }
@@ -137,8 +139,10 @@ func New(opts ...Option) (*Client, error) {
 	client := &Client{core: c}
 	client.Generate = &GenerateService{core: c}
 	client.Projects = &ProjectsService{core: c}
+	client.Definitions = &DefinitionsService{core: c}
+	client.Targets = &TargetsService{core: c}
 	client.Generations = &GenerationsService{core: c}
-	client.SpecRevisions = &SpecRevisionsService{core: c}
+	client.DefinitionRevisions = &DefinitionRevisionsService{core: c}
 	client.Account = &AccountService{core: c}
 	client.APIKeys = &APIKeysService{core: c}
 	return client, nil
