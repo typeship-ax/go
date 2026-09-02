@@ -120,6 +120,8 @@ type Config struct {
 	Package    *PackageBehavior                 `json:"package,omitempty"`
 	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Definition's externalDocs URL.
 	DocsURL *string `json:"docs_url,omitempty"`
+	// DocsIndexURL Exact llms.txt URL when the documentation site does not publish it at docs_url + /llms.txt.
+	DocsIndexURL *string `json:"docs_index_url,omitempty"`
 }
 
 // RetryTuning is an API model. Retry behavior. Top-level fields adjust every operation; operations maps operationId or "METHOD /path" keys to per-operation overrides.
@@ -364,6 +366,8 @@ type GenerationMeta struct {
 	PaginatedOperationCount *int64          `json:"paginated_operation_count,omitempty"`
 	// OmittedOperationCount Operations beyond the plan's endpoint allowance, not generated.
 	OmittedOperationCount *int64 `json:"omitted_operation_count,omitempty"`
+	// OmittedOperations METHOD/path identities of operations omitted by the generation cap.
+	OmittedOperations []string `json:"omitted_operations,omitempty"`
 	// PrURL Pull request opened by this regeneration, when one was.
 	PrURL    *string `json:"pr_url,omitempty"`
 	PrNumber *int64  `json:"pr_number,omitempty"`
@@ -735,6 +739,8 @@ type ProjectConfig struct {
 	Package    *PackageBehavior                        `json:"package,omitempty"`
 	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Definition's externalDocs URL.
 	DocsURL *string `json:"docs_url,omitempty"`
+	// DocsIndexURL Exact llms.txt URL when the documentation site does not publish it at docs_url + /llms.txt.
+	DocsIndexURL *string `json:"docs_index_url,omitempty"`
 }
 
 // ProjectConfigPaginationValue is one of PaginationRule, bool.
