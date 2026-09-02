@@ -1,14 +1,16 @@
 # typeship — agent context
 
-This package contains the generated Go SDK for **typeship** (v0.7.0).
+This package contains the generated Go SDK for **typeship** (API v1.0.0, package v0.8.0).
 
-Generate production SDKs, CLIs, and MCP servers from an OpenAPI or
-GraphQL spec, and keep every selected output current.
+Resolve an OpenAPI or GraphQL Definition, diagnose it, and keep every
+selected SDK, CLI, and MCP Target current.
 
-Every operation but one requires an API key, created in the console and
-sent as `Authorization: Bearer ak_...`. A browser session is not a
-credential for this API. The exception is POST /generate, which works
-anonymously with the free plan's limits.
+Every operation but one requires a bearer credential: an organization
+API key from the console, or an OAuth access token carrying the operation's
+read, generate, or write capability and the organization selected during
+consent. OAuth grants cannot switch organizations after consent. A browser
+session is not a credential for this API. The exception is POST /generate,
+which works anonymously with the free plan's limits.
 
 ## Ground rules
 - Generated code: never edit files in this package by hand — changes are lost on regeneration. Wrap the client in your own code instead.
@@ -30,6 +32,7 @@ if err != nil {
 - Optional fields are pointers; slices and maps are already nil-able and stay bare.
 - Paginated methods return an `*Iter[T]`: `for it.Next() { it.Value() }`, then check `it.Err()`.
 - Every method takes variadic `RequestOption`s (`WithRequestTimeout`, `WithRequestMaxRetries`, `WithRequestHeader`, `WithAPIResponse` for status/headers/request id) for per-call overrides.
+- `WithValidation(ValidateError)` checks request and response bodies against the generated schema table; `ValidateWarn` reports drift and continues.
 - A `$ref`, array, or text body is a positional `body` argument; inline object bodies are fields of the params struct. Uploads are `Upload{Name, ContentType, Reader}` fields. `oneOf`/`anyOf` values are union types with `As<Variant>()`/`From<Variant>()` accessors and `Discriminator()`.
 
 ## Documentation
