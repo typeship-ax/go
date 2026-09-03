@@ -4,11 +4,18 @@ package typeship
 
 import (
 	"context"
+	"fmt"
 )
 
 // GenerateService accesses the generate endpoints.
 type GenerateService struct {
 	core *core
+}
+
+// GenerateRunParams are the inputs for GenerateService.Run.
+type GenerateRunParams struct {
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	IdempotencyKey *string `json:"-"`
 }
 
 // Run — generate one Target from a Definition.
@@ -23,13 +30,21 @@ type GenerateService struct {
 // 401, not a downgrade to anonymous.
 //
 // POST /generate
-func (s *GenerateService) Run(ctx context.Context, body GenerateRequest, opts ...RequestOption) (*GenerationResult, error) {
+func (s *GenerateService) Run(ctx context.Context, body GenerateRequest, params *GenerateRunParams, opts ...RequestOption) (*GenerationResult, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IdempotencyKey != nil {
+			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
+		}
+	}
 	req := request{
-		Method:    "POST",
-		Path:      "/generate",
-		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "413": newPayloadTooLargeError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "default": newAPIResponseError},
-		SchemaKey: "generate.run",
+		Method:            "POST",
+		Path:              "/generate",
+		Headers:           headers,
+		Body:              body,
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "409": newConflictError, "413": newPayloadTooLargeError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "default": newAPIResponseError},
+		SchemaKey:         "generate.run",
+		IdempotencyHeader: "Idempotency-Key",
 	}
 	var out GenerationResult
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {

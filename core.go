@@ -209,7 +209,7 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 	if len(statuses) == 0 {
 		statuses = defaultRetryStatuses
 	}
-	retryAllowed := req.Idempotent || req.Method == http.MethodGet || policy.RetryNonIdempotent
+	retryAllowed := req.Idempotent || req.Method == http.MethodGet || req.IdempotencyHeader != "" || policy.RetryNonIdempotent
 	// The per-attempt deadline: a per-call override, else the client's.
 	timeout := cfg.timeout
 	if timeout <= 0 {

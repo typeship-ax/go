@@ -21,6 +21,12 @@ type TargetsListParams struct {
 	Cursor *string `json:"-"`
 }
 
+// TargetsCreateParams are the inputs for TargetsService.Create.
+type TargetsCreateParams struct {
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	IdempotencyKey *string `json:"-"`
+}
+
 // TargetsListReleasesParams are the inputs for TargetsService.ListReleases.
 type TargetsListReleasesParams struct {
 	// Limit Maximum number of resources to return.
@@ -73,13 +79,21 @@ func (s *TargetsService) List(ctx context.Context, projectID string, params *Tar
 // Several Targets may use the same generator with distinct configuration, Deliveries, and release streams.
 //
 // POST /projects/{project_id}/targets
-func (s *TargetsService) Create(ctx context.Context, projectID string, body TargetFields, opts ...RequestOption) (*TargetResponse, error) {
+func (s *TargetsService) Create(ctx context.Context, projectID string, body TargetFields, params *TargetsCreateParams, opts ...RequestOption) (*TargetResponse, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IdempotencyKey != nil {
+			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
+		}
+	}
 	req := request{
-		Method:    "POST",
-		Path:      fmt.Sprintf("/projects/%s/targets", url.PathEscape(projectID)),
-		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
-		SchemaKey: "targets.create",
+		Method:            "POST",
+		Path:              fmt.Sprintf("/projects/%s/targets", url.PathEscape(projectID)),
+		Headers:           headers,
+		Body:              body,
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
+		SchemaKey:         "targets.create",
+		IdempotencyHeader: "Idempotency-Key",
 	}
 	var out TargetResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {

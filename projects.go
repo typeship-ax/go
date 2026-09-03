@@ -23,7 +23,19 @@ type ProjectsListParams struct {
 
 // ProjectsCreateParams are the inputs for ProjectsService.Create.
 type ProjectsCreateParams struct {
-	// IdempotencyKey Uniquely identifies this creation attempt. Retrying the same request with the same key returns the original response instead of creating another project. Reusing a key with different parameters returns 409.
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	IdempotencyKey *string `json:"-"`
+}
+
+// ProjectsRefreshDiagnosticsParams are the inputs for ProjectsService.RefreshDiagnostics.
+type ProjectsRefreshDiagnosticsParams struct {
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	IdempotencyKey *string `json:"-"`
+}
+
+// ProjectsRemediateDiagnosticsParams are the inputs for ProjectsService.RemediateDiagnostics.
+type ProjectsRemediateDiagnosticsParams struct {
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
 	IdempotencyKey *string `json:"-"`
 }
 
@@ -35,6 +47,12 @@ type ProjectsListGenerationsParams struct {
 	Cursor *string `json:"-"`
 	// TargetID Only generations for this persisted Target.
 	TargetID *TargetID `json:"-"`
+}
+
+// ProjectsGenerateParams are the inputs for ProjectsService.Generate.
+type ProjectsGenerateParams struct {
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	IdempotencyKey *string `json:"-"`
 }
 
 // List projects.
@@ -105,6 +123,8 @@ func (s *ProjectsService) Create(ctx context.Context, body CreateProjectRequest,
 }
 
 // Retrieve a project.
+//
+// Returns Project-owned fields only. List Targets separately for Target and Delivery data.
 //
 // GET /projects/{project_id}
 func (s *ProjectsService) Retrieve(ctx context.Context, projectID string, opts ...RequestOption) (*Project, error) {
@@ -183,12 +203,20 @@ func (s *ProjectsService) RetrieveDiagnostics(ctx context.Context, projectID str
 // Fetches the complete configured source, records a new immutable revision only when content changed, and returns its Diagnostics. This does not generate targets or consume a metered generation.
 //
 // POST /projects/{project_id}/diagnostics
-func (s *ProjectsService) RefreshDiagnostics(ctx context.Context, projectID string, opts ...RequestOption) (*DiagnosticReport, error) {
+func (s *ProjectsService) RefreshDiagnostics(ctx context.Context, projectID string, params *ProjectsRefreshDiagnosticsParams, opts ...RequestOption) (*DiagnosticReport, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IdempotencyKey != nil {
+			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
+		}
+	}
 	req := request{
-		Method:    "POST",
-		Path:      fmt.Sprintf("/projects/%s/diagnostics", url.PathEscape(projectID)),
-		Errors:    map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
-		SchemaKey: "projects.refreshDiagnostics",
+		Method:            "POST",
+		Path:              fmt.Sprintf("/projects/%s/diagnostics", url.PathEscape(projectID)),
+		Headers:           headers,
+		Errors:            map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
+		SchemaKey:         "projects.refreshDiagnostics",
+		IdempotencyHeader: "Idempotency-Key",
 	}
 	var out DiagnosticReport
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
@@ -202,13 +230,21 @@ func (s *ProjectsService) RefreshDiagnostics(ctx context.Context, projectID stri
 // Applies only deterministic patches. Repository sources receive an updateable source pull request; URL sources receive project overlays. Diagnostics that require API-owner intent return 422 and include an authoring_brief in the Diagnostic instead.
 //
 // POST /projects/{project_id}/diagnostics/remediations
-func (s *ProjectsService) RemediateDiagnostics(ctx context.Context, projectID string, body DiagnosticRemediationRequest, opts ...RequestOption) (*DiagnosticRemediation, error) {
+func (s *ProjectsService) RemediateDiagnostics(ctx context.Context, projectID string, body DiagnosticRemediationRequest, params *ProjectsRemediateDiagnosticsParams, opts ...RequestOption) (*DiagnosticRemediation, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IdempotencyKey != nil {
+			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
+		}
+	}
 	req := request{
-		Method:    "POST",
-		Path:      fmt.Sprintf("/projects/%s/diagnostics/remediations", url.PathEscape(projectID)),
-		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
-		SchemaKey: "projects.remediateDiagnostics",
+		Method:            "POST",
+		Path:              fmt.Sprintf("/projects/%s/diagnostics/remediations", url.PathEscape(projectID)),
+		Headers:           headers,
+		Body:              body,
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
+		SchemaKey:         "projects.remediateDiagnostics",
+		IdempotencyHeader: "Idempotency-Key",
 	}
 	var out DiagnosticRemediation
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
@@ -248,7 +284,7 @@ func (s *ProjectsService) RetrieveIntegrationHealth(ctx context.Context, project
 //		item := it.Value()
 //	}
 //	if err := it.Err(); err != nil { ... }
-func (s *ProjectsService) ListGenerations(ctx context.Context, projectID string, params *ProjectsListGenerationsParams, opts ...RequestOption) *Iter[Generation] {
+func (s *ProjectsService) ListGenerations(ctx context.Context, projectID string, params *ProjectsListGenerationsParams, opts ...RequestOption) *Iter[GenerationSummary] {
 	query := map[string]any{}
 	if params != nil {
 		if params.Limit != nil {
@@ -269,7 +305,7 @@ func (s *ProjectsService) ListGenerations(ctx context.Context, projectID string,
 		SchemaKey:  "projects.listGenerations",
 		Idempotent: true,
 	}
-	return newIter[Generation](ctx, s.core, req, opts, pageConfig{
+	return newIter[GenerationSummary](ctx, s.core, req, opts, pageConfig{
 		Style:           "cursor",
 		ItemsField:      "data",
 		CursorParam:     "cursor",
@@ -290,12 +326,20 @@ func (s *ProjectsService) ListGenerations(ctx context.Context, projectID string,
 // regeneration runs after a source change.
 //
 // POST /projects/{project_id}/generations
-func (s *ProjectsService) Generate(ctx context.Context, projectID string, opts ...RequestOption) (*GenerationBatch, error) {
+func (s *ProjectsService) Generate(ctx context.Context, projectID string, params *ProjectsGenerateParams, opts ...RequestOption) (*GenerationBatch, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IdempotencyKey != nil {
+			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
+		}
+	}
 	req := request{
-		Method:    "POST",
-		Path:      fmt.Sprintf("/projects/%s/generations", url.PathEscape(projectID)),
-		Errors:    map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
-		SchemaKey: "projects.generate",
+		Method:            "POST",
+		Path:              fmt.Sprintf("/projects/%s/generations", url.PathEscape(projectID)),
+		Headers:           headers,
+		Errors:            map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
+		SchemaKey:         "projects.generate",
+		IdempotencyHeader: "Idempotency-Key",
 	}
 	var out GenerationBatch
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
