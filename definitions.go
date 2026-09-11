@@ -13,6 +13,12 @@ type DefinitionsService struct {
 	core *core
 }
 
+// DefinitionsUpdateParams are the inputs for DefinitionsService.Update.
+type DefinitionsUpdateParams struct {
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	IdempotencyKey *string `json:"-"`
+}
+
 // Retrieve a Definition.
 //
 // GET /definitions/{definition_id}
@@ -36,13 +42,21 @@ func (s *DefinitionsService) Retrieve(ctx context.Context, definitionID string, 
 // Resolves the complete document graph and records a new immutable revision before saving.
 //
 // PATCH /definitions/{definition_id}
-func (s *DefinitionsService) Update(ctx context.Context, definitionID string, body DefinitionUpdateRequest, opts ...RequestOption) (*Definition, error) {
+func (s *DefinitionsService) Update(ctx context.Context, definitionID string, body DefinitionUpdateRequest, params *DefinitionsUpdateParams, opts ...RequestOption) (*Definition, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IdempotencyKey != nil {
+			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
+		}
+	}
 	req := request{
-		Method:    "PATCH",
-		Path:      fmt.Sprintf("/definitions/%s", url.PathEscape(definitionID)),
-		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
-		SchemaKey: "definitions.update",
+		Method:            "PATCH",
+		Path:              fmt.Sprintf("/definitions/%s", url.PathEscape(definitionID)),
+		Headers:           headers,
+		Body:              body,
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
+		SchemaKey:         "definitions.update",
+		IdempotencyHeader: "Idempotency-Key",
 	}
 	var out Definition
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
