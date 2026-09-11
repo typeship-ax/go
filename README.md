@@ -10,10 +10,23 @@ Generated from the OpenAPI spec by [typeship](https://typeship.dev). Change the 
 - **Retries built in** — idempotent requests retry with exponential backoff and `Retry-After` support
 - **Forward-compatible responses** — enum values decode even when new, union raw JSON remains available, and `WithAPIResponse` preserves the complete body
 
-## Install
+## Build from source
+
+Requires Go 1.21+. Run these commands in the downloaded or cloned package directory:
 
 ```sh
-go get github.com/typeship-ax/go
+go build ./...
+go test ./...
+```
+
+To run the quickstart against this local module, save it as `cmd/example/main.go` and run `go run ./cmd/example` from the package directory.
+
+## Install a published module
+
+Generation does not publish a Go module. Set `go.mod` to a repository path you control, publish the module and tag its release, then use that module path and version with `go get`:
+
+```sh
+go get github.com/typeship-ax/go@v0.10.0
 ```
 
 ## Quickstart
@@ -119,3 +132,5 @@ client, err := typeship.New(
 ```
 
 Configuration also reads from the environment (`TYPESHIP_BASE_URL`, `TYPESHIP_TOKEN`).
+
+Timeouts apply to each attempt. By default, the client makes up to two retries for `408`, `429`, `500`, `502`, `503`, and `504`; non-idempotent calls retry only on `429`, when the operation declares an idempotency key, or when explicitly enabled. `Retry-After` takes precedence over exponential backoff.
