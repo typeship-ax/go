@@ -22,6 +22,7 @@ func (s *AccountService) Retrieve(ctx context.Context, opts ...RequestOption) (*
 		Method:     "GET",
 		Path:       "/me",
 		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "429": newRateLimitedError},
+		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "account.retrieve",
 		Idempotent: true,
 	}

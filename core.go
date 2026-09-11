@@ -112,21 +112,71 @@ func (a authValue) resolve() (string, error) {
 	return a.static, nil
 }
 
+type securityCredential struct {
+	Headers map[string]authValue
+	Query   map[string]authValue
+}
+
+func selectSecurity(requirements []map[string][]string, credentials map[string]securityCredential) securityCredential {
+	for _, requirement := range requirements {
+		if len(requirement) == 0 {
+			continue
+		}
+		selected := securityCredential{Headers: map[string]authValue{}, Query: map[string]authValue{}}
+		destinations := map[string]bool{}
+		complete := true
+		for name := range requirement {
+			credential, exists := credentials[name]
+			if !exists {
+				complete = false
+				break
+			}
+			for wire, value := range credential.Headers {
+				destination := "header:" + strings.ToLower(wire)
+				if destinations[destination] {
+					complete = false
+				}
+				destinations[destination] = true
+				selected.Headers[wire] = value
+			}
+			for wire, value := range credential.Query {
+				destination := "query:" + wire
+				if destinations[destination] {
+					complete = false
+				}
+				destinations[destination] = true
+				selected.Query[wire] = value
+			}
+		}
+		if complete {
+			return selected
+		}
+	}
+	return securityCredential{}
+}
+
 type core struct {
-	baseURL     string
-	httpClient  *http.Client
-	headers     map[string]authValue
-	query       map[string]authValue
-	userAgent   string
-	timeout     time.Duration
-	maxRetries  int
-	retry       RetryPolicy
-	debug       func(DebugEvent)
-	globalsVals map[string]any
-	onRequest   func(*http.Request)
-	onResponse  func(*http.Response)
-	onError     func(error, string, string)
-	validate    ValidateMode
+	credentials        map[string]securityCredential
+	authHeaders        map[string]authValue
+	authQuery          map[string]authValue
+	bearerCredential   *authValue
+	basicCredential    *authValue
+	oauthCredential    *authValue
+	configurationError error
+	baseURL            string
+	httpClient         *http.Client
+	headers            map[string]authValue
+	query              map[string]authValue
+	userAgent          string
+	timeout            time.Duration
+	maxRetries         int
+	retry              RetryPolicy
+	debug              func(DebugEvent)
+	globalsVals        map[string]any
+	onRequest          func(*http.Request)
+	onResponse         func(*http.Response)
+	onError            func(error, string, string)
+	validate           ValidateMode
 }
 
 // Ptr returns a pointer to v, for the optional fields and parameters this
@@ -174,6 +224,8 @@ const (
 // request describes one API call. The generated service methods build it;
 // callers never see it.
 type request struct {
+	Security          []map[string][]string
+	Credentials       securityCredential
 	Method            string
 	Path              string
 	Query             map[string]any
@@ -189,6 +241,7 @@ type request struct {
 }
 
 func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOption) error {
+	req.Credentials = selectSecurity(req.Security, c.credentials)
 	cfg := &requestConfig{}
 	for _, opt := range opts {
 		opt(cfg)
@@ -209,17 +262,13 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 	if len(statuses) == 0 {
 		statuses = defaultRetryStatuses
 	}
-	retryAllowed := req.Idempotent || req.Method == http.MethodGet || policy.RetryNonIdempotent
+	retryAllowed := req.Idempotent || req.Method == http.MethodGet || req.IdempotencyHeader != "" || policy.RetryNonIdempotent
 	// The per-attempt deadline: a per-call override, else the client's.
 	timeout := cfg.timeout
 	if timeout <= 0 {
 		timeout = c.timeout
 	}
 
-	endpoint, err := c.buildURL(req.Path, req.Query)
-	if err != nil {
-		return err
-	}
 	payload, contentType, err := encodeBody(req.Body, req.BodyKind, req.ContentType)
 	if err != nil {
 		return err
@@ -259,7 +308,12 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 	}
 
 	var lastErr error
+	endpoint := ""
 	for attempt := 0; attempt <= attempts; attempt++ {
+		endpoint, err = c.buildURL(req.Path, req.Query, req.Credentials.Query)
+		if err != nil {
+			return err
+		}
 		httpReq, err := c.newRequest(ctx, req, endpoint, payload, contentType, idempotencyKey)
 		if err != nil {
 			return err
@@ -394,13 +448,15 @@ func (c *core) newRequest(
 	httpReq.Header.Set("User-Agent", c.userAgent)
 	httpReq.Header.Set("Accept", "application/json")
 	// Credentials resolve per attempt so callback-based tokens can refresh.
-	for name, value := range c.headers {
-		resolved, err := value.resolve()
-		if err != nil {
-			return nil, err
-		}
-		if resolved != "" {
-			httpReq.Header.Set(name, resolved)
+	for _, source := range []map[string]authValue{c.headers, req.Credentials.Headers} {
+		for name, value := range source {
+			resolved, err := value.resolve()
+			if err != nil {
+				return nil, err
+			}
+			if resolved != "" {
+				httpReq.Header.Set(name, resolved)
+			}
 		}
 	}
 	if contentType != "" {
@@ -467,16 +523,18 @@ func (c *core) emitDebug(event DebugEvent) {
 	}
 }
 
-func (c *core) buildURL(path string, query map[string]any) (string, error) {
+func (c *core) buildURL(path string, query map[string]any, authQuery ...map[string]authValue) (string, error) {
 	endpoint := strings.TrimRight(c.baseURL, "/") + path
 	values := url.Values{}
-	for name, value := range c.query {
-		resolved, err := value.resolve()
-		if err != nil {
-			return "", err
-		}
-		if resolved != "" {
-			values.Set(name, resolved)
+	for _, source := range append([]map[string]authValue{c.query}, authQuery...) {
+		for name, value := range source {
+			resolved, err := value.resolve()
+			if err != nil {
+				return "", err
+			}
+			if resolved != "" {
+				values.Set(name, resolved)
+			}
 		}
 	}
 	encodeDeep(values, query)

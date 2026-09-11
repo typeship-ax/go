@@ -21,6 +21,12 @@ type TargetsListParams struct {
 	Cursor *string `json:"-"`
 }
 
+// TargetsCreateParams are the inputs for TargetsService.Create.
+type TargetsCreateParams struct {
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	IdempotencyKey *string `json:"-"`
+}
+
 // TargetsListReleasesParams are the inputs for TargetsService.ListReleases.
 type TargetsListReleasesParams struct {
 	// Limit Maximum number of resources to return.
@@ -55,6 +61,7 @@ func (s *TargetsService) List(ctx context.Context, projectID string, params *Tar
 		Path:       fmt.Sprintf("/projects/%s/targets", url.PathEscape(projectID)),
 		Query:      query,
 		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "targets.list",
 		Idempotent: true,
 	}
@@ -73,13 +80,22 @@ func (s *TargetsService) List(ctx context.Context, projectID string, params *Tar
 // Several Targets may use the same generator with distinct configuration, Deliveries, and release streams.
 //
 // POST /projects/{project_id}/targets
-func (s *TargetsService) Create(ctx context.Context, projectID string, body TargetFields, opts ...RequestOption) (*TargetResponse, error) {
+func (s *TargetsService) Create(ctx context.Context, projectID string, body TargetFields, params *TargetsCreateParams, opts ...RequestOption) (*TargetResponse, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IdempotencyKey != nil {
+			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
+		}
+	}
 	req := request{
-		Method:    "POST",
-		Path:      fmt.Sprintf("/projects/%s/targets", url.PathEscape(projectID)),
-		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
-		SchemaKey: "targets.create",
+		Method:            "POST",
+		Path:              fmt.Sprintf("/projects/%s/targets", url.PathEscape(projectID)),
+		Headers:           headers,
+		Body:              body,
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
+		Security:          []map[string][]string{{"apiKey": {}}},
+		SchemaKey:         "targets.create",
+		IdempotencyHeader: "Idempotency-Key",
 	}
 	var out TargetResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
@@ -96,6 +112,7 @@ func (s *TargetsService) Retrieve(ctx context.Context, targetID string, opts ...
 		Method:     "GET",
 		Path:       fmt.Sprintf("/targets/%s", url.PathEscape(targetID)),
 		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "targets.retrieve",
 		Idempotent: true,
 	}
@@ -116,6 +133,7 @@ func (s *TargetsService) Delete(ctx context.Context, targetID string, opts ...Re
 		Method:     "DELETE",
 		Path:       fmt.Sprintf("/targets/%s", url.PathEscape(targetID)),
 		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError},
+		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "targets.delete",
 		Idempotent: true,
 	}
@@ -135,6 +153,7 @@ func (s *TargetsService) Update(ctx context.Context, targetID string, body Targe
 		Path:      fmt.Sprintf("/targets/%s", url.PathEscape(targetID)),
 		Body:      body,
 		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
+		Security:  []map[string][]string{{"apiKey": {}}},
 		SchemaKey: "targets.update",
 	}
 	var out TargetResponse
@@ -170,6 +189,7 @@ func (s *TargetsService) ListReleases(ctx context.Context, targetID string, para
 		Path:       fmt.Sprintf("/targets/%s/releases", url.PathEscape(targetID)),
 		Query:      query,
 		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "targets.listReleases",
 		Idempotent: true,
 	}
@@ -191,6 +211,7 @@ func (s *TargetsService) RetrieveRelease(ctx context.Context, targetReleaseID st
 		Method:     "GET",
 		Path:       fmt.Sprintf("/target_releases/%s", url.PathEscape(targetReleaseID)),
 		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "targets.retrieveRelease",
 		Idempotent: true,
 	}

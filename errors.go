@@ -28,6 +28,14 @@ type ForbiddenError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *ForbiddenError) Unwrap() error { return &e.APIError }
 
+// ConflictError is returned for 409 responses. The key identifies changed intent.
+type ConflictError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *ConflictError) Unwrap() error { return &e.APIError }
+
 // PayloadTooLargeError is returned for 413 responses. Spec exceeds the 10MB limit.
 type PayloadTooLargeError struct {
 	APIError
@@ -44,7 +52,7 @@ type UnprocessableEntityError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *UnprocessableEntityError) Unwrap() error { return &e.APIError }
 
-// RateLimitedError is returned for 429 responses. Too many requests. Wait for Retry-After before retrying.
+// RateLimitedError is returned for 429 responses. Too many requests, or an identical write is still in progress. Wait for Retry-After before retrying.
 type RateLimitedError struct {
 	APIError
 }
@@ -68,15 +76,7 @@ type PaymentRequiredError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *PaymentRequiredError) Unwrap() error { return &e.APIError }
 
-// ConflictError is returned for 409 responses. The Idempotency-Key was already used with different request parameters.
-type ConflictError struct {
-	APIError
-}
-
-// Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *ConflictError) Unwrap() error { return &e.APIError }
-
-// InternalServerError is returned for 500 responses. The original idempotent request is temporarily unavailable.
+// InternalServerError is returned for 500 responses. Project setup failed unexpectedly; the key reservation is released.
 type InternalServerError struct {
 	APIError
 }
@@ -91,6 +91,14 @@ type NotFoundError struct {
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *NotFoundError) Unwrap() error { return &e.APIError }
+
+// BadGatewayError is returned for 502 responses. The Project was saved, but an obsolete release pull request could not be retired.
+type BadGatewayError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *BadGatewayError) Unwrap() error { return &e.APIError }
 
 // apiError maps a status onto the documented error type for an operation.
 func apiError(status int, body []byte, requestID string, errs map[string]func(int, []byte, string) error) error {
@@ -118,6 +126,10 @@ func newForbiddenError(status int, body []byte, requestID string) error {
 	return &ForbiddenError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
+func newConflictError(status int, body []byte, requestID string) error {
+	return &ConflictError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+}
+
 func newPayloadTooLargeError(status int, body []byte, requestID string) error {
 	return &PayloadTooLargeError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
@@ -138,14 +150,14 @@ func newPaymentRequiredError(status int, body []byte, requestID string) error {
 	return &PaymentRequiredError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
-func newConflictError(status int, body []byte, requestID string) error {
-	return &ConflictError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
-}
-
 func newInternalServerError(status int, body []byte, requestID string) error {
 	return &InternalServerError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
 func newNotFoundError(status int, body []byte, requestID string) error {
 	return &NotFoundError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+}
+
+func newBadGatewayError(status int, body []byte, requestID string) error {
+	return &BadGatewayError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }

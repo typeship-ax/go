@@ -10,9 +10,9 @@ import (
 )
 
 // Version is this package's version, also sent as the User-Agent.
-const Version = "0.9.0"
+const Version = "0.10.0"
 
-const userAgent = "typeship/0.9.0 (typeship)"
+const userAgent = "typeship/0.10.0 (typeship)"
 
 // Option configures a Client at construction.
 type Option func(*core)
@@ -81,14 +81,14 @@ func WithOnError(fn func(err error, method, path string)) Option {
 
 // WithBearerToken sets the token sent as Authorization: Bearer.
 func WithBearerToken(token string) Option {
-	return func(c *core) { c.headers["Authorization"] = authValue{static: "Bearer " + token} }
+	return func(c *core) { c.bearerCredential = &authValue{static: "Bearer " + token} }
 }
 
 // WithBearerTokenFunc resolves a token before every attempt, for
 // credentials that expire.
 func WithBearerTokenFunc(fn func() (string, error)) Option {
 	return func(c *core) {
-		c.headers["Authorization"] = authValue{fn: func() (string, error) {
+		c.bearerCredential = &authValue{fn: func() (string, error) {
 			token, err := fn()
 			if err != nil {
 				return "", err
@@ -96,6 +96,52 @@ func WithBearerTokenFunc(fn func() (string, error)) Option {
 			return "Bearer " + token, nil
 		}}
 	}
+}
+
+// WithCredential supplies a token or API key for one named security scheme.
+func WithCredential(name, value string) Option {
+	return WithCredentialFunc(name, func() (string, error) { return value, nil })
+}
+
+// WithCredentialFunc resolves only when an operation selects this scheme.
+func WithCredentialFunc(name string, fn func() (string, error)) Option {
+	return func(c *core) {
+		if fn == nil {
+			c.configurationError = errors.New("credential callback must not be nil")
+			return
+		}
+		switch name {
+		case "apiKey":
+			c.credentials[name] = securityCredential{Headers: map[string]authValue{"Authorization": {fn: func() (string, error) {
+				value, err := fn()
+				if err != nil {
+					return "", err
+				}
+				return "Bearer " + value, nil
+			}}}}
+		default:
+			c.configurationError = errors.New("unknown token/API-key security scheme: " + name)
+		}
+	}
+}
+
+// WithBasicCredential supplies a username/password for one named basic scheme.
+func WithBasicCredential(name, username, password string) Option {
+	return func(c *core) {
+		switch name {
+		default:
+			c.configurationError = errors.New("unknown basic security scheme: " + name)
+		}
+	}
+}
+
+func firstCredential(values ...*authValue) *authValue {
+	for _, value := range values {
+		if value != nil {
+			return value
+		}
+	}
+	return nil
 }
 
 // Client is the entry point for typeship.
@@ -120,16 +166,27 @@ func New(opts ...Option) (*Client, error) {
 		httpClient:  &http.Client{},
 		headers:     map[string]authValue{},
 		query:       map[string]authValue{},
+		credentials: map[string]securityCredential{},
+		authHeaders: map[string]authValue{},
+		authQuery:   map[string]authValue{},
 		userAgent:   userAgent,
 		timeout:     30 * time.Second,
 		maxRetries:  2,
 		globalsVals: map[string]any{},
 	}
 	if token := os.Getenv("TYPESHIP_TOKEN"); token != "" {
-		c.headers["Authorization"] = authValue{static: "Bearer " + token}
+		c.bearerCredential = &authValue{static: "Bearer " + token}
 	}
 	for _, opt := range opts {
 		opt(c)
+	}
+	if c.configurationError != nil {
+		return nil, c.configurationError
+	}
+	if _, named := c.credentials["apiKey"]; !named {
+		if value := firstCredential(c.bearerCredential, c.oauthCredential); value != nil {
+			c.credentials["apiKey"] = securityCredential{Headers: map[string]authValue{"Authorization": *value}}
+		}
 	}
 	// Wraps whatever client the options left behind, ours or the caller's.
 	c.httpClient = withRedirectPolicy(c.httpClient)

@@ -49,6 +49,7 @@ func (s *APIKeysService) List(ctx context.Context, params *APIKeysListParams, op
 		Path:       "/api_keys",
 		Query:      query,
 		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "429": newRateLimitedError},
+		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "apiKeys.list",
 		Idempotent: true,
 	}
@@ -72,6 +73,7 @@ func (s *APIKeysService) Revoke(ctx context.Context, apiKeyID string, opts ...Re
 		Method:     "DELETE",
 		Path:       fmt.Sprintf("/api_keys/%s", url.PathEscape(apiKeyID)),
 		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "apiKeys.revoke",
 		Idempotent: true,
 	}

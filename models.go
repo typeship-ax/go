@@ -107,7 +107,7 @@ const (
 	GeneratorKindMCP           GeneratorKind = "mcp"
 )
 
-// Config is an API model. Everything Typeship needs beyond the Definition, in one object: generation customization (globals, retries, pagination) and how the generated tooling behaves (cli, mcp, package, docs_url). Plain configuration. Typeship never requires vendor extensions inside the Definition itself. Stateless generation also accepts GraphQL settings here; stored projects keep those settings on their Definition.
+// Config is an API model. Everything Typeship needs beyond the Definition, in one object: generation customization (globals, retries, pagination, readme) and how the generated tooling behaves (cli, mcp, package, docs_url). Plain configuration. Typeship never requires vendor extensions inside the Definition itself. Stateless generation also accepts GraphQL settings here; stored projects keep those settings on their Definition.
 type Config struct {
 	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
 	Globals []string     `json:"globals,omitempty"`
@@ -115,8 +115,10 @@ type Config struct {
 	// Pagination Per-operation pagination control, keyed by operationId or "METHOD /path". Unmatched keys are reported as generation warnings.
 	Pagination map[string]ConfigPaginationValue `json:"pagination,omitempty"`
 	Graphql    *GraphqlSettings                 `json:"graphql,omitempty"`
+	Auth       *AuthenticationConfig            `json:"auth,omitempty"`
 	CLI        *CLIBehavior                     `json:"cli,omitempty"`
 	MCP        *MCPBehavior                     `json:"mcp,omitempty"`
+	Readme     *ReadmeBehavior                  `json:"readme,omitempty"`
 	Package    *PackageBehavior                 `json:"package,omitempty"`
 	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Definition's externalDocs URL.
 	DocsURL *string `json:"docs_url,omitempty"`
@@ -266,40 +268,138 @@ const (
 	GraphqlSettingsScalarsValueJSON    GraphqlSettingsScalarsValue = "json"
 )
 
+// AuthenticationConfig is an API model. Public authentication defaults for generated clients and tools. Stored Projects own the OAuth server, application catalog, and identity policy; stateless generation accepts the same shape for one run. Runtime credentials and client secrets are never accepted.
+type AuthenticationConfig struct {
+	OauthServer *OAuthServer `json:"oauth_server,omitempty"`
+	// OauthApplications OAuth applications keyed by a stable name.
+	OauthApplications map[string]OAuthApplication `json:"oauth_applications,omitempty"`
+	// OauthApplication Default OAuth application used by generated products.
+	OauthApplication     *string               `json:"oauth_application,omitempty"`
+	IdentityVerification *IdentityVerification `json:"identity_verification,omitempty"`
+	// ApprovalURL Base URL of a custom browser-approval backend implementing the start, status, and revoke contract. Used only when OAuth is not configured.
+	ApprovalURL *string `json:"approval_url,omitempty"`
+	// Environments Authentication selections keyed by generated API environment name.
+	Environments map[string]AuthenticationEnvironment `json:"environments,omitempty"`
+}
+
+// OAuthServer is an API model. Authorization-server metadata used by generated OAuth flows. Secrets and runtime credentials are never accepted here.
+type OAuthServer struct {
+	// Issuer Exact authorization-server issuer, including any tenant path.
+	Issuer *string `json:"issuer,omitempty"`
+	// DiscoveryURL Exact metadata URL when it cannot be derived from the issuer.
+	DiscoveryURL *string `json:"discovery_url,omitempty"`
+	// AuthorizationURL Authorization endpoint override.
+	AuthorizationURL *string `json:"authorization_url,omitempty"`
+	// TokenURL Token endpoint override.
+	TokenURL *string `json:"token_url,omitempty"`
+	// DeviceAuthorizationURL Device-authorization endpoint override.
+	DeviceAuthorizationURL *string `json:"device_authorization_url,omitempty"`
+	// Scopes Default scopes requested during login.
+	Scopes []string `json:"scopes,omitempty"`
+	// Audience Default audience included in authorization and token requests.
+	Audience *string `json:"audience,omitempty"`
+	// Resource Protected API resource included in authorization and token requests.
+	Resource *string `json:"resource,omitempty"`
+}
+
+// OAuthApplication is an API model. OAuth application available to generated products. Public clients support interactive login; confidential clients support runtime-supplied machine credentials. Client secrets are never stored.
+type OAuthApplication struct {
+	// ClientID OAuth client identifier.
+	ClientID string `json:"client_id"`
+	// LoginMethod Interactive login method. Browser login uses Authorization Code with PKCE.
+	LoginMethod *OAuthApplicationLoginMethod `json:"login_method,omitempty"`
+	// ClientAuthMethod How a runtime-supplied client secret is sent for machine grants.
+	ClientAuthMethod *OAuthApplicationClientAuthMethod `json:"client_auth_method,omitempty"`
+	// RedirectURI Loopback callback URL for browser login.
+	RedirectURI *string `json:"redirect_uri,omitempty"`
+	// OrganizationParameter Provider parameter used to request an organization during browser login.
+	OrganizationParameter *OAuthApplicationOrganizationParameter `json:"organization_parameter,omitempty"`
+}
+
+// OAuthApplicationLoginMethod is one of "browser", "device". Interactive login method. Browser login uses Authorization Code with PKCE.
+type OAuthApplicationLoginMethod string
+
+const (
+	OAuthApplicationLoginMethodBrowser OAuthApplicationLoginMethod = "browser"
+	OAuthApplicationLoginMethodDevice  OAuthApplicationLoginMethod = "device"
+)
+
+// OAuthApplicationClientAuthMethod is one of "post", "basic". How a runtime-supplied client secret is sent for machine grants.
+type OAuthApplicationClientAuthMethod string
+
+const (
+	OAuthApplicationClientAuthMethodPost  OAuthApplicationClientAuthMethod = "post"
+	OAuthApplicationClientAuthMethodBasic OAuthApplicationClientAuthMethod = "basic"
+)
+
+// OAuthApplicationOrganizationParameter is one of "organization", "organization_id". Provider parameter used to request an organization during browser login.
+type OAuthApplicationOrganizationParameter string
+
+const (
+	OAuthApplicationOrganizationParameterOrganization   OAuthApplicationOrganizationParameter = "organization"
+	OAuthApplicationOrganizationParameterOrganizationID OAuthApplicationOrganizationParameter = "organization_id"
+)
+
+// IdentityVerification is an API model. Authenticated identity read used to verify a login before it is saved. Operation is auto-detected when omitted. Requests must include at least one of subject_field, account_field, or organization_field.
+type IdentityVerification struct {
+	// Operation resource.method of a safe identity read with no required arguments.
+	Operation *string `json:"operation,omitempty"`
+	// SubjectField JSON Pointer to the stable caller ID in the identity response.
+	SubjectField *string `json:"subject_field,omitempty"`
+	// AccountField JSON Pointer to the customer account ID.
+	AccountField *string `json:"account_field,omitempty"`
+	// OrganizationField JSON Pointer to the customer organization ID.
+	OrganizationField *string `json:"organization_field,omitempty"`
+}
+
+// AuthenticationEnvironment is an API model. OAuth application and request-value overrides for one named API environment.
+type AuthenticationEnvironment struct {
+	OauthApplication *string  `json:"oauth_application,omitempty"`
+	Scopes           []string `json:"scopes,omitempty"`
+	Audience         *string  `json:"audience,omitempty"`
+	Resource         *string  `json:"resource,omitempty"`
+}
+
 // CLIBehavior is an API model. How the generated CLI behaves. Part of Config.
 type CLIBehavior struct {
 	// CommandName Command users run, independent of how the CLI is distributed.
 	CommandName *string `json:"command_name,omitempty"`
-	// WhoamiOperation resource.method of a zero-argument GET that the generated CLI's whoami command calls. Overrides auto-detection; a value that matches nothing is reported as a generation warning.
-	WhoamiOperation *string `json:"whoami_operation,omitempty"`
-	// OauthClientID OAuth client id baked into the generated CLI for device-flow login. Without it, login prompts for a pasted credential.
-	OauthClientID *string `json:"oauth_client_id,omitempty"`
-	// OauthScopes Scopes requested during device-flow login. Include offline_access if the authorization server gates refresh tokens behind it.
-	OauthScopes []string `json:"oauth_scopes,omitempty"`
-	// OauthAudience Audience sent with the device-authorization request, for authorization servers that require one to issue API-valid access tokens.
-	OauthAudience *string `json:"oauth_audience,omitempty"`
 	// UpdateNotice Opt in to a once-a-day registry check that prints an upgrade hint. Off by default; generated code phones nobody unless this is enabled.
 	UpdateNotice *bool `json:"update_notice,omitempty"`
 	// SupportURL Where the generated CLI's feedback command sends users. GitHub issues/new URLs get a prefilled title and environment details.
 	SupportURL *string `json:"support_url,omitempty"`
-	// AuthURL Base URL of the browser-approval endpoint pair used by CLI login. The CLI keeps the verifier and receives the credential directly; no key is pasted through a conversation.
-	AuthURL *string `json:"auth_url,omitempty"`
 	// MCPURL Hosted MCP endpoint installed by the generated CLI instead of launching the package's local stdio server.
 	MCPURL *string `json:"mcp_url,omitempty"`
 	// SkillsRepo GitHub owner/name of the skills package the generated CLI offers to install during init.
 	SkillsRepo *string `json:"skills_repo,omitempty"`
 }
 
-// MCPBehavior is an API model. How the generated MCP server and the hosted endpoint behave. Part of Config.
+// MCPBehavior is an API model. How generated MCP servers and the Typeship-hosted endpoint behave. Part of Config.
 type MCPBehavior struct {
 	// RegistryName Stable official MCP registry name, independent of the server runtime.
 	RegistryName *string `json:"registry_name,omitempty"`
+	// Access Authorization for callers connecting to a generated MCP server deployed over HTTP. The hosting application resolves upstream API credentials separately at runtime. This setting does not apply to the Typeship-hosted endpoint.
+	Access *MCPBehaviorAccess `json:"access,omitempty"`
 	// ToolMode MCP tool shape. meta collapses per-operation tools into search_docs, read_docs, and execute so large APIs don't flood an agent's context window. Auto considers the serialized tool schemas, switching near 10k tokens or above 100 operations.
 	ToolMode *MCPBehaviorToolMode `json:"tool_mode,omitempty"`
 	// Instructions Guidance appended to the MCP server's instructions, which agents read once when they connect (server/discover): what to call first, conventions the spec does not state, what not to do. Carried by the package's server and the hosted endpoint alike.
 	Instructions *string `json:"instructions,omitempty"`
 	// ToolDescriptions Hand-written MCP tool descriptions keyed by operationId or "METHOD /path". Each replaces the text typeship derives for that operation (summary, first sentence, method and path, deprecation and auth notes). For flows the spec cannot describe, such as a multi-step upload. Keys that match no operation are reported as generation warnings.
 	ToolDescriptions map[string]string `json:"tool_descriptions,omitempty"`
+	// ReferenceResolvers Exact name-or-ID resolver overrides keyed first by the target operationId or "METHOD /path", then by its wire argument name. A resolver names one read collection operation plus 1-4 item fields to match case-insensitively; false opts that argument out of strict inference.
+	ReferenceResolvers map[string]map[string]MCPBehaviorReferenceResolversValueValue `json:"reference_resolvers,omitempty"`
+}
+
+// MCPBehaviorAccess is an API model. Authorization for callers connecting to a generated MCP server deployed over HTTP. The hosting application resolves upstream API credentials separately at runtime. This setting does not apply to the Typeship-hosted endpoint.
+type MCPBehaviorAccess struct {
+	// Issuer Exact issuer allowed to sign MCP connection tokens.
+	Issuer string `json:"issuer"`
+	// Resource Canonical public URL of the self-hosted MCP endpoint that connection tokens must target.
+	Resource string `json:"resource"`
+	// JwksURL Public signing-key endpoint. Omit to discover it from the issuer.
+	JwksURL *string `json:"jwks_url,omitempty"`
+	// Scopes Minimum scopes required to connect to the self-hosted MCP server.
+	Scopes []string `json:"scopes,omitempty"`
 }
 
 // MCPBehaviorToolMode is one of "auto", "operations", "meta". MCP tool shape. meta collapses per-operation tools into search_docs, read_docs, and execute so large APIs don't flood an agent's context window. Auto considers the serialized tool schemas, switching near 10k tokens or above 100 operations.
@@ -310,6 +410,83 @@ const (
 	MCPBehaviorToolModeOperations MCPBehaviorToolMode = "operations"
 	MCPBehaviorToolModeMeta       MCPBehaviorToolMode = "meta"
 )
+
+// MCPBehaviorReferenceResolversValueValue is one of bool, MCPBehaviorReferenceResolversValueValueVariant2.
+// Go has no sum types, so it holds the JSON as received and decodes on
+// request: try the As* accessors, or switch on Discriminator() when the
+// spec names one.
+type MCPBehaviorReferenceResolversValueValue struct {
+	union json.RawMessage
+}
+
+// MarshalJSON writes the value as it was set or received.
+func (u MCPBehaviorReferenceResolversValueValue) MarshalJSON() ([]byte, error) {
+	if u.union == nil {
+		return []byte("null"), nil
+	}
+	return u.union, nil
+}
+
+// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
+func (u *MCPBehaviorReferenceResolversValueValue) UnmarshalJSON(data []byte) error {
+	u.union = append(u.union[:0], data...)
+	return nil
+}
+
+// Raw returns the JSON exactly as received.
+func (u MCPBehaviorReferenceResolversValueValue) Raw() json.RawMessage {
+	return u.union
+}
+
+// AsBool decodes the value as bool.
+func (u MCPBehaviorReferenceResolversValueValue) AsBool() (bool, error) {
+	var v bool
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromBool sets the value to a bool.
+func (u *MCPBehaviorReferenceResolversValueValue) FromBool(v bool) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AsMCPBehaviorReferenceResolversValueValueVariant2 decodes the value as MCPBehaviorReferenceResolversValueValueVariant2.
+func (u MCPBehaviorReferenceResolversValueValue) AsMCPBehaviorReferenceResolversValueValueVariant2() (MCPBehaviorReferenceResolversValueValueVariant2, error) {
+	var v MCPBehaviorReferenceResolversValueValueVariant2
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromMCPBehaviorReferenceResolversValueValueVariant2 sets the value to a MCPBehaviorReferenceResolversValueValueVariant2.
+func (u *MCPBehaviorReferenceResolversValueValue) FromMCPBehaviorReferenceResolversValueValueVariant2(v MCPBehaviorReferenceResolversValueValueVariant2) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// MCPBehaviorReferenceResolversValueValueVariant2 is an API model.
+type MCPBehaviorReferenceResolversValueValueVariant2 struct {
+	// Via OperationId, "METHOD /path", MCP tool name, or dotted resource.method of the list operation.
+	Via string `json:"via"`
+	// Match Item fields compared exactly and case-insensitively, such as name, slug, key, or email.
+	Match []string `json:"match"`
+	// ID Item field substituted into the requested argument. Defaults to id.
+	ID *string `json:"id,omitempty"`
+}
+
+// ReadmeBehavior is an API model. Generated README behavior. Part of Config.
+type ReadmeBehavior struct {
+	// QuickstartOperation operationId or "METHOD /path" to feature as the README's first API call. It must be present in the generated package and callable with no required input beyond path placeholders. Missing or unsuitable choices produce a warning and use the automatic example.
+	QuickstartOperation *string `json:"quickstart_operation,omitempty"`
+}
 
 // PackageBehavior is an API model. Published-package metadata the API spec does not own. Repository is derived from each destination.
 type PackageBehavior struct {
@@ -512,7 +689,7 @@ type ProjectList struct {
 // ListObject is a generated API type.
 type ListObject string
 
-// ProjectSummary is an API model. Lean Project identity returned by collection endpoints. Retrieve the Project or list its Targets for the complete aggregate.
+// ProjectSummary is an API model. Lean Project identity returned by collection endpoints. Retrieve the Project for shared configuration and list its Targets for the complete canonical child collection.
 type ProjectSummary struct {
 	ID           ProjectID    `json:"id"`
 	Object       string       `json:"object"`
@@ -707,7 +884,7 @@ type InitialTargetFields struct {
 	ReleaseChannel  *ReleaseChannel `json:"release_channel,omitempty"`
 	ProposedVersion *string         `json:"proposed_version,omitempty"`
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are rejected here and belong to the Definition.
-	Config     *ProjectConfig  `json:"config,omitempty"`
+	Config     *TargetConfig   `json:"config,omitempty"`
 	Deliveries []DeliveryInput `json:"deliveries,omitempty"`
 }
 
@@ -727,32 +904,30 @@ const (
 	ReleaseChannelPrerelease ReleaseChannel = "prerelease"
 )
 
-// ProjectConfig is an API model. Shared generated-client and tooling behavior for a stored Project. Every Target inherits these defaults. Target.config is merged over them for one Target; top-level values replace defaults while cli, mcp, and package merge by field. GraphQL-only source settings live on the Project's Definition and are rejected in both stored config scopes.
-type ProjectConfig struct {
-	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
-	Globals []string     `json:"globals,omitempty"`
-	Retries *RetryTuning `json:"retries,omitempty"`
-	// Pagination Per-operation pagination control, keyed by operationId or "METHOD /path". Unmatched keys are reported as generation warnings.
-	Pagination map[string]ProjectConfigPaginationValue `json:"pagination,omitempty"`
-	CLI        *CLIBehavior                            `json:"cli,omitempty"`
-	MCP        *MCPBehavior                            `json:"mcp,omitempty"`
-	Package    *PackageBehavior                        `json:"package,omitempty"`
-	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Definition's externalDocs URL.
-	DocsURL *string `json:"docs_url,omitempty"`
-	// DocsIndexURL Exact llms.txt URL when the documentation site does not publish it at docs_url + /llms.txt.
-	DocsIndexURL *string `json:"docs_index_url,omitempty"`
+// TargetConfig is an API model. Target-specific generation and delivery overrides. Authentication may only select a Project-owned OAuth application. OAuth server metadata, applications, and identity policy remain Project-owned. Self-hosted MCP access may be overridden for a Target-specific deployment.
+type TargetConfig struct {
+	Globals      []string                               `json:"globals,omitempty"`
+	Retries      *RetryTuning                           `json:"retries,omitempty"`
+	Pagination   map[string]TargetConfigPaginationValue `json:"pagination,omitempty"`
+	Auth         *TargetAuthenticationConfig            `json:"auth,omitempty"`
+	CLI          *CLIBehavior                           `json:"cli,omitempty"`
+	MCP          *MCPBehavior                           `json:"mcp,omitempty"`
+	Readme       *ReadmeBehavior                        `json:"readme,omitempty"`
+	Package      *PackageBehavior                       `json:"package,omitempty"`
+	DocsURL      *string                                `json:"docs_url,omitempty"`
+	DocsIndexURL *string                                `json:"docs_index_url,omitempty"`
 }
 
-// ProjectConfigPaginationValue is one of PaginationRule, bool.
+// TargetConfigPaginationValue is one of PaginationRule, bool.
 // Go has no sum types, so it holds the JSON as received and decodes on
 // request: try the As* accessors, or switch on Discriminator() when the
 // spec names one.
-type ProjectConfigPaginationValue struct {
+type TargetConfigPaginationValue struct {
 	union json.RawMessage
 }
 
 // MarshalJSON writes the value as it was set or received.
-func (u ProjectConfigPaginationValue) MarshalJSON() ([]byte, error) {
+func (u TargetConfigPaginationValue) MarshalJSON() ([]byte, error) {
 	if u.union == nil {
 		return []byte("null"), nil
 	}
@@ -760,25 +935,25 @@ func (u ProjectConfigPaginationValue) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *ProjectConfigPaginationValue) UnmarshalJSON(data []byte) error {
+func (u *TargetConfigPaginationValue) UnmarshalJSON(data []byte) error {
 	u.union = append(u.union[:0], data...)
 	return nil
 }
 
 // Raw returns the JSON exactly as received.
-func (u ProjectConfigPaginationValue) Raw() json.RawMessage {
+func (u TargetConfigPaginationValue) Raw() json.RawMessage {
 	return u.union
 }
 
 // AsPaginationRule decodes the value as PaginationRule.
-func (u ProjectConfigPaginationValue) AsPaginationRule() (PaginationRule, error) {
+func (u TargetConfigPaginationValue) AsPaginationRule() (PaginationRule, error) {
 	var v PaginationRule
 	err := json.Unmarshal(u.union, &v)
 	return v, err
 }
 
 // FromPaginationRule sets the value to a PaginationRule.
-func (u *ProjectConfigPaginationValue) FromPaginationRule(v PaginationRule) error {
+func (u *TargetConfigPaginationValue) FromPaginationRule(v PaginationRule) error {
 	encoded, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -788,20 +963,33 @@ func (u *ProjectConfigPaginationValue) FromPaginationRule(v PaginationRule) erro
 }
 
 // AsBool decodes the value as bool.
-func (u ProjectConfigPaginationValue) AsBool() (bool, error) {
+func (u TargetConfigPaginationValue) AsBool() (bool, error) {
 	var v bool
 	err := json.Unmarshal(u.union, &v)
 	return v, err
 }
 
 // FromBool sets the value to a bool.
-func (u *ProjectConfigPaginationValue) FromBool(v bool) error {
+func (u *TargetConfigPaginationValue) FromBool(v bool) error {
 	encoded, err := json.Marshal(v)
 	if err != nil {
 		return err
 	}
 	u.union = encoded
 	return nil
+}
+
+// TargetAuthenticationConfig is an API model. Selects a Project OAuth application for one Target. OAuth server metadata, applications, and identity policy remain Project-owned.
+type TargetAuthenticationConfig struct {
+	// OauthApplication Project OAuth application to use. Omit to inherit the Project default.
+	OauthApplication *string `json:"oauth_application,omitempty"`
+	// Environments Project OAuth application selections keyed by API environment.
+	Environments map[string]TargetAuthenticationEnvironment `json:"environments,omitempty"`
+}
+
+// TargetAuthenticationEnvironment is an API model.
+type TargetAuthenticationEnvironment struct {
+	OauthApplication *string `json:"oauth_application,omitempty"`
 }
 
 // DeliveryInput is one of RepositoryDeliveryInput, HostedMCPDeliveryInput.
@@ -892,16 +1080,91 @@ type HostedMCPDeliveryInput struct {
 	Kind string `json:"kind"`
 }
 
-// Project is an API model.
+// ProjectConfig is an API model. Shared generated-client and tooling behavior for a stored Project. Every Target inherits these defaults. Target.config is merged over them for one Target; top-level values replace defaults while cli, mcp, auth, readme, and package merge by field. GraphQL-only source settings live on the Project's Definition and are rejected in both stored config scopes.
+type ProjectConfig struct {
+	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
+	Globals []string     `json:"globals,omitempty"`
+	Retries *RetryTuning `json:"retries,omitempty"`
+	// Pagination Per-operation pagination control, keyed by operationId or "METHOD /path". Unmatched keys are reported as generation warnings.
+	Pagination map[string]ProjectConfigPaginationValue `json:"pagination,omitempty"`
+	Auth       *AuthenticationConfig                   `json:"auth,omitempty"`
+	CLI        *CLIBehavior                            `json:"cli,omitempty"`
+	MCP        *MCPBehavior                            `json:"mcp,omitempty"`
+	Readme     *ReadmeBehavior                         `json:"readme,omitempty"`
+	Package    *PackageBehavior                        `json:"package,omitempty"`
+	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Definition's externalDocs URL.
+	DocsURL *string `json:"docs_url,omitempty"`
+	// DocsIndexURL Exact llms.txt URL when the documentation site does not publish it at docs_url + /llms.txt.
+	DocsIndexURL *string `json:"docs_index_url,omitempty"`
+}
+
+// ProjectConfigPaginationValue is one of PaginationRule, bool.
+// Go has no sum types, so it holds the JSON as received and decodes on
+// request: try the As* accessors, or switch on Discriminator() when the
+// spec names one.
+type ProjectConfigPaginationValue struct {
+	union json.RawMessage
+}
+
+// MarshalJSON writes the value as it was set or received.
+func (u ProjectConfigPaginationValue) MarshalJSON() ([]byte, error) {
+	if u.union == nil {
+		return []byte("null"), nil
+	}
+	return u.union, nil
+}
+
+// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
+func (u *ProjectConfigPaginationValue) UnmarshalJSON(data []byte) error {
+	u.union = append(u.union[:0], data...)
+	return nil
+}
+
+// Raw returns the JSON exactly as received.
+func (u ProjectConfigPaginationValue) Raw() json.RawMessage {
+	return u.union
+}
+
+// AsPaginationRule decodes the value as PaginationRule.
+func (u ProjectConfigPaginationValue) AsPaginationRule() (PaginationRule, error) {
+	var v PaginationRule
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromPaginationRule sets the value to a PaginationRule.
+func (u *ProjectConfigPaginationValue) FromPaginationRule(v PaginationRule) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AsBool decodes the value as bool.
+func (u ProjectConfigPaginationValue) AsBool() (bool, error) {
+	var v bool
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromBool sets the value to a bool.
+func (u *ProjectConfigPaginationValue) FromBool(v bool) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// Project is an API model. Project-owned identity, Definition reference, generation controls, and shared configuration. Targets and Deliveries are available only through their canonical Target endpoints.
 type Project struct {
 	ID           ProjectID    `json:"id"`
 	Object       string       `json:"object"`
 	Name         string       `json:"name"`
 	DefinitionID DefinitionID `json:"definition_id"`
-	// Targets All configured Targets, including disabled Targets and their saved Deliveries.
-	Targets []Target `json:"targets"`
-	// Deliveries Flattened convenience view derived from the same Target bundles. Every Delivery retains target_id so ownership is explicit.
-	Deliveries []Delivery `json:"deliveries"`
 	// AutoGenerate Regenerate when the Definition changes: on every push to the default branch for a repository source, every 30 minutes for a URL source. Off by default: the first generation is always one you asked for. Off means only "generate now" and POST /projects/{project_id}/generations regenerate.
 	AutoGenerate bool `json:"auto_generate"`
 	// RelayEnabled Whether the webhook relay is on, letting the generated CLI's webhooks listen command mint relay sessions. Requires the cli target and Pro; turning the target off turns this off.
@@ -912,139 +1175,6 @@ type Project struct {
 	// UpdatedAt When the project configuration last changed.
 	UpdatedAt string    `json:"updated_at"`
 	RequestID RequestID `json:"request_id"`
-}
-
-// Target is an API model.
-type Target struct {
-	ID              TargetID            `json:"id"`
-	Object          string              `json:"object"`
-	ProjectID       ProjectID           `json:"project_id"`
-	DefinitionID    DefinitionID        `json:"definition_id"`
-	Name            string              `json:"name"`
-	Generator       GeneratorKind       `json:"generator"`
-	State           State               `json:"state"`
-	Edition         string              `json:"edition"`
-	ReleaseChannel  ReleaseChannel      `json:"release_channel"`
-	VersionPolicy   TargetVersionPolicy `json:"version_policy"`
-	CurrentVersion  string              `json:"current_version"`
-	ProposedVersion string              `json:"proposed_version"`
-	// Config Target-specific overrides merged over Project.config. GraphQL settings are Definition-owned and never appear here.
-	Config     ProjectConfig `json:"config"`
-	Deliveries []Delivery    `json:"deliveries"`
-	CreatedAt  string        `json:"created_at"`
-	UpdatedAt  string        `json:"updated_at"`
-	RequestID  *RequestID    `json:"request_id,omitempty"`
-}
-
-// TargetID is a generated API type.
-type TargetID string
-
-// TargetVersionPolicy is an API model.
-type TargetVersionPolicy struct {
-	Mode         string `json:"mode"`
-	Pre1Breaking string `json:"pre1_breaking"`
-}
-
-// Delivery is one of RepositoryDelivery, HostedMCPDelivery.
-// Go has no sum types, so it holds the JSON as received and decodes on
-// request: try the As* accessors, or switch on Discriminator() when the
-// spec names one.
-type Delivery struct {
-	union json.RawMessage
-}
-
-// MarshalJSON writes the value as it was set or received.
-func (u Delivery) MarshalJSON() ([]byte, error) {
-	if u.union == nil {
-		return []byte("null"), nil
-	}
-	return u.union, nil
-}
-
-// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *Delivery) UnmarshalJSON(data []byte) error {
-	u.union = append(u.union[:0], data...)
-	return nil
-}
-
-// Raw returns the JSON exactly as received.
-func (u Delivery) Raw() json.RawMessage {
-	return u.union
-}
-
-// Discriminator returns the "kind" field, which names the variant.
-func (u Delivery) Discriminator() (string, error) {
-	var probe struct {
-		Kind string `json:"kind"`
-	}
-	if err := json.Unmarshal(u.union, &probe); err != nil {
-		return "", err
-	}
-	return probe.Kind, nil
-}
-
-// AsRepositoryDelivery decodes the value as RepositoryDelivery.
-func (u Delivery) AsRepositoryDelivery() (RepositoryDelivery, error) {
-	var v RepositoryDelivery
-	err := json.Unmarshal(u.union, &v)
-	return v, err
-}
-
-// FromRepositoryDelivery sets the value to a RepositoryDelivery.
-func (u *Delivery) FromRepositoryDelivery(v RepositoryDelivery) error {
-	encoded, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	u.union = encoded
-	return nil
-}
-
-// AsHostedMCPDelivery decodes the value as HostedMCPDelivery.
-func (u Delivery) AsHostedMCPDelivery() (HostedMCPDelivery, error) {
-	var v HostedMCPDelivery
-	err := json.Unmarshal(u.union, &v)
-	return v, err
-}
-
-// FromHostedMCPDelivery sets the value to a HostedMCPDelivery.
-func (u *Delivery) FromHostedMCPDelivery(v HostedMCPDelivery) error {
-	encoded, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	u.union = encoded
-	return nil
-}
-
-// RepositoryDelivery is an API model.
-type RepositoryDelivery struct {
-	ID          DeliveryID          `json:"id"`
-	Object      string              `json:"object"`
-	TargetID    TargetID            `json:"target_id"`
-	Kind        string              `json:"kind"`
-	State       State               `json:"state"`
-	Repository  RepositoryReference `json:"repository"`
-	Directory   string              `json:"directory"`
-	PackageName string              `json:"package_name"`
-	ModulePath  string              `json:"module_path"`
-	CreatedAt   string              `json:"created_at"`
-	UpdatedAt   string              `json:"updated_at"`
-}
-
-// DeliveryID is a generated API type.
-type DeliveryID string
-
-// HostedMCPDelivery is an API model.
-type HostedMCPDelivery struct {
-	ID        DeliveryID `json:"id"`
-	Object    string     `json:"object"`
-	TargetID  TargetID   `json:"target_id"`
-	Kind      string     `json:"kind"`
-	State     State      `json:"state"`
-	URL       string     `json:"url"`
-	CreatedAt string     `json:"created_at"`
-	UpdatedAt string     `json:"updated_at"`
 }
 
 // DeletedProject is an API model.
@@ -1322,10 +1452,13 @@ const (
 	RepositoryEventHealthStatusSuperseded RepositoryEventHealthStatus = "superseded"
 )
 
+// TargetID is a generated API type.
+type TargetID string
+
 // GenerationList is an API model.
 type GenerationList struct {
-	Object ListObject   `json:"object"`
-	Data   []Generation `json:"data"`
+	Object ListObject          `json:"object"`
+	Data   []GenerationSummary `json:"data"`
 	// HasMore Whether another page is available after this one.
 	HasMore bool `json:"has_more"`
 	// NextCursor Pass this value as cursor to retrieve the next page; null on the last page.
@@ -1333,13 +1466,10 @@ type GenerationList struct {
 	RequestID  RequestID `json:"request_id"`
 }
 
-// Generation is an API model.
-type Generation struct {
-	ID     GenerationID `json:"id"`
-	Object string       `json:"object"`
-	// FilesOmitted Present and true when the generated target was too large to inline; files_index lists paths, fetched one at a time via GET /generations/{generation_id}/file.
-	FilesOmitted         *bool                `json:"files_omitted,omitempty"`
-	FilesIndex           []FileStub           `json:"files_index,omitempty"`
+// GenerationSummary is an API model. Generation metadata returned by collection endpoints. Generated file contents and file indexes are available only from retrieve and create operations.
+type GenerationSummary struct {
+	ID                   GenerationID         `json:"id"`
+	Object               string               `json:"object"`
 	ProjectID            ProjectID            `json:"project_id"`
 	DefinitionRevisionID DefinitionRevisionID `json:"definition_revision_id"`
 	Status               GenerationStatus     `json:"status"`
@@ -1350,23 +1480,14 @@ type Generation struct {
 	Generator  GeneratorKind        `json:"generator"`
 	Provenance GenerationProvenance `json:"provenance"`
 	// Meta Null only for a failed or legacy generation that produced no metadata.
-	Meta     GenerationMeta `json:"meta"`
-	Warnings []string       `json:"warnings"`
-	// Files Present on retrieve and create; omitted in lists.
-	Files     []GeneratedFile `json:"files,omitempty"`
-	Error     string          `json:"error"`
-	CreatedAt string          `json:"created_at"`
-	RequestID *RequestID      `json:"request_id,omitempty"`
+	Meta      GenerationMeta `json:"meta"`
+	Warnings  []string       `json:"warnings"`
+	Error     string         `json:"error"`
+	CreatedAt string         `json:"created_at"`
 }
 
 // GenerationID is a generated API type.
 type GenerationID string
-
-// FileStub is an API model.
-type FileStub struct {
-	Path  string `json:"path"`
-	Bytes int64  `json:"bytes"`
-}
 
 // GenerationStatus is one of "succeeded", "failed".
 type GenerationStatus string
@@ -1402,13 +1523,13 @@ type GenerationProvenance struct {
 	PackageVersion  string         `json:"package_version"`
 }
 
-// GenerationBatch is an API model.
+// GenerationBatch is an API model. Metadata for each Target generation attempted by a Project run. Retrieve one Generation separately for generated files.
 type GenerationBatch struct {
 	Data      []GenerationBatchDataItem `json:"data"`
 	RequestID RequestID                 `json:"request_id"`
 }
 
-// GenerationBatchDataItem is one of Generation, GenerationFailure.
+// GenerationBatchDataItem is one of GenerationSummary, GenerationFailure.
 // Go has no sum types, so it holds the JSON as received and decodes on
 // request: try the As* accessors, or switch on Discriminator() when the
 // spec names one.
@@ -1435,15 +1556,15 @@ func (u GenerationBatchDataItem) Raw() json.RawMessage {
 	return u.union
 }
 
-// AsGeneration decodes the value as Generation.
-func (u GenerationBatchDataItem) AsGeneration() (Generation, error) {
-	var v Generation
+// AsGenerationSummary decodes the value as GenerationSummary.
+func (u GenerationBatchDataItem) AsGenerationSummary() (GenerationSummary, error) {
+	var v GenerationSummary
 	err := json.Unmarshal(u.union, &v)
 	return v, err
 }
 
-// FromGeneration sets the value to a Generation.
-func (u *GenerationBatchDataItem) FromGeneration(v Generation) error {
+// FromGenerationSummary sets the value to a GenerationSummary.
+func (u *GenerationBatchDataItem) FromGenerationSummary(v GenerationSummary) error {
 	encoded, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -1599,6 +1720,137 @@ type TargetList struct {
 	RequestID  RequestID  `json:"request_id"`
 }
 
+// Target is an API model.
+type Target struct {
+	ID              TargetID            `json:"id"`
+	Object          string              `json:"object"`
+	ProjectID       ProjectID           `json:"project_id"`
+	DefinitionID    DefinitionID        `json:"definition_id"`
+	Name            string              `json:"name"`
+	Generator       GeneratorKind       `json:"generator"`
+	State           State               `json:"state"`
+	Edition         string              `json:"edition"`
+	ReleaseChannel  ReleaseChannel      `json:"release_channel"`
+	VersionPolicy   TargetVersionPolicy `json:"version_policy"`
+	CurrentVersion  string              `json:"current_version"`
+	ProposedVersion string              `json:"proposed_version"`
+	// Config Target-specific overrides merged over Project.config. GraphQL settings are Definition-owned and never appear here.
+	Config TargetConfig `json:"config"`
+	// Deliveries At most one repository and one hosted MCP Delivery.
+	Deliveries []Delivery `json:"deliveries"`
+	CreatedAt  string     `json:"created_at"`
+	UpdatedAt  string     `json:"updated_at"`
+	RequestID  *RequestID `json:"request_id,omitempty"`
+}
+
+// TargetVersionPolicy is an API model.
+type TargetVersionPolicy struct {
+	Mode         string `json:"mode"`
+	Pre1Breaking string `json:"pre1_breaking"`
+}
+
+// Delivery is one of RepositoryDelivery, HostedMCPDelivery.
+// Go has no sum types, so it holds the JSON as received and decodes on
+// request: try the As* accessors, or switch on Discriminator() when the
+// spec names one.
+type Delivery struct {
+	union json.RawMessage
+}
+
+// MarshalJSON writes the value as it was set or received.
+func (u Delivery) MarshalJSON() ([]byte, error) {
+	if u.union == nil {
+		return []byte("null"), nil
+	}
+	return u.union, nil
+}
+
+// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
+func (u *Delivery) UnmarshalJSON(data []byte) error {
+	u.union = append(u.union[:0], data...)
+	return nil
+}
+
+// Raw returns the JSON exactly as received.
+func (u Delivery) Raw() json.RawMessage {
+	return u.union
+}
+
+// Discriminator returns the "kind" field, which names the variant.
+func (u Delivery) Discriminator() (string, error) {
+	var probe struct {
+		Kind string `json:"kind"`
+	}
+	if err := json.Unmarshal(u.union, &probe); err != nil {
+		return "", err
+	}
+	return probe.Kind, nil
+}
+
+// AsRepositoryDelivery decodes the value as RepositoryDelivery.
+func (u Delivery) AsRepositoryDelivery() (RepositoryDelivery, error) {
+	var v RepositoryDelivery
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromRepositoryDelivery sets the value to a RepositoryDelivery.
+func (u *Delivery) FromRepositoryDelivery(v RepositoryDelivery) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AsHostedMCPDelivery decodes the value as HostedMCPDelivery.
+func (u Delivery) AsHostedMCPDelivery() (HostedMCPDelivery, error) {
+	var v HostedMCPDelivery
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromHostedMCPDelivery sets the value to a HostedMCPDelivery.
+func (u *Delivery) FromHostedMCPDelivery(v HostedMCPDelivery) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// RepositoryDelivery is an API model.
+type RepositoryDelivery struct {
+	ID          DeliveryID          `json:"id"`
+	Object      string              `json:"object"`
+	TargetID    TargetID            `json:"target_id"`
+	Kind        string              `json:"kind"`
+	State       State               `json:"state"`
+	Repository  RepositoryReference `json:"repository"`
+	Directory   string              `json:"directory"`
+	PackageName string              `json:"package_name"`
+	ModulePath  string              `json:"module_path"`
+	CreatedAt   string              `json:"created_at"`
+	UpdatedAt   string              `json:"updated_at"`
+}
+
+// DeliveryID is a generated API type.
+type DeliveryID string
+
+// HostedMCPDelivery is an API model.
+type HostedMCPDelivery struct {
+	ID        DeliveryID `json:"id"`
+	Object    string     `json:"object"`
+	TargetID  TargetID   `json:"target_id"`
+	Kind      string     `json:"kind"`
+	State     State      `json:"state"`
+	URL       string     `json:"url"`
+	CreatedAt string     `json:"created_at"`
+	UpdatedAt string     `json:"updated_at"`
+}
+
 // TargetFields is an API model.
 type TargetFields struct {
 	Name           string          `json:"name"`
@@ -1610,7 +1862,7 @@ type TargetFields struct {
 	// ProposedVersion Optional larger or prerelease SemVer for the next reviewed release.
 	ProposedVersion *string `json:"proposed_version,omitempty"`
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are rejected here and belong to the Definition.
-	Config     *ProjectConfig  `json:"config,omitempty"`
+	Config     *TargetConfig   `json:"config,omitempty"`
 	Deliveries []DeliveryInput `json:"deliveries,omitempty"`
 }
 
@@ -1629,11 +1881,12 @@ type TargetResponse struct {
 	CurrentVersion  string                      `json:"current_version"`
 	ProposedVersion string                      `json:"proposed_version"`
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are Definition-owned and never appear here.
-	Config     ProjectConfig `json:"config"`
-	Deliveries []Delivery    `json:"deliveries"`
-	CreatedAt  string        `json:"created_at"`
-	UpdatedAt  string        `json:"updated_at"`
-	RequestID  RequestID     `json:"request_id"`
+	Config TargetConfig `json:"config"`
+	// Deliveries At most one repository and one hosted MCP Delivery.
+	Deliveries []Delivery `json:"deliveries"`
+	CreatedAt  string     `json:"created_at"`
+	UpdatedAt  string     `json:"updated_at"`
+	RequestID  RequestID  `json:"request_id"`
 }
 
 // TargetResponseVersionPolicy is an API model.
@@ -1658,8 +1911,8 @@ type TargetUpdateRequest struct {
 	ReleaseChannel  *ReleaseChannel   `json:"release_channel,omitempty"`
 	ProposedVersion *Nullable[string] `json:"proposed_version,omitempty"`
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are rejected here and belong to the Definition.
-	Config     *Nullable[ProjectConfig] `json:"config,omitempty"`
-	Deliveries []DeliveryInput          `json:"deliveries,omitempty"`
+	Config     *Nullable[TargetConfig] `json:"config,omitempty"`
+	Deliveries []DeliveryInput         `json:"deliveries,omitempty"`
 }
 
 // TargetReleaseList is an API model.
@@ -1726,8 +1979,8 @@ type GenerationResponse struct {
 	// TargetID Persisted Target identity. Null only for stateless generation.
 	TargetID TargetID `json:"target_id"`
 	// Generator Resolved generator implementation; provenance rather than resource identity.
-	Generator  GeneratorKind                `json:"generator"`
-	Provenance GenerationResponseProvenance `json:"provenance"`
+	Generator  GeneratorKind        `json:"generator"`
+	Provenance GenerationProvenance `json:"provenance"`
 	// Meta Null only for a failed or legacy generation that produced no metadata.
 	Meta     GenerationMeta `json:"meta"`
 	Warnings []string       `json:"warnings"`
@@ -1738,20 +1991,10 @@ type GenerationResponse struct {
 	RequestID RequestID       `json:"request_id"`
 }
 
-// GenerationResponseProvenance is an API model.
-type GenerationResponseProvenance struct {
-	// GeneratorEdition Pinned generator contract edition.
-	GeneratorEdition string `json:"generator_edition"`
-	// EngineBuild Exact engine build identifier used for replay and support.
-	EngineBuild string `json:"engine_build"`
-	// ResolvedConfig Immutable effective Target configuration used by this run; source credentials are never included.
-	ResolvedConfig map[string]any `json:"resolved_config"`
-	ConfigHash     string         `json:"config_hash"`
-	// SurfacePlan Resolved generator and entitlement plan used to select the emitted public surface.
-	SurfacePlan     map[string]any `json:"surface_plan"`
-	SurfacePlanHash string         `json:"surface_plan_hash"`
-	EntitlementCap  int64          `json:"entitlement_cap"`
-	PackageVersion  string         `json:"package_version"`
+// FileStub is an API model.
+type FileStub struct {
+	Path  string `json:"path"`
+	Bytes int64  `json:"bytes"`
 }
 
 // DefinitionRevisionList is an API model.
