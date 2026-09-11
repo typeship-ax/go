@@ -10,9 +10,9 @@ import (
 )
 
 // Version is this package's version, also sent as the User-Agent.
-const Version = "0.10.0"
+const Version = "0.11.0"
 
-const userAgent = "typeship/0.10.0 (typeship)"
+const userAgent = "typeship/0.11.0 (typeship)"
 
 // Option configures a Client at construction.
 type Option func(*core)

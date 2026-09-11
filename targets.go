@@ -35,6 +35,18 @@ type TargetsListReleasesParams struct {
 	Cursor *string `json:"-"`
 }
 
+// TargetsAdoptReleaseParams are the inputs for TargetsService.AdoptRelease.
+type TargetsAdoptReleaseParams struct {
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	IdempotencyKey *string `json:"-"`
+}
+
+// TargetsRepublishReleaseParams are the inputs for TargetsService.RepublishRelease.
+type TargetsRepublishReleaseParams struct {
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	IdempotencyKey *string `json:"-"`
+}
+
 // List a project's Targets.
 //
 // GET /projects/{project_id}/targets
@@ -203,6 +215,77 @@ func (s *TargetsService) ListReleases(ctx context.Context, targetID string, para
 	})
 }
 
+// RetrieveDraft — retrieve a Target's rolling Draft release.
+//
+// Returns Current, the cumulative Draft version and readiness, its exact head, and the optimistic release revision.
+//
+// GET /targets/{target_id}/draft
+func (s *TargetsService) RetrieveDraft(ctx context.Context, targetID string, opts ...RequestOption) (*TargetDraftResponse, error) {
+	req := request{
+		Method:     "GET",
+		Path:       fmt.Sprintf("/targets/%s/draft", url.PathEscape(targetID)),
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Security:   []map[string][]string{{"apiKey": {}}},
+		SchemaKey:  "targets.retrieveDraft",
+		Idempotent: true,
+	}
+	var out TargetDraftResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// UpdateDraft — select an exact Draft version or return to automatic versioning.
+//
+// Validates the selection against the cumulative required bump and regenerates the same rolling Draft pull request.
+//
+// PATCH /targets/{target_id}/draft
+func (s *TargetsService) UpdateDraft(ctx context.Context, targetID string, body TargetDraftUpdate, opts ...RequestOption) (*TargetDraftResponse, error) {
+	req := request{
+		Method:    "PATCH",
+		Path:      fmt.Sprintf("/targets/%s/draft", url.PathEscape(targetID)),
+		Body:      body,
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
+		Security:  []map[string][]string{{"apiKey": {}}},
+		SchemaKey: "targets.updateDraft",
+	}
+	var out TargetDraftResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// AdoptRelease — adopt a verified existing package as Current.
+//
+// Verifies the repository tag, package metadata, and registry artifact; records an Imported Current release; then opens the first Typeship Draft at the next major version because no trusted generated baseline exists yet.
+//
+// POST /targets/{target_id}/adopt
+func (s *TargetsService) AdoptRelease(ctx context.Context, targetID string, body TargetAdoption, params *TargetsAdoptReleaseParams, opts ...RequestOption) (*TargetReleaseResponse, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IdempotencyKey != nil {
+			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
+		}
+	}
+	req := request{
+		Method:            "POST",
+		Path:              fmt.Sprintf("/targets/%s/adopt", url.PathEscape(targetID)),
+		Headers:           headers,
+		Body:              body,
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
+		Security:          []map[string][]string{{"apiKey": {}}},
+		SchemaKey:         "targets.adoptRelease",
+		IdempotencyHeader: "Idempotency-Key",
+	}
+	var out TargetReleaseResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // RetrieveRelease — retrieve an immutable Target release.
 //
 // GET /target_releases/{target_release_id}
@@ -214,6 +297,34 @@ func (s *TargetsService) RetrieveRelease(ctx context.Context, targetReleaseID st
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "targets.retrieveRelease",
 		Idempotent: true,
+	}
+	var out TargetReleaseResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// RepublishRelease — retry publication of an exact Target release.
+//
+// Dispatches the repository-owned republish workflow for this immutable version and accepted commit. It never selects the latest Draft or release.
+//
+// POST /target_releases/{target_release_id}/republish
+func (s *TargetsService) RepublishRelease(ctx context.Context, targetReleaseID string, params *TargetsRepublishReleaseParams, opts ...RequestOption) (*TargetReleaseResponse, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IdempotencyKey != nil {
+			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
+		}
+	}
+	req := request{
+		Method:            "POST",
+		Path:              fmt.Sprintf("/target_releases/%s/republish", url.PathEscape(targetReleaseID)),
+		Headers:           headers,
+		Errors:            map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "502": newBadGatewayError},
+		Security:          []map[string][]string{{"apiKey": {}}},
+		SchemaKey:         "targets.republishRelease",
+		IdempotencyHeader: "Idempotency-Key",
 	}
 	var out TargetReleaseResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
