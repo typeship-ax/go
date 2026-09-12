@@ -257,6 +257,48 @@ func (s *TargetsService) UpdateDraft(ctx context.Context, targetID string, body 
 	return &out, nil
 }
 
+// RetrieveCustomizations — inspect preserved custom code for a Target Draft.
+//
+// Returns the exact immutable three-way input identities, customer changes, conflicts, reused resolutions, combined-package hashes, and checks. File contents are not returned.
+//
+// GET /targets/{target_id}/customizations
+func (s *TargetsService) RetrieveCustomizations(ctx context.Context, targetID string, opts ...RequestOption) (*TargetCustomizationsResponse, error) {
+	req := request{
+		Method:     "GET",
+		Path:       fmt.Sprintf("/targets/%s/customizations", url.PathEscape(targetID)),
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Security:   []map[string][]string{{"apiKey": {}}},
+		SchemaKey:  "targets.retrieveCustomizations",
+		Idempotent: true,
+	}
+	var out TargetCustomizationsResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ResetCustomizations — resolve or reset custom code on the rolling Draft.
+//
+// Resets selected or all custom paths, selects either exact side of conflicts, and reruns the three-way integration on the same protected Draft. The expected head prevents applying a stale choice.
+//
+// POST /targets/{target_id}/customizations/reset
+func (s *TargetsService) ResetCustomizations(ctx context.Context, targetID string, body ResetTargetCustomizations, opts ...RequestOption) (*TargetCustomizationsResponse, error) {
+	req := request{
+		Method:    "POST",
+		Path:      fmt.Sprintf("/targets/%s/customizations/reset", url.PathEscape(targetID)),
+		Body:      body,
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "502": newBadGatewayError},
+		Security:  []map[string][]string{{"apiKey": {}}},
+		SchemaKey: "targets.resetCustomizations",
+	}
+	var out TargetCustomizationsResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // AdoptRelease — adopt a verified existing package as Current.
 //
 // Verifies the repository tag, package metadata, and registry artifact; records an Imported Current release; then opens the first Typeship Draft at the next major version because no trusted generated baseline exists yet.

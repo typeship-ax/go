@@ -518,7 +518,17 @@ type GeneratedFile struct {
 	// Path Repo-relative path inside the generated package.
 	Path    string `json:"path"`
 	Content string `json:"content"`
+	// Mode Exact Git file mode. Omitted stateless outputs are regular files.
+	Mode *Mode `json:"mode,omitempty"`
 }
+
+// Mode is one of "100644", "100755".
+type Mode string
+
+const (
+	Mode100644 Mode = "100644"
+	Mode100755 Mode = "100755"
+)
 
 // GenerationMeta is an API model.
 type GenerationMeta struct {
@@ -569,9 +579,18 @@ type GenerationMeta struct {
 	// ReleaseReadinessNote The release-readiness decision in one line, as the commit status describes it.
 	ReleaseReadinessNote *string `json:"release_readiness_note,omitempty"`
 	// PreviousVersion The package version the destination had before this regeneration.
-	PreviousVersion *string `json:"previous_version,omitempty"`
-	FileCount       *int64  `json:"file_count,omitempty"`
-	TotalLines      *int64  `json:"total_lines,omitempty"`
+	PreviousVersion      *string               `json:"previous_version,omitempty"`
+	IntegrationAttemptID *IntegrationAttemptID `json:"integration_attempt_id,omitempty"`
+	// CustomerChangeCount Files changed by the customer relative to the accepted combined baseline.
+	CustomerChangeCount   *int64                          `json:"customer_change_count,omitempty"`
+	IntegrationState      *GenerationMetaIntegrationState `json:"integration_state,omitempty"`
+	ReusedResolutionCount *int64                          `json:"reused_resolution_count,omitempty"`
+	// PublishedCompatibility Separate compatibility result against the last published artifact.
+	PublishedCompatibility *GenerationMetaPublishedCompatibility `json:"published_compatibility,omitempty"`
+	// PublishedVersion Version of the last published artifact used by published_compatibility.
+	PublishedVersion *string `json:"published_version,omitempty"`
+	FileCount        *int64  `json:"file_count,omitempty"`
+	TotalLines       *int64  `json:"total_lines,omitempty"`
 	// Diagnostics Deterministic Diagnostic summary for the exact Definition Revision consumed.
 	Diagnostics *GenerationMetaDiagnostics `json:"diagnostics,omitempty"`
 }
@@ -610,13 +629,39 @@ const (
 	APICompatibilityUnknown    APICompatibility = "unknown"
 )
 
-// GenerationMetaReleaseReadiness is one of "success", "failure", "error". The destination pull request's combined readiness decision for the exact bot-generated head. Compatibility and version correctness remain separate fields above.
+// GenerationMetaReleaseReadiness is one of "success", "failure", "pending", "error". The destination pull request's combined readiness decision for the exact bot-generated head. Compatibility and version correctness remain separate fields above.
 type GenerationMetaReleaseReadiness string
 
 const (
 	GenerationMetaReleaseReadinessSuccess GenerationMetaReleaseReadiness = "success"
 	GenerationMetaReleaseReadinessFailure GenerationMetaReleaseReadiness = "failure"
+	GenerationMetaReleaseReadinessPending GenerationMetaReleaseReadiness = "pending"
 	GenerationMetaReleaseReadinessError   GenerationMetaReleaseReadiness = "error"
+)
+
+// IntegrationAttemptID is a generated API type.
+type IntegrationAttemptID string
+
+// GenerationMetaIntegrationState is one of "conflicted", "checking", "checks_failed", "ready", "accepted", "outdated".
+type GenerationMetaIntegrationState string
+
+const (
+	GenerationMetaIntegrationStateConflicted   GenerationMetaIntegrationState = "conflicted"
+	GenerationMetaIntegrationStateChecking     GenerationMetaIntegrationState = "checking"
+	GenerationMetaIntegrationStateChecksFailed GenerationMetaIntegrationState = "checks_failed"
+	GenerationMetaIntegrationStateReady        GenerationMetaIntegrationState = "ready"
+	GenerationMetaIntegrationStateAccepted     GenerationMetaIntegrationState = "accepted"
+	GenerationMetaIntegrationStateOutdated     GenerationMetaIntegrationState = "outdated"
+)
+
+// GenerationMetaPublishedCompatibility is one of "compatible", "breaking", "unknown", "not_applicable". Separate compatibility result against the last published artifact.
+type GenerationMetaPublishedCompatibility string
+
+const (
+	GenerationMetaPublishedCompatibilityCompatible    GenerationMetaPublishedCompatibility = "compatible"
+	GenerationMetaPublishedCompatibilityBreaking      GenerationMetaPublishedCompatibility = "breaking"
+	GenerationMetaPublishedCompatibilityUnknown       GenerationMetaPublishedCompatibility = "unknown"
+	GenerationMetaPublishedCompatibilityNotApplicable GenerationMetaPublishedCompatibility = "not_applicable"
 )
 
 // GenerationMetaDiagnostics is an API model. Deterministic Diagnostic summary for the exact Definition Revision consumed.
@@ -883,6 +928,7 @@ type InitialTargetFields struct {
 	Edition         *string         `json:"edition,omitempty"`
 	ReleaseChannel  *ReleaseChannel `json:"release_channel,omitempty"`
 	ProposedVersion *string         `json:"proposed_version,omitempty"`
+	Checks          *TargetChecks   `json:"checks,omitempty"`
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are rejected here and belong to the Definition.
 	Config     *TargetConfig   `json:"config,omitempty"`
 	Deliveries []DeliveryInput `json:"deliveries,omitempty"`
@@ -903,6 +949,28 @@ const (
 	ReleaseChannelStable     ReleaseChannel = "stable"
 	ReleaseChannelPrerelease ReleaseChannel = "prerelease"
 )
+
+// TargetChecks is an API model. Required checks run against the complete combined package. Generated checks and customer commands share one reproducible workflow; repository_required names existing repository checks.
+type TargetChecks struct {
+	Generated          []TargetChecksGenerated    `json:"generated,omitempty"`
+	RepositoryRequired []string                   `json:"repository_required,omitempty"`
+	Customer           []TargetChecksCustomerItem `json:"customer,omitempty"`
+}
+
+// TargetChecksGenerated is one of "build", "package", "public_entrypoint".
+type TargetChecksGenerated string
+
+const (
+	TargetChecksGeneratedBuild            TargetChecksGenerated = "build"
+	TargetChecksGeneratedPackage          TargetChecksGenerated = "package"
+	TargetChecksGeneratedPublicEntrypoint TargetChecksGenerated = "public_entrypoint"
+)
+
+// TargetChecksCustomerItem is an API model.
+type TargetChecksCustomerItem struct {
+	Name    string `json:"name"`
+	Command string `json:"command"`
+}
 
 // TargetConfig is an API model. Target-specific generation and delivery overrides. Authentication may only select a Project-owned OAuth application. OAuth server metadata, applications, and identity policy remain Project-owned. Self-hosted MCP access may be overridden for a Target-specific deployment.
 type TargetConfig struct {
@@ -1771,7 +1839,8 @@ type Target struct {
 	ProposedVersionSource ProposedVersionSource `json:"proposed_version_source"`
 	ProposedVersionActor  string                `json:"proposed_version_actor"`
 	// ReleaseRevision Optimistic concurrency revision for Draft selections.
-	ReleaseRevision int64 `json:"release_revision"`
+	ReleaseRevision int64        `json:"release_revision"`
+	Checks          TargetChecks `json:"checks"`
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are Definition-owned and never appear here.
 	Config TargetConfig `json:"config"`
 	// Deliveries At most one repository and one hosted MCP Delivery.
@@ -1908,7 +1977,8 @@ type TargetFields struct {
 	Edition        *string         `json:"edition,omitempty"`
 	ReleaseChannel *ReleaseChannel `json:"release_channel,omitempty"`
 	// ProposedVersion Optional larger or prerelease SemVer for the next reviewed release.
-	ProposedVersion *string `json:"proposed_version,omitempty"`
+	ProposedVersion *string       `json:"proposed_version,omitempty"`
+	Checks          *TargetChecks `json:"checks,omitempty"`
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are rejected here and belong to the Definition.
 	Config     *TargetConfig   `json:"config,omitempty"`
 	Deliveries []DeliveryInput `json:"deliveries,omitempty"`
@@ -1932,7 +2002,8 @@ type TargetResponse struct {
 	ProposedVersionSource ProposedVersionSource `json:"proposed_version_source"`
 	ProposedVersionActor  string                `json:"proposed_version_actor"`
 	// ReleaseRevision Optimistic concurrency revision for Draft selections.
-	ReleaseRevision int64 `json:"release_revision"`
+	ReleaseRevision int64        `json:"release_revision"`
+	Checks          TargetChecks `json:"checks"`
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are Definition-owned and never appear here.
 	Config TargetConfig `json:"config"`
 	// Deliveries At most one repository and one hosted MCP Delivery.
@@ -1963,6 +2034,7 @@ type TargetUpdateRequest struct {
 	Edition         *string           `json:"edition,omitempty"`
 	ReleaseChannel  *ReleaseChannel   `json:"release_channel,omitempty"`
 	ProposedVersion *Nullable[string] `json:"proposed_version,omitempty"`
+	Checks          *TargetChecks     `json:"checks,omitempty"`
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are rejected here and belong to the Definition.
 	Config     *Nullable[TargetConfig] `json:"config,omitempty"`
 	Deliveries []DeliveryInput         `json:"deliveries,omitempty"`
@@ -1993,11 +2065,21 @@ type TargetRelease struct {
 	Repository           RepositoryReference  `json:"repository"`
 	DefinitionRevisionID DefinitionRevisionID `json:"definition_revision_id"`
 	// DeliveryRevision Immutable provider-native revision that was merged or published.
-	DeliveryRevision string                        `json:"delivery_revision"`
-	ImportProvenance TargetReleaseImportProvenance `json:"import_provenance"`
-	Publications     []Publication                 `json:"publications"`
-	CreatedAt        string                        `json:"created_at"`
-	RequestID        *RequestID                    `json:"request_id,omitempty"`
+	DeliveryRevision string `json:"delivery_revision"`
+	// SourceDigest Digest of the exact accepted source tree used for publication.
+	SourceDigest               string                        `json:"source_digest"`
+	PreviousGenerationID       GenerationID                  `json:"previous_generation_id"`
+	NextGenerationID           GenerationID                  `json:"next_generation_id"`
+	GeneratedOutputHash        string                        `json:"generated_output_hash"`
+	AcceptedCombinedSnapshotID CodeSnapshotID                `json:"accepted_combined_snapshot_id"`
+	CustomerDiffHash           string                        `json:"customer_diff_hash"`
+	FinalPackageHash           string                        `json:"final_package_hash"`
+	Checks                     []PackageCheck                `json:"checks"`
+	AcceptedRisks              []AcceptedCompatibilityRisk   `json:"accepted_risks"`
+	ImportProvenance           TargetReleaseImportProvenance `json:"import_provenance"`
+	Publications               []Publication                 `json:"publications"`
+	CreatedAt                  string                        `json:"created_at"`
+	RequestID                  *RequestID                    `json:"request_id,omitempty"`
 }
 
 // TargetReleaseID is a generated API type.
@@ -2009,6 +2091,58 @@ type TargetReleaseOrigin string
 const (
 	TargetReleaseOriginTypeship TargetReleaseOrigin = "typeship"
 	TargetReleaseOriginImported TargetReleaseOrigin = "imported"
+)
+
+// CodeSnapshotID is a generated API type.
+type CodeSnapshotID string
+
+// PackageCheck is an API model.
+type PackageCheck struct {
+	Name       string             `json:"name"`
+	Source     PackageCheckSource `json:"source"`
+	Required   bool               `json:"required"`
+	State      PackageCheckState  `json:"state"`
+	Reason     string             `json:"reason"`
+	Revision   string             `json:"revision"`
+	URL        string             `json:"url"`
+	ObservedAt string             `json:"observed_at"`
+}
+
+// PackageCheckSource is one of "typeship", "customer", "repository", "compatibility".
+type PackageCheckSource string
+
+const (
+	PackageCheckSourceTypeship      PackageCheckSource = "typeship"
+	PackageCheckSourceCustomer      PackageCheckSource = "customer"
+	PackageCheckSourceRepository    PackageCheckSource = "repository"
+	PackageCheckSourceCompatibility PackageCheckSource = "compatibility"
+)
+
+// PackageCheckState is one of "pending", "passed", "failed", "not_assessed".
+type PackageCheckState string
+
+const (
+	PackageCheckStatePending     PackageCheckState = "pending"
+	PackageCheckStatePassed      PackageCheckState = "passed"
+	PackageCheckStateFailed      PackageCheckState = "failed"
+	PackageCheckStateNotAssessed PackageCheckState = "not_assessed"
+)
+
+// AcceptedCompatibilityRisk is an API model.
+type AcceptedCompatibilityRisk struct {
+	Comparison       AcceptedCompatibilityRiskComparison `json:"comparison"`
+	Reason           string                              `json:"reason"`
+	ApprovedBy       string                              `json:"approved_by"`
+	ApprovedRevision string                              `json:"approved_revision"`
+	ApprovedAt       string                              `json:"approved_at"`
+}
+
+// AcceptedCompatibilityRiskComparison is one of "current", "published".
+type AcceptedCompatibilityRiskComparison string
+
+const (
+	AcceptedCompatibilityRiskComparisonCurrent   AcceptedCompatibilityRiskComparison = "current"
+	AcceptedCompatibilityRiskComparisonPublished AcceptedCompatibilityRiskComparison = "published"
 )
 
 // TargetReleaseImportProvenance is an API model.
@@ -2050,7 +2184,7 @@ const (
 	PublicationDestinationMCP    PublicationDestination = "mcp"
 )
 
-// PublicationState is one of "pending", "publishing", "published", "failed".
+// PublicationState is one of "pending", "publishing", "published", "failed", "disabled".
 type PublicationState string
 
 const (
@@ -2058,6 +2192,7 @@ const (
 	PublicationStatePublishing PublicationState = "publishing"
 	PublicationStatePublished  PublicationState = "published"
 	PublicationStateFailed     PublicationState = "failed"
+	PublicationStateDisabled   PublicationState = "disabled"
 )
 
 // TargetDraftResponse is an API model.
@@ -2164,6 +2299,247 @@ type TargetDraftUpdate struct {
 	ExpectedRevision *int64 `json:"expected_revision,omitempty"`
 }
 
+// TargetCustomizationsResponse is an API model.
+type TargetCustomizationsResponse struct {
+	Object    string                             `json:"object"`
+	TargetID  TargetID                           `json:"target_id"`
+	Status    TargetCustomizationsResponseStatus `json:"status"`
+	AttemptID IntegrationAttemptID               `json:"attempt_id"`
+	// BaselineAvailable False for an adopted package until its first explicit integration is accepted.
+	BaselineAvailable bool                               `json:"baseline_available"`
+	Input             TargetCustomizationsResponseInput  `json:"input"`
+	Output            TargetCustomizationsResponseOutput `json:"output"`
+	Changes           []CustomizationChange              `json:"changes"`
+	Conflicts         []TargetMergeConflict              `json:"conflicts"`
+	// ConflictStage Identifies whether conflicts arose while reconciling the rolling Draft with the default branch or while applying the next Generation.
+	ConflictStage     TargetCustomizationsResponseConflictStage           `json:"conflict_stage"`
+	ReusedResolutions []TargetCustomizationsResponseReusedResolutionsItem `json:"reused_resolutions"`
+	Checks            []PackageCheck                                      `json:"checks"`
+	PullRequestURL    string                                              `json:"pull_request_url"`
+	// HeadRevision Exact rolling Draft head to send as expected_head_revision when resolving this attempt.
+	HeadRevision string    `json:"head_revision"`
+	RequestID    RequestID `json:"request_id"`
+}
+
+// TargetCustomizationsResponseStatus is one of "not_generated", "conflicted", "checking", "checks_failed", "ready", "accepted", "outdated".
+type TargetCustomizationsResponseStatus string
+
+const (
+	TargetCustomizationsResponseStatusNotGenerated TargetCustomizationsResponseStatus = "not_generated"
+	TargetCustomizationsResponseStatusConflicted   TargetCustomizationsResponseStatus = "conflicted"
+	TargetCustomizationsResponseStatusChecking     TargetCustomizationsResponseStatus = "checking"
+	TargetCustomizationsResponseStatusChecksFailed TargetCustomizationsResponseStatus = "checks_failed"
+	TargetCustomizationsResponseStatusReady        TargetCustomizationsResponseStatus = "ready"
+	TargetCustomizationsResponseStatusAccepted     TargetCustomizationsResponseStatus = "accepted"
+	TargetCustomizationsResponseStatusOutdated     TargetCustomizationsResponseStatus = "outdated"
+)
+
+// TargetCustomizationsResponseInput is an API model.
+type TargetCustomizationsResponseInput struct {
+	CurrentReleaseID            TargetReleaseID `json:"current_release_id"`
+	PreviousGenerationID        GenerationID    `json:"previous_generation_id"`
+	PreviousGeneratedSnapshotID CodeSnapshotID  `json:"previous_generated_snapshot_id"`
+	// PreviousCombinedSnapshotID Exact accepted combined code used to calculate customer changes.
+	PreviousCombinedSnapshotID CodeSnapshotID `json:"previous_combined_snapshot_id"`
+	CurrentSnapshotID          CodeSnapshotID `json:"current_snapshot_id"`
+	CurrentRevision            string         `json:"current_revision"`
+	NextGenerationID           GenerationID   `json:"next_generation_id"`
+	NextGeneratedSnapshotID    CodeSnapshotID `json:"next_generated_snapshot_id"`
+	DefaultRevision            string         `json:"default_revision"`
+	DraftRevision              string         `json:"draft_revision"`
+}
+
+// TargetCustomizationsResponseOutput is an API model.
+type TargetCustomizationsResponseOutput struct {
+	CombinedSnapshotID CodeSnapshotID `json:"combined_snapshot_id"`
+	GeneratedHash      string         `json:"generated_hash"`
+	CustomerDiffHash   string         `json:"customer_diff_hash"`
+	FinalPackageHash   string         `json:"final_package_hash"`
+	// PublicationRequired False when the exact combined change only affects tests or check infrastructure and must not create a versioned release.
+	PublicationRequired bool   `json:"publication_required"`
+	CandidateRevision   string `json:"candidate_revision"`
+}
+
+// CustomizationChange is an API model.
+type CustomizationChange struct {
+	Path     string                  `json:"path"`
+	Kind     CustomizationChangeKind `json:"kind"`
+	Previous CodeFileSummary         `json:"previous"`
+	Current  CodeFileSummary         `json:"current"`
+	Next     CodeFileSummary         `json:"next"`
+}
+
+// CustomizationChangeKind is one of "added", "edited", "deleted", "mode_changed".
+type CustomizationChangeKind string
+
+const (
+	CustomizationChangeKindAdded       CustomizationChangeKind = "added"
+	CustomizationChangeKindEdited      CustomizationChangeKind = "edited"
+	CustomizationChangeKindDeleted     CustomizationChangeKind = "deleted"
+	CustomizationChangeKindModeChanged CustomizationChangeKind = "mode_changed"
+)
+
+// CodeFileSummary is an API model.
+type CodeFileSummary struct {
+	Mode CodeFileSummaryMode `json:"mode"`
+	Hash string              `json:"hash"`
+}
+
+// CodeFileSummaryMode is one of "100644", "100755", "120000".
+type CodeFileSummaryMode string
+
+const (
+	CodeFileSummaryMode100644 CodeFileSummaryMode = "100644"
+	CodeFileSummaryMode100755 CodeFileSummaryMode = "100755"
+	CodeFileSummaryMode120000 CodeFileSummaryMode = "120000"
+)
+
+// TargetMergeConflict is an API model.
+type TargetMergeConflict struct {
+	Path        string                  `json:"path"`
+	Kind        TargetMergeConflictKind `json:"kind"`
+	Fingerprint string                  `json:"fingerprint"`
+	Previous    MergeSideSummary        `json:"previous"`
+	Current     MergeSideSummary        `json:"current"`
+	Next        MergeSideSummary        `json:"next"`
+}
+
+// TargetMergeConflictKind is one of "missing_baseline", "file_ownership", "customer_deleted_generator_changed", "generator_deleted_customer_changed", "overlapping_text", "binary_changed", "file_mode_changed".
+type TargetMergeConflictKind string
+
+const (
+	TargetMergeConflictKindMissingBaseline                 TargetMergeConflictKind = "missing_baseline"
+	TargetMergeConflictKindFileOwnership                   TargetMergeConflictKind = "file_ownership"
+	TargetMergeConflictKindCustomerDeletedGeneratorChanged TargetMergeConflictKind = "customer_deleted_generator_changed"
+	TargetMergeConflictKindGeneratorDeletedCustomerChanged TargetMergeConflictKind = "generator_deleted_customer_changed"
+	TargetMergeConflictKindOverlappingText                 TargetMergeConflictKind = "overlapping_text"
+	TargetMergeConflictKindBinaryChanged                   TargetMergeConflictKind = "binary_changed"
+	TargetMergeConflictKindFileModeChanged                 TargetMergeConflictKind = "file_mode_changed"
+)
+
+// MergeSideSummary is an API model.
+type MergeSideSummary struct {
+	Present bool                `json:"present"`
+	Mode    CodeFileSummaryMode `json:"mode"`
+	Hash    string              `json:"hash"`
+}
+
+// TargetCustomizationsResponseConflictStage is one of "default_sync", "generation". Identifies whether conflicts arose while reconciling the rolling Draft with the default branch or while applying the next Generation.
+type TargetCustomizationsResponseConflictStage string
+
+const (
+	TargetCustomizationsResponseConflictStageDefaultSync TargetCustomizationsResponseConflictStage = "default_sync"
+	TargetCustomizationsResponseConflictStageGeneration  TargetCustomizationsResponseConflictStage = "generation"
+)
+
+// TargetCustomizationsResponseReusedResolutionsItem is an API model.
+type TargetCustomizationsResponseReusedResolutionsItem struct {
+	Path             string                                                  `json:"path"`
+	Fingerprint      string                                                  `json:"fingerprint"`
+	Choice           TargetCustomizationsResponseReusedResolutionsItemChoice `json:"choice"`
+	ApprovedRevision string                                                  `json:"approved_revision"`
+	ApprovedBy       string                                                  `json:"approved_by"`
+	ApprovedAt       string                                                  `json:"approved_at"`
+}
+
+// TargetCustomizationsResponseReusedResolutionsItemChoice is one of "current", "generated", "resolved".
+type TargetCustomizationsResponseReusedResolutionsItemChoice string
+
+const (
+	TargetCustomizationsResponseReusedResolutionsItemChoiceCurrent   TargetCustomizationsResponseReusedResolutionsItemChoice = "current"
+	TargetCustomizationsResponseReusedResolutionsItemChoiceGenerated TargetCustomizationsResponseReusedResolutionsItemChoice = "generated"
+	TargetCustomizationsResponseReusedResolutionsItemChoiceResolved  TargetCustomizationsResponseReusedResolutionsItemChoice = "resolved"
+)
+
+// ResetTargetCustomizations is one of ResetTargetCustomizationsVariant1, ResetTargetCustomizationsVariant2 — Resolve an explicit bounded conflict batch, or reset or adopt all current customizations in one call.
+// Go has no sum types, so it holds the JSON as received and decodes on
+// request: try the As* accessors, or switch on Discriminator() when the
+// spec names one.
+type ResetTargetCustomizations struct {
+	union json.RawMessage
+}
+
+// MarshalJSON writes the value as it was set or received.
+func (u ResetTargetCustomizations) MarshalJSON() ([]byte, error) {
+	if u.union == nil {
+		return []byte("null"), nil
+	}
+	return u.union, nil
+}
+
+// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
+func (u *ResetTargetCustomizations) UnmarshalJSON(data []byte) error {
+	u.union = append(u.union[:0], data...)
+	return nil
+}
+
+// Raw returns the JSON exactly as received.
+func (u ResetTargetCustomizations) Raw() json.RawMessage {
+	return u.union
+}
+
+// AsResetTargetCustomizationsVariant1 decodes the value as ResetTargetCustomizationsVariant1.
+func (u ResetTargetCustomizations) AsResetTargetCustomizationsVariant1() (ResetTargetCustomizationsVariant1, error) {
+	var v ResetTargetCustomizationsVariant1
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromResetTargetCustomizationsVariant1 sets the value to a ResetTargetCustomizationsVariant1.
+func (u *ResetTargetCustomizations) FromResetTargetCustomizationsVariant1(v ResetTargetCustomizationsVariant1) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AsResetTargetCustomizationsVariant2 decodes the value as ResetTargetCustomizationsVariant2.
+func (u ResetTargetCustomizations) AsResetTargetCustomizationsVariant2() (ResetTargetCustomizationsVariant2, error) {
+	var v ResetTargetCustomizationsVariant2
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromResetTargetCustomizationsVariant2 sets the value to a ResetTargetCustomizationsVariant2.
+func (u *ResetTargetCustomizations) FromResetTargetCustomizationsVariant2(v ResetTargetCustomizationsVariant2) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// ResetTargetCustomizationsVariant1 is an API model.
+type ResetTargetCustomizationsVariant1 struct {
+	// Choice For conflicts, select the incoming side (default branch during default sync, next Generation during generation) or explicitly keep the current side. Non-conflict paths reset to the next Generation.
+	Choice *Choice `json:"choice,omitempty"`
+	// Paths Current customization or conflict paths to resolve. The generated choice removes a path absent from the incoming side; current choice is valid only for conflicts.
+	Paths []string `json:"paths"`
+	// ExpectedHeadRevision Exact Draft head returned by the preceding inspection.
+	ExpectedHeadRevision string `json:"expected_head_revision"`
+}
+
+// Choice is one of "generated", "current".
+type Choice string
+
+const (
+	ChoiceGenerated Choice = "generated"
+	ChoiceCurrent   Choice = "current"
+)
+
+// ResetTargetCustomizationsVariant2 is an API model.
+type ResetTargetCustomizationsVariant2 struct {
+	// Choice Generated resets every customization to the incoming side. Current keeps the current side of every conflict and leaves non-conflicting customizations unchanged.
+	Choice *Choice `json:"choice,omitempty"`
+	// ResetAll Apply the selected side to every current conflict and, for generated, reset every non-conflicting customization without the explicit-path batch limit.
+	ResetAll bool `json:"reset_all"`
+	// ExpectedHeadRevision Exact Draft head returned by the preceding inspection.
+	ExpectedHeadRevision string `json:"expected_head_revision"`
+}
+
 // TargetAdoption is an API model.
 type TargetAdoption struct {
 	// Version Exact already-published package version to make Current.
@@ -2188,11 +2564,21 @@ type TargetReleaseResponse struct {
 	Repository           RepositoryReference  `json:"repository"`
 	DefinitionRevisionID DefinitionRevisionID `json:"definition_revision_id"`
 	// DeliveryRevision Immutable provider-native revision that was merged or published.
-	DeliveryRevision string                                `json:"delivery_revision"`
-	ImportProvenance TargetReleaseResponseImportProvenance `json:"import_provenance"`
-	Publications     []Publication                         `json:"publications"`
-	CreatedAt        string                                `json:"created_at"`
-	RequestID        RequestID                             `json:"request_id"`
+	DeliveryRevision string `json:"delivery_revision"`
+	// SourceDigest Digest of the exact accepted source tree used for publication.
+	SourceDigest               string                                `json:"source_digest"`
+	PreviousGenerationID       GenerationID                          `json:"previous_generation_id"`
+	NextGenerationID           GenerationID                          `json:"next_generation_id"`
+	GeneratedOutputHash        string                                `json:"generated_output_hash"`
+	AcceptedCombinedSnapshotID CodeSnapshotID                        `json:"accepted_combined_snapshot_id"`
+	CustomerDiffHash           string                                `json:"customer_diff_hash"`
+	FinalPackageHash           string                                `json:"final_package_hash"`
+	Checks                     []PackageCheck                        `json:"checks"`
+	AcceptedRisks              []AcceptedCompatibilityRisk           `json:"accepted_risks"`
+	ImportProvenance           TargetReleaseResponseImportProvenance `json:"import_provenance"`
+	Publications               []Publication                         `json:"publications"`
+	CreatedAt                  string                                `json:"created_at"`
+	RequestID                  RequestID                             `json:"request_id"`
 }
 
 // TargetReleaseResponseImportProvenance is an API model.
@@ -2233,6 +2619,7 @@ type GenerationResponse struct {
 type FileStub struct {
 	Path  string `json:"path"`
 	Bytes int64  `json:"bytes"`
+	Mode  Mode   `json:"mode"`
 }
 
 // DefinitionRevisionList is an API model.
