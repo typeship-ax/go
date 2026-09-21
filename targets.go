@@ -89,7 +89,7 @@ func (s *TargetsService) List(ctx context.Context, projectID string, params *Tar
 
 // Create an independently configured Target.
 //
-// Several Targets may use the same generator with distinct configuration, Deliveries, and release streams.
+// Creates a Target with its own configuration, Deliveries, and release history. Multiple Targets can use the same generator.
 //
 // POST /projects/{project_id}/targets
 func (s *TargetsService) Create(ctx context.Context, projectID string, body TargetFields, params *TargetsCreateParams, opts ...RequestOption) (*TargetResponse, error) {
@@ -137,7 +137,7 @@ func (s *TargetsService) Retrieve(ctx context.Context, targetID string, opts ...
 
 // Delete an unused Target.
 //
-// Targets with Generation or release history, or an active release candidate, must be disabled instead.
+// Deletes a Target with no Generation history, release history, or active Draft. Disable a Target instead if it has any of these.
 //
 // DELETE /targets/{target_id}
 func (s *TargetsService) Delete(ctx context.Context, targetID string, opts ...RequestOption) (*DeletedTarget, error) {
@@ -217,7 +217,7 @@ func (s *TargetsService) ListReleases(ctx context.Context, targetID string, para
 
 // RetrieveDraft — retrieve a Target's rolling Draft release.
 //
-// Returns Current, the cumulative Draft version and readiness, its exact head, and the optimistic release revision.
+// Returns Current's version, the proposed Draft version, readiness, and commit. Pass `revision` as `expected_revision` when updating the Draft to avoid changing a newer candidate.
 //
 // GET /targets/{target_id}/draft
 func (s *TargetsService) RetrieveDraft(ctx context.Context, targetID string, opts ...RequestOption) (*TargetDraftResponse, error) {
@@ -238,7 +238,7 @@ func (s *TargetsService) RetrieveDraft(ctx context.Context, targetID string, opt
 
 // UpdateDraft — select an exact Draft version or return to automatic versioning.
 //
-// Validates the selection against the cumulative required bump and regenerates the same rolling Draft pull request.
+// Checks your version choice against the required version bump, then regenerates the existing Draft pull request.
 //
 // PATCH /targets/{target_id}/draft
 func (s *TargetsService) UpdateDraft(ctx context.Context, targetID string, body TargetDraftUpdate, opts ...RequestOption) (*TargetDraftResponse, error) {
@@ -259,7 +259,7 @@ func (s *TargetsService) UpdateDraft(ctx context.Context, targetID string, body 
 
 // RetrieveCustomizations — inspect preserved custom code for a Target Draft.
 //
-// Returns the exact immutable three-way input identities, customer changes, conflicts, reused resolutions, combined-package hashes, and checks. File contents are not returned.
+// Returns preserved changes, conflicts, reused resolutions, and check results for the Draft. Includes the input and package identifiers needed to compare attempts. Does not include file contents.
 //
 // GET /targets/{target_id}/customizations
 func (s *TargetsService) RetrieveCustomizations(ctx context.Context, targetID string, opts ...RequestOption) (*TargetCustomizationsResponse, error) {
@@ -280,7 +280,7 @@ func (s *TargetsService) RetrieveCustomizations(ctx context.Context, targetID st
 
 // ResetCustomizations — resolve or reset custom code on the rolling Draft.
 //
-// Resets selected or all custom paths, selects either exact side of conflicts, and reruns the three-way integration on the same protected Draft. The expected head prevents applying a stale choice.
+// Keeps the current or generated side of selected conflicts, or resets all customizations. Reruns integration and checks on the same Draft. Supply the expected head revision to prevent a stale choice from changing a newer Draft.
 //
 // POST /targets/{target_id}/customizations/reset
 func (s *TargetsService) ResetCustomizations(ctx context.Context, targetID string, body ResetTargetCustomizations, opts ...RequestOption) (*TargetCustomizationsResponse, error) {
@@ -301,7 +301,7 @@ func (s *TargetsService) ResetCustomizations(ctx context.Context, targetID strin
 
 // AdoptRelease — adopt a verified existing package as Current.
 //
-// Verifies the repository tag, package metadata, and registry artifact; records an Imported Current release; then opens the first Typeship Draft at the next major version because no trusted generated baseline exists yet.
+// Checks the repository tag, package metadata, and registry artifact, then records the package as an Imported Current release. Opens the first Typeship Draft at the next major version; review it to establish the baseline for preserving existing code.
 //
 // POST /targets/{target_id}/adopt
 func (s *TargetsService) AdoptRelease(ctx context.Context, targetID string, body TargetAdoption, params *TargetsAdoptReleaseParams, opts ...RequestOption) (*TargetReleaseResponse, error) {
@@ -349,7 +349,7 @@ func (s *TargetsService) RetrieveRelease(ctx context.Context, targetReleaseID st
 
 // RepublishRelease — retry publication of an exact Target release.
 //
-// Dispatches the repository-owned republish workflow for this immutable version and accepted commit. It never selects the latest Draft or release.
+// Retries publication of the specified release through its repository workflow. Uses that release's version and accepted commit, even if a newer Draft or release exists.
 //
 // POST /target_releases/{target_release_id}/republish
 func (s *TargetsService) RepublishRelease(ctx context.Context, targetReleaseID string, params *TargetsRepublishReleaseParams, opts ...RequestOption) (*TargetReleaseResponse, error) {

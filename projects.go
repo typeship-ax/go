@@ -97,7 +97,9 @@ func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, 
 
 // Create a project.
 //
-// Stores a URL- or GitHub-sourced project. Free includes one stored project, every selected target, and the first 25 operations, while keeping manual and automatic regeneration, history, destination pull requests, and preview checks. Stateless POST /generate does not consume this slot. Pro adds projects and generates every operation in the Definition.
+// Creates a Project from a URL or GitHub Definition.
+//
+// Free includes one saved Project, all selected Targets, and the first 25 operations per Target, with regeneration, history, delivery pull requests, and previews. Pro supports additional Projects and all operations. Stateless generation does not use a Project slot.
 //
 // POST /projects
 func (s *ProjectsService) Create(ctx context.Context, body CreateProjectRequest, params *ProjectsCreateParams, opts ...RequestOption) (*Project, error) {
@@ -126,7 +128,7 @@ func (s *ProjectsService) Create(ctx context.Context, body CreateProjectRequest,
 
 // Retrieve a project.
 //
-// Returns Project-owned fields only. List Targets separately for Target and Delivery data.
+// Returns the Project's settings and Definition ID. List its Targets separately to retrieve Target configuration and Deliveries.
 //
 // GET /projects/{project_id}
 func (s *ProjectsService) Retrieve(ctx context.Context, projectID string, opts ...RequestOption) (*Project, error) {
@@ -185,7 +187,7 @@ func (s *ProjectsService) Update(ctx context.Context, projectID string, body Upd
 
 // RetrieveDiagnostics — analyze a project's latest Definition Revision.
 //
-// Runs deterministic OpenAPI or GraphQL authorship checks against the latest observed immutable Definition Revision after applying the Definition's existing patches. Diagnostics group every affected location under a stable rule. Exact patches are included only when Typeship can derive the change without inventing API behavior.
+// Checks the latest Definition Revision after applying its saved patches. Each finding groups affected locations under a stable rule ID. A suggested patch is included only when the Definition provides enough information to determine the correction.
 //
 // GET /projects/{project_id}/diagnostics
 func (s *ProjectsService) RetrieveDiagnostics(ctx context.Context, projectID string, opts ...RequestOption) (*DiagnosticReport, error) {
@@ -206,7 +208,7 @@ func (s *ProjectsService) RetrieveDiagnostics(ctx context.Context, projectID str
 
 // RefreshDiagnostics — refresh a project's Diagnostics from its configured source.
 //
-// Fetches the complete configured source, records a new immutable revision only when content changed, and returns its Diagnostics. This does not generate targets or consume a metered generation.
+// Fetches the configured source and returns updated Diagnostics. Creates a Definition Revision only when the content changes. Does not generate Targets or use a metered generation.
 //
 // POST /projects/{project_id}/diagnostics
 func (s *ProjectsService) RefreshDiagnostics(ctx context.Context, projectID string, params *ProjectsRefreshDiagnosticsParams, opts ...RequestOption) (*DiagnosticReport, error) {
@@ -234,7 +236,9 @@ func (s *ProjectsService) RefreshDiagnostics(ctx context.Context, projectID stri
 
 // RemediateDiagnostics — apply exact, reviewed diagnostic remediations.
 //
-// Applies only deterministic patches. Repository sources receive an updateable source pull request; URL sources receive project overlays. Diagnostics that require API-owner intent return 422 and include an authoring_brief in the Diagnostic instead.
+// Applies reviewed patches from Diagnostics. For a repository source, opens or updates a source pull request. For a URL source, saves Definition patches.
+//
+// Findings that need an API-owner decision return `422`. Read the finding's `authoring_brief` and update the source instead.
 //
 // POST /projects/{project_id}/diagnostics/remediations
 func (s *ProjectsService) RemediateDiagnostics(ctx context.Context, projectID string, body DiagnosticRemediationRequest, params *ProjectsRemediateDiagnosticsParams, opts ...RequestOption) (*DiagnosticRemediation, error) {
@@ -263,7 +267,7 @@ func (s *ProjectsService) RemediateDiagnostics(ctx context.Context, projectID st
 
 // RetrieveIntegrationHealth — diagnose a project's repository integrations.
 //
-// Returns provider-neutral, machine-actionable source and destination access, Definition readability, source-approval label setup, required status names, and the latest durable webhook delivery. The Console renders this same result.
+// Checks repository access, Definition readability, source-approval labels, and required checks. Includes the latest webhook delivery so you can investigate missing updates.
 //
 // GET /projects/{project_id}/integration-health
 func (s *ProjectsService) RetrieveIntegrationHealth(ctx context.Context, projectID string, opts ...RequestOption) (*RepositoryIntegrationHealth, error) {
@@ -327,13 +331,9 @@ func (s *ProjectsService) ListGenerations(ctx context.Context, projectID string,
 
 // Generate targets and open pull requests.
 //
-// Resolves the project's URL or GitHub source, generates every
-// configured delivery package, stores each result in the project's history,
-// and attempts to open a pull request in every configured destination.
-// When the complete generated tree already matches a destination, no
-// commit, branch, or pull request is created and that generation reports
-// `pr_status: no_changes`. This is the same pipeline automatic
-// regeneration runs after a source change.
+// Generates each active Target from the Project's source, saves the results, and attempts delivery to each configured destination.
+//
+// If the package already matches a destination and no Draft is open, returns `pr_status: no_changes` without creating a commit, branch, or pull request. An existing Draft stays open. Automatic generation uses the same workflow.
 //
 // POST /projects/{project_id}/generations
 func (s *ProjectsService) Generate(ctx context.Context, projectID string, params *ProjectsGenerateParams, opts ...RequestOption) (*GenerationBatch, error) {

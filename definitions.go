@@ -40,7 +40,7 @@ func (s *DefinitionsService) Retrieve(ctx context.Context, definitionID string, 
 
 // Update and resolve a Definition.
 //
-// Resolves the complete document graph and records a new immutable revision before saving.
+// Resolves the source documents and records a new Definition Revision before saving the update.
 //
 // PATCH /definitions/{definition_id}
 func (s *DefinitionsService) Update(ctx context.Context, definitionID string, body DefinitionUpdateRequest, params *DefinitionsUpdateParams, opts ...RequestOption) (*Definition, error) {

@@ -366,6 +366,8 @@ type CLIBehavior struct {
 	CommandName *string `json:"command_name,omitempty"`
 	// UpdateNotice Opt in to a once-a-day registry check that prints an upgrade hint. Off by default; generated code phones nobody unless this is enabled.
 	UpdateNotice *bool `json:"update_notice,omitempty"`
+	// ChangelogURL Public HTTP(S) URL read by the optional changelog command in generated CLIs. Supports UTF-8 Markdown, plain text, and static HTML; embedded credentials are not allowed. Omit or clear to disable, then regenerate.
+	ChangelogURL *string `json:"changelog_url,omitempty"`
 	// SupportURL Where the generated CLI's feedback command sends users. GitHub issues/new URLs get a prefilled title and environment details.
 	SupportURL *string `json:"support_url,omitempty"`
 	// MCPURL Hosted MCP endpoint installed by the generated CLI instead of launching the package's local stdio server.
@@ -1303,7 +1305,7 @@ type Diagnostic struct {
 	Title string `json:"title"`
 	// Description What the API author should change.
 	Description string `json:"description"`
-	// Impact Why consumers of generated SDK, CLI, or MCP surfaces care.
+	// Impact Why consumers of generated CLI, MCP, or SDK surfaces care.
 	Impact string `json:"impact"`
 	// Surfaces Public surfaces affected by the root cause.
 	Surfaces []DiagnosticSurface `json:"surfaces"`
@@ -1311,7 +1313,7 @@ type Diagnostic struct {
 	EvidenceBasis DiagnosticEvidenceBasis `json:"evidence_basis"`
 	// OwnerDecisionRequired Whether remediation requires intent that the Definition cannot prove.
 	OwnerDecisionRequired bool `json:"owner_decision_required"`
-	// SurfaceImpact Concrete generated SDK, CLI, or MCP naming effect when Typeship can state it.
+	// SurfaceImpact Concrete generated CLI, MCP, or SDK naming effect when Typeship can state it.
 	SurfaceImpact *string `json:"surface_impact,omitempty"`
 	// Locations All affected coordinates, kept under one grouped diagnostic.
 	Locations []DiagnosticLocation `json:"locations"`

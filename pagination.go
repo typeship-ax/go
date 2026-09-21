@@ -5,6 +5,7 @@ package typeship
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 )
 
@@ -122,21 +123,41 @@ func (it *Iter[T]) fetch() bool {
 			it.done = true
 			return true
 		}
-		var cursor *string
-		if err := json.Unmarshal(nextRaw, &cursor); err != nil || cursor == nil || *cursor == "" {
+		cursor, err := paginationCursor(nextRaw)
+		if err != nil {
+			it.err = fmt.Errorf("pagination field %s: %w", it.cfg.NextCursorField, err)
+			return false
+		}
+		if cursor == "" {
 			it.done = true
 			return true
 		}
-		if current, ok := it.req.Query[it.cfg.CursorParam].(string); ok && current == *cursor {
+		if current := it.req.Query[it.cfg.CursorParam]; current != nil && fmt.Sprint(current) == cursor {
 			it.done = true
 			return true
 		}
-		it.req.Query[it.cfg.CursorParam] = *cursor
+		it.req.Query[it.cfg.CursorParam] = cursor
 
 	default:
 		it.done = true
 	}
 	return true
+}
+
+// paginationCursor preserves numeric cursor precision instead of decoding through float64.
+func paginationCursor(raw json.RawMessage) (string, error) {
+	if len(raw) == 0 || strings.TrimSpace(string(raw)) == "null" {
+		return "", nil
+	}
+	var text string
+	if err := json.Unmarshal(raw, &text); err == nil {
+		return text, nil
+	}
+	var number json.Number
+	if err := json.Unmarshal(raw, &number); err == nil {
+		return number.String(), nil
+	}
+	return "", fmt.Errorf("expected a string or number cursor, got %s", raw)
 }
 
 // lookupPath resolves a dot path so pagination can read meta.next_cursor.

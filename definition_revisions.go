@@ -23,7 +23,7 @@ type DefinitionRevisionsListParams struct {
 
 // List Definition Revisions.
 //
-// Immutable snapshots of the complete resolved document graph this Definition observed, newest first. Content is available from the revision and document endpoints and is never embedded in a list response.
+// Lists the Definition's revisions, newest first. Source content is not included; retrieve the revision content or individual documents separately.
 //
 // GET /definitions/{definition_id}/revisions
 //
@@ -65,7 +65,7 @@ func (s *DefinitionRevisionsService) List(ctx context.Context, definitionID stri
 
 // Retrieve a Definition Revision.
 //
-// Metadata for one immutable resolved document graph. Fetch its canonical content or individual source documents from the content endpoints.
+// Returns metadata for a saved Definition Revision. Retrieve its resolved content or individual source documents separately.
 //
 // GET /definition_revisions/{definition_revision_id}
 func (s *DefinitionRevisionsService) Retrieve(ctx context.Context, definitionRevisionID string, opts ...RequestOption) (*DefinitionRevisionResponse, error) {
@@ -86,7 +86,7 @@ func (s *DefinitionRevisionsService) Retrieve(ctx context.Context, definitionRev
 
 // RetrieveContent — retrieve a Definition Revision's canonical content.
 //
-// Returns the exact canonical resolved content identified by the revision's graph digest, suitable for saving or piping into a diff.
+// Returns the saved, resolved content for this revision. Save it locally or compare it with another revision.
 //
 // GET /definition_revisions/{definition_revision_id}/content
 func (s *DefinitionRevisionsService) RetrieveContent(ctx context.Context, definitionRevisionID string, opts ...RequestOption) (string, error) {

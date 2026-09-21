@@ -13,8 +13,7 @@ type AccountService struct {
 
 // Retrieve — the account behind the presented credentials.
 //
-// Returns the account that owns the presented API key. This is also the
-// identity endpoint the generated typeship CLI's `whoami` calls.
+// Returns the account associated with your credential. The Typeship CLI uses this endpoint for `whoami`.
 //
 // GET /me
 func (s *AccountService) Retrieve(ctx context.Context, opts ...RequestOption) (*Account, error) {

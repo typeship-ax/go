@@ -23,7 +23,7 @@ type APIKeysListParams struct {
 
 // List API keys.
 //
-// Keys are never returned in full — only their identity and last four. Creation stays in the console deliberately: a leaked key that can mint more keys is a leaked account.
+// Lists key metadata and the last four characters of each key. Full keys are not returned. Create keys in the Console.
 //
 // GET /api_keys
 //
@@ -65,7 +65,9 @@ func (s *APIKeysService) List(ctx context.Context, params *APIKeysListParams, op
 
 // Revoke an API key.
 //
-// Idempotent: revoking an already-revoked key returns the same body, so a rotation script that re-runs does not have to special-case having already succeeded. An OAuth member may revoke a key they created; an organization admin may revoke any key. Organization API keys retain account-wide authority.
+// Revokes a key. Repeating the request returns the same result.
+//
+// With OAuth, members can revoke their own keys; organization admins can revoke any key. Organization API keys can revoke any key in their account.
 //
 // DELETE /api_keys/{api_key_id}
 func (s *APIKeysService) Revoke(ctx context.Context, apiKeyID string, opts ...RequestOption) (*APIKeyResponse, error) {
