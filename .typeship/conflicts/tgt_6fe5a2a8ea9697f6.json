@@ -1,22 +1,22 @@
 {
   "schema": 2,
   "target_id": "tgt_6fe5a2a8ea9697f6",
-  "attempt_id": "int_7lejcdwy52avqsny",
+  "attempt_id": "int_go8ijt0ex3eai5c4",
   "current_release_id": "rel_c3s05v9djnp04th5",
   "previous_generation_id": null,
   "previous_generated_snapshot_id": null,
   "previous_combined_snapshot_id": null,
-  "current_snapshot_id": "snap_z01l97nh6nk9bybw",
-  "next_generation_id": "gen_4zig3i1jb51xkbev",
-  "next_generated_snapshot_id": "snap_luxrw4g2udednu2u",
+  "current_snapshot_id": "snap_exsk6i4lp71a2hh8",
+  "next_generation_id": "gen_3l5fe8no9z6d2lp3",
+  "next_generated_snapshot_id": "snap_09brry6i9c0e9vjx",
   "default_revision": "13402412c80da951df1cc3dc86de243fbd6dda8d",
-  "draft_revision": "d73e6ad014969c4d4fc8c1780f1c7774492d524c",
+  "draft_revision": "357bbc7bf2696b7a5a5a53ed0fa3628cfd0c9218",
   "conflict_stage": "generation",
   "conflicts": [
     {
       "path": ".typeship/conflicts/tgt_6fe5a2a8ea9697f6.json",
       "kind": "missing_baseline",
-      "fingerprint": "sha256:e729c44ec91e06caefcb8562c5da1382a9eea3da8243333b499ca893194ae333",
+      "fingerprint": "sha256:c5830fb30c8dbb5cca2d733e280cbeeb69e05303f9afb2a964842cb1d5e0fb6e",
       "previous": {
         "present": false,
         "mode": null,
@@ -25,272 +25,12 @@
       "current": {
         "present": true,
         "mode": "100644",
-        "hash": "sha256:105662d83e03807228260630de69c9d1099054611817df86a23e2fa6c88f72cf"
+        "hash": "sha256:7d848307f6793b4a415fda76c1fb0d1cf27565c2efbd33c549f1d165db0ba9e3"
       },
       "next": {
         "present": false,
         "mode": null,
         "hash": null
-      }
-    },
-    {
-      "path": "account.go",
-      "kind": "missing_baseline",
-      "fingerprint": "sha256:60c1b2540c57f539675da7a2aa2a5bc1e64bb6352df88e08d24c04b10488f722",
-      "previous": {
-        "present": false,
-        "mode": null,
-        "hash": null
-      },
-      "current": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:af99572e9967b010cd48f39089c5e4b5a875b8ae3d50d71a291304305d5b5bdf"
-      },
-      "next": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:7355775d59284c2fa21001cd3d1c81150899d021fb1d76f917bfd1728ac79166"
-      }
-    },
-    {
-      "path": "api.json",
-      "kind": "missing_baseline",
-      "fingerprint": "sha256:21916506214800518e35f739a2ee6e22ca493940bb36d0a35ed280b30813b94e",
-      "previous": {
-        "present": false,
-        "mode": null,
-        "hash": null
-      },
-      "current": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:3123ba845bd7153923f1916d51848c76bae30496acf840421a8961cf10763e78"
-      },
-      "next": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:0ad32fbffebb2a119fe8323e9137d4064bcc3a1dccfae459b6a6e42ac8aa66ff"
-      }
-    },
-    {
-      "path": "api.md",
-      "kind": "missing_baseline",
-      "fingerprint": "sha256:75119f2fe5499a849da83e09147acd1c4d2ad6e9a0ea2e2afe411c0cdb36630f",
-      "previous": {
-        "present": false,
-        "mode": null,
-        "hash": null
-      },
-      "current": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:30ba86813c3233bf7a76c3145f10654552d7d44776ef7a4b8f9f1e0dba8e0879"
-      },
-      "next": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:6f25ab47814cdb1466f63611f286722b353778cf3ccfbcac99dee723dc7d2d9b"
-      }
-    },
-    {
-      "path": "api_keys.go",
-      "kind": "missing_baseline",
-      "fingerprint": "sha256:f603dd83499e3bc06e930a75f692808e43b8d897a28788431f78a3979df76538",
-      "previous": {
-        "present": false,
-        "mode": null,
-        "hash": null
-      },
-      "current": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:e329d5066dc8ff83ba5c11d1566adedeb427c4a6610a44b6f4651d9bc70936e3"
-      },
-      "next": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:e3da8f1d56f693854ca58e66ddb55fc86950dead22be17a6a0398cdd282a3fc6"
-      }
-    },
-    {
-      "path": "definition_revisions.go",
-      "kind": "missing_baseline",
-      "fingerprint": "sha256:954cf5e482d4d02e0f4e0a4caf254bc09a4445dcfec2464a447ca8d4afef662f",
-      "previous": {
-        "present": false,
-        "mode": null,
-        "hash": null
-      },
-      "current": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:89962dbf11ac4b5fdbbfe267248b1f68f25ef1356950bff8b8d2e9c3391a3037"
-      },
-      "next": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:ecc063bd10cf5dc97cce09213fbf8321b8b63d62579fdef84ece302531b4d642"
-      }
-    },
-    {
-      "path": "definitions.go",
-      "kind": "missing_baseline",
-      "fingerprint": "sha256:dfc50ddcab8fe3d44089f27939349e29a38ee4ec860d8fce264b6950df395df9",
-      "previous": {
-        "present": false,
-        "mode": null,
-        "hash": null
-      },
-      "current": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:53758e12f1541f626649e32a6fe9dedd7cd4f71447c9e71a4d3eda5060ceb95b"
-      },
-      "next": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:23a20c48933c099f9e3a116117c950fe3a072ae0c290c1044024e016bf697c7a"
-      }
-    },
-    {
-      "path": "generate.go",
-      "kind": "missing_baseline",
-      "fingerprint": "sha256:9796afbc0c258b1a8f74f32f0dd72a0f0080b2932a9468037fc71d4f60773476",
-      "previous": {
-        "present": false,
-        "mode": null,
-        "hash": null
-      },
-      "current": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:61787330b46e8c95860b61ee86ba41b86014262a2975fc840abf9f816d67f459"
-      },
-      "next": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:3c21b6e332549873dfb0e01ced3e871b48ac48857b41db1de573ffb8b5904e2e"
-      }
-    },
-    {
-      "path": "generations.go",
-      "kind": "missing_baseline",
-      "fingerprint": "sha256:ec2f831e253626eb76e869bc1ad3b129255edf785dde2041b0e21b36f9898678",
-      "previous": {
-        "present": false,
-        "mode": null,
-        "hash": null
-      },
-      "current": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:890fac4db30f4477d0b53c010b202bf959e62cc861130cc0b73d9959e626968f"
-      },
-      "next": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:44d0f15b64ae9e11d5015affd44aeb4251b5f4945b0cfc8cadc00e5b3a412941"
-      }
-    },
-    {
-      "path": "models.go",
-      "kind": "missing_baseline",
-      "fingerprint": "sha256:e07000e9442485a65f8c22c583a237aaa6977a1a452c03a5d7479a7b6a38daa7",
-      "previous": {
-        "present": false,
-        "mode": null,
-        "hash": null
-      },
-      "current": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:9e6426d1cb7aff986d901faa0f7a859f14712b4ed7b1611682385f76f340c056"
-      },
-      "next": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:6b115535b2ca5a5aa53531d370c191860d64dd18efcd581e97495ba228a03c5a"
-      }
-    },
-    {
-      "path": "pagination.go",
-      "kind": "missing_baseline",
-      "fingerprint": "sha256:7412748af5a27ef1bf956cd7ee7ed2220f7bbfb73720bddde6bb0640bc5db989",
-      "previous": {
-        "present": false,
-        "mode": null,
-        "hash": null
-      },
-      "current": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:3da1da95481ec0fcd6e21bf3dbbaf27002083e200f20372429021daab9d74e8b"
-      },
-      "next": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:9de96726bc42ea72f5022c44c504d827f62b838ccbe3454d7358c366da1dc245"
-      }
-    },
-    {
-      "path": "projects.go",
-      "kind": "missing_baseline",
-      "fingerprint": "sha256:f7b71a90e9a5ee5b4d22f37a2e67aef493c292bf06bf688ce946f89b15f6d8de",
-      "previous": {
-        "present": false,
-        "mode": null,
-        "hash": null
-      },
-      "current": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:9fa747b4fd37138362a730d1711cd16d42e57516818aa63c2397dc63a305eae3"
-      },
-      "next": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:cfab29b988da1f3acacafc3f6cc8183cd5c0f6d9efd2dfcb183fee0312f40104"
-      }
-    },
-    {
-      "path": "schemas.go",
-      "kind": "missing_baseline",
-      "fingerprint": "sha256:bf395152a12207cdcb02330d12bef020cd2323de9971c7236fbcf2dbdff416c8",
-      "previous": {
-        "present": false,
-        "mode": null,
-        "hash": null
-      },
-      "current": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:9e975417ad4657faac502e84a267363bcf738dd8e8bcd7c78547f40489e796a8"
-      },
-      "next": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:6d6e35d5ac1f088073bf404852f6849c0601c3efd386cf52e053f8a9ba23f4d1"
-      }
-    },
-    {
-      "path": "targets.go",
-      "kind": "missing_baseline",
-      "fingerprint": "sha256:7968290721109792d7c86b9c59a2cfca01d0099963e24cb7410ddc4dd480e3cc",
-      "previous": {
-        "present": false,
-        "mode": null,
-        "hash": null
-      },
-      "current": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:67cddb1fbdf1e8c56585c30bf5f996729d8fbea9b0cf4802714e6ac3d8c3abf3"
-      },
-      "next": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:f62bb8e2e4c6143d92af4d72c58a3558c00f3d9979d3e1ae9016a19e6df16d69"
       }
     }
   ]
