@@ -1,16 +1,16 @@
 {
   "schema": 2,
   "target_id": "tgt_6fe5a2a8ea9697f6",
-  "attempt_id": "int_pp5ts4yocn4j3cu2",
+  "attempt_id": "int_tr5abk95vfazpgjs",
   "current_release_id": "rel_c3s05v9djnp04th5",
   "previous_generation_id": null,
   "previous_generated_snapshot_id": null,
   "previous_combined_snapshot_id": null,
-  "current_snapshot_id": "snap_lt29bkz2oz4mjp4f",
-  "next_generation_id": "gen_9v46b51reffg6fpm",
-  "next_generated_snapshot_id": "snap_zbhlgbtyur0lr7ll",
+  "current_snapshot_id": "snap_fr1rrm4f5oe8psk1",
+  "next_generation_id": "gen_hnahb4pc00coi139",
+  "next_generated_snapshot_id": "snap_fncrbmwnwf4fjqg6",
   "default_revision": "13402412c80da951df1cc3dc86de243fbd6dda8d",
-  "draft_revision": "284dd6326b3599961d0f7fce20481e153c9ca22e",
+  "draft_revision": "d28da09f8a5290b645e122366ca0a20a75a2cfe1",
   "conflict_stage": "generation",
   "conflicts": [
     {
@@ -96,7 +96,7 @@
     {
       "path": ".typeship/conflicts/tgt_6fe5a2a8ea9697f6.json",
       "kind": "missing_baseline",
-      "fingerprint": "sha256:7010ccc857cfa5e5c41be72ad24a380dafcbe36dae7066e5d3c1d70f9668e4fb",
+      "fingerprint": "sha256:8dcf716cb085468be01f0ab15d9c931534f699934b09adbafce5f48b3aa60961",
       "previous": {
         "present": false,
         "mode": null,
@@ -105,7 +105,7 @@
       "current": {
         "present": true,
         "mode": "100644",
-        "hash": "sha256:e921ce62d908f2eca0644b5fb1a488f7e4d372b7a8a7a93cc6872e808c987f68"
+        "hash": "sha256:a7d4c2c4f1edaf8aeffeaafd8f1266a0dd0e5656b021b98d577adda08c47581c"
       },
       "next": {
         "present": false,
@@ -136,7 +136,7 @@
     {
       "path": "AGENTS.md",
       "kind": "missing_baseline",
-      "fingerprint": "sha256:60af1b35b0b956c2362baf0077245e67a0fe0aba381b218fcc4868da2e3b2d06",
+      "fingerprint": "sha256:ecfdd8d83389acd1f8da390d92756d648b09b81669ad9aa9eadeff6ef21507a7",
       "previous": {
         "present": false,
         "mode": null,
@@ -150,7 +150,7 @@
       "next": {
         "present": true,
         "mode": "100644",
-        "hash": "sha256:a978e88edac9d68bfe9f7ba94161478b278c5002c1f376f931d04acd39836948"
+        "hash": "sha256:37d0ba249a272b77e4a037dd343d56595f5d9f8e429f1c06e07138dceba2a2ec"
       }
     },
     {
@@ -216,7 +216,7 @@
     {
       "path": "README.md",
       "kind": "missing_baseline",
-      "fingerprint": "sha256:3ae2105cfb7f60afd83762d57edd426eb091388bc2e46c15cfc102cebce9d986",
+      "fingerprint": "sha256:fa1c444f230adf6eabfb3df42eee4c457ab7c415029ce3b39cabd1475a67560f",
       "previous": {
         "present": false,
         "mode": null,
@@ -230,7 +230,7 @@
       "next": {
         "present": true,
         "mode": "100644",
-        "hash": "sha256:2728f720f65771ea5944a6fb92ecaeecef266fb85c2e6397439d6855cd6b40fb"
+        "hash": "sha256:cb29ce42e43ad9c17cfb64ecc1014a1b6d416b534044b5481660f9c63dfe7da7"
       }
     },
     {
@@ -296,7 +296,7 @@
     {
       "path": "api.md",
       "kind": "missing_baseline",
-      "fingerprint": "sha256:02f39d59fd7944f05bfd748a56240959281ad2deb56b40d60d28a3e2b3059a15",
+      "fingerprint": "sha256:75119f2fe5499a849da83e09147acd1c4d2ad6e9a0ea2e2afe411c0cdb36630f",
       "previous": {
         "present": false,
         "mode": null,
@@ -310,7 +310,7 @@
       "next": {
         "present": true,
         "mode": "100644",
-        "hash": "sha256:d3e1290f76f22d5754018918b35d771e7f46194e564e18d589dd5fac4da9eed6"
+        "hash": "sha256:6f25ab47814cdb1466f63611f286722b353778cf3ccfbcac99dee723dc7d2d9b"
       }
     },
     {
@@ -336,7 +336,7 @@
     {
       "path": "client.go",
       "kind": "missing_baseline",
-      "fingerprint": "sha256:1e1aa0ad670adc4877b46b7dcb5691fa6b2522a860e9b433152ec72c557da7c3",
+      "fingerprint": "sha256:07070ff068a1aab6a7db11fd22433f465ce33f2da6710e68aeb3a816f942308c",
       "previous": {
         "present": false,
         "mode": null,
@@ -350,7 +350,7 @@
       "next": {
         "present": true,
         "mode": "100644",
-        "hash": "sha256:a5b252e50922b5bbe7742b842bea315734a8ba5bbe74badd581db43fef90e3a8"
+        "hash": "sha256:bf89289f14c70f3bb67a791a1e8da8ff55ff599fa17e44756d918a157b80b1ae"
       }
     },
     {
