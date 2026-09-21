@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "target_id": "tgt_6fe5a2a8ea9697f6",
+  "output": "go-sdk",
+  "directory": "",
+  "tools": {
+    "node": "24.18.0",
+    "python": "3.11.15",
+    "go": "1.23"
+  },
+  "checks": [
+    {
+      "name": "build",
+      "command": "go build ./..."
+    },
+    {
+      "name": "package",
+      "command": "go list ./..."
+    },
+    {
+      "name": "public_entrypoint",
+      "command": "go test ./..."
+    }
+  ]
+}
