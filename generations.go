@@ -21,7 +21,7 @@ type GenerationsRetrieveFileParams struct {
 
 // Retrieve a generation.
 //
-// Includes the generated files when the generation succeeded.
+// Returns the Generation result. Successful results include files, or a file index when the package is too large to inline.
 //
 // GET /generations/{generation_id}
 func (s *GenerationsService) Retrieve(ctx context.Context, generationID string, opts ...RequestOption) (*GenerationResponse, error) {
@@ -42,7 +42,7 @@ func (s *GenerationsService) Retrieve(ctx context.Context, generationID string, 
 
 // RetrieveFile — fetch one file from a generation.
 //
-// Raw file content, for generations whose target was too large to inline (files_omitted true). The generation's files_index lists valid paths.
+// Returns one file's raw content. Use a path from `files_index` when the Generation reports `files_omitted: true`.
 //
 // GET /generations/{generation_id}/file
 func (s *GenerationsService) RetrieveFile(ctx context.Context, generationID string, params GenerationsRetrieveFileParams, opts ...RequestOption) (string, error) {

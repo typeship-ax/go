@@ -26,7 +26,7 @@ To run the quickstart against this local module, save it as `cmd/example/main.go
 Generation does not publish a Go module. Set `go.mod` to a repository path you control, publish the module and tag its release, then use that module path and version with `go get`:
 
 ```sh
-go get github.com/typeship-ax/go@v0.11.0
+go get github.com/typeship-ax/go@v0.12.0
 ```
 
 ## Quickstart

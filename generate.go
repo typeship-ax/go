@@ -20,14 +20,11 @@ type GenerateRunParams struct {
 
 // Run — generate one Target from a Definition.
 //
-// Stateless generation: nothing is stored. Returns the full generated
-// package as files. Works without an API key: anonymous calls generate
-// the first 25 operations, rate limited per IP address, and the
-// response's `limits` object says what was held back and where to lift
-// it; anonymous calls from a Definition URL also carry `claim.url`, a link
-// that turns the run into a project once a person signs in. With a key, the free plan generates the first 25 operations and
-// paid plans generate the complete Definition. A present but invalid key is a
-// 401, not a downgrade to anonymous.
+// Returns one generated package without saving a Project or retaining source files or generated files.
+//
+// Anonymous and Free requests include the first 25 operations. Paid plans include all operations. Anonymous requests are rate limited by IP address. Check `limits` for omitted operations; an invalid API key returns `401`.
+//
+// An anonymous URL request without source headers may return `claim.url`. Sign in through that link within seven days to save the recipe as a Project.
 //
 // POST /generate
 func (s *GenerateService) Run(ctx context.Context, body GenerateRequest, params *GenerateRunParams, opts ...RequestOption) (*GenerationResult, error) {
