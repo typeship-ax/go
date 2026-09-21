@@ -1,22 +1,22 @@
 {
   "schema": 2,
   "target_id": "tgt_6fe5a2a8ea9697f6",
-  "attempt_id": "int_hd2tfgni5a4pkqy4",
+  "attempt_id": "int_dh6p6c2hnysnlvcx",
   "current_release_id": "rel_c3s05v9djnp04th5",
   "previous_generation_id": null,
   "previous_generated_snapshot_id": null,
   "previous_combined_snapshot_id": null,
-  "current_snapshot_id": "snap_vw3bvf14z8n4fwux",
-  "next_generation_id": "gen_lrfjhnrxtozttbfk",
-  "next_generated_snapshot_id": "snap_xuve8v6hamlz7n9c",
+  "current_snapshot_id": "snap_bp2ikyrf17nm2c9b",
+  "next_generation_id": "gen_twa0wfhf1edwtgad",
+  "next_generated_snapshot_id": "snap_gktabqrg8orbo4km",
   "default_revision": "13402412c80da951df1cc3dc86de243fbd6dda8d",
-  "draft_revision": "01cc8cde226f5714e73c947e42aebe9f52461644",
+  "draft_revision": "f0707abd07c1ac59121ad954064521992f2877c8",
   "conflict_stage": "generation",
   "conflicts": [
     {
       "path": ".typeship/conflicts/tgt_6fe5a2a8ea9697f6.json",
       "kind": "missing_baseline",
-      "fingerprint": "sha256:4f78c506149ff200cc20a88c4d779ba4456e4afd96f6f2640295f1b12b394e97",
+      "fingerprint": "sha256:7a1585be50a95e072cdfb5c19fc08119b0cf1a785ddf0d3f4e8df24c2b91602d",
       "previous": {
         "present": false,
         "mode": null,
@@ -25,47 +25,7 @@
       "current": {
         "present": true,
         "mode": "100644",
-        "hash": "sha256:c7cbd5d5247d4c22981f1ba3cfcabc907c030267a692e5ea6c09a7344fd306a9"
-      },
-      "next": {
-        "present": false,
-        "mode": null,
-        "hash": null
-      }
-    },
-    {
-      "path": ".typeship/run-package-checks.mjs",
-      "kind": "missing_baseline",
-      "fingerprint": "sha256:1b246f490b2e96b66d88ea88719d65bb1bd20dd6b48fe214cabadb5aa72ffb21",
-      "previous": {
-        "present": false,
-        "mode": null,
-        "hash": null
-      },
-      "current": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:6cfede1aecddc9f5d773d464c2b1576c7306485938250bc07cc0d360debe1545"
-      },
-      "next": {
-        "present": false,
-        "mode": null,
-        "hash": null
-      }
-    },
-    {
-      "path": ".typeship/targets/tgt_6fe5a2a8ea9697f6-checks.json",
-      "kind": "missing_baseline",
-      "fingerprint": "sha256:f1be99522c180709112a8117684dd7090f1f7c035a3ae89ebe2a5b53cf78b8f5",
-      "previous": {
-        "present": false,
-        "mode": null,
-        "hash": null
-      },
-      "current": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:cddd462feae1f9ee3c123ab07c24052906b45bc0ce51264dd7a70869b83b7099"
+        "hash": "sha256:e311c23f92113b8a9cd1f31c008c81cf31b115c3bbab8b4ebfc7498c4d43197b"
       },
       "next": {
         "present": false,
