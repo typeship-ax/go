@@ -1057,7 +1057,7 @@ const (
 	ReleaseChannelPrerelease ReleaseChannel = "prerelease"
 )
 
-// TargetChecks is an API model. Required checks run against the complete combined package. Generated checks and customer commands share one reproducible workflow; repository_required names existing repository checks.
+// TargetChecks is an API model. Required checks run against the complete combined package. Generated checks and customer commands share one reproducible workflow; repository_required names existing repository checks. Supplying checks replaces all settings. Omitted generated restores build, package, and public_entrypoint; omitted repository_required and customer restore empty lists. An empty object restores these defaults. An empty array clears the corresponding list.
 type TargetChecks struct {
 	Generated          []Generated                `json:"generated,omitempty"`
 	RepositoryRequired []string                   `json:"repository_required,omitempty"`
@@ -3113,7 +3113,7 @@ const (
 	ProposedVersionSourceGithub  ProposedVersionSource = "github"
 )
 
-// TargetChecksResponse is an API model. Required checks run against the complete combined package. Generated checks and customer commands share one reproducible workflow; repository_required names existing repository checks.
+// TargetChecksResponse is an API model. Required checks run against the complete combined package. Generated checks and customer commands share one reproducible workflow; repository_required names existing repository checks. Supplying checks replaces all settings. Omitted generated restores build, package, and public_entrypoint; omitted repository_required and customer restore empty lists. An empty object restores these defaults. An empty array clears the corresponding list.
 type TargetChecksResponse struct {
 	Generated          []Generated                        `json:"generated,omitempty"`
 	RepositoryRequired []string                           `json:"repository_required,omitempty"`
@@ -3401,13 +3401,14 @@ type DeletedTarget struct {
 
 // TargetUpdateRequest is an API model.
 type TargetUpdateRequest struct {
-	Name            *string           `json:"name,omitempty"`
-	State           *State            `json:"state,omitempty"`
-	Edition         *string           `json:"edition,omitempty"`
-	ReleaseChannel  *ReleaseChannel   `json:"release_channel,omitempty"`
+	Name           *string         `json:"name,omitempty"`
+	State          *State          `json:"state,omitempty"`
+	Edition        *string         `json:"edition,omitempty"`
+	ReleaseChannel *ReleaseChannel `json:"release_channel,omitempty"`
+	// ProposedVersion Send only this field to select an exact SemVer, or null for automatic selection. Use the Draft endpoint for an optional revision precondition.
 	ProposedVersion *Nullable[string] `json:"proposed_version,omitempty"`
 	Checks          *TargetChecks     `json:"checks,omitempty"`
-	// Config Target-specific overrides merged over Project.config. GraphQL settings are rejected here and belong to the Definition.
+	// Config Replaces the complete stored override object. Send null or an empty object to resume Project inheritance. Effective values merge over Project.config; GraphQL settings belong to the Definition.
 	Config *Nullable[TargetConfigParams] `json:"config,omitempty"`
 	// Deliveries Replaces the Delivery set; include each kind you want to keep. Retained kinds preserve their ID, creation time, and hosted URL. Each supplied Delivery replaces its configuration, so omitted optional settings reset to their defaults. Omit deliveries to keep the existing set, or send [] to remove all Deliveries. Removing and later recreating a kind allocates a new ID and, for hosted_mcp, a new URL.
 	Deliveries []DeliveryInput `json:"deliveries,omitempty"`
@@ -3690,8 +3691,9 @@ type TargetDraftResponseChanges struct {
 // TargetDraftUpdateParams is an API model.
 type TargetDraftUpdateParams struct {
 	// Version Exact SemVer, or null to return to automatic selection.
-	Version          *string `json:"version"`
-	ExpectedRevision *int64  `json:"expected_revision,omitempty"`
+	Version *string `json:"version"`
+	// ExpectedRevision Optional revision from the last Draft read. An intervening change returns 409 stale_release_revision without saving or regenerating. Omit to apply the selection without this precondition.
+	ExpectedRevision *int64 `json:"expected_revision,omitempty"`
 }
 
 // TargetCustomizationsResponse is an API model.
