@@ -207,6 +207,17 @@ func (n Nullable[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(n.value)
 }
 
+// UnmarshalJSON preserves a concrete nullable value when decoding a request.
+func (n *Nullable[T]) UnmarshalJSON(data []byte) error {
+	var value T
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	n.value = value
+	n.null = string(bytes.TrimSpace(data)) == "null"
+	return nil
+}
+
 // ValidateMode controls optional runtime validation of JSON bodies
 // against the spec's schemas.
 type ValidateMode int

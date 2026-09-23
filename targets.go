@@ -92,7 +92,7 @@ func (s *TargetsService) List(ctx context.Context, projectID string, params *Tar
 // Creates a Target with its own configuration, Deliveries, and release history. Multiple Targets can use the same generator.
 //
 // POST /projects/{project_id}/targets
-func (s *TargetsService) Create(ctx context.Context, projectID string, body TargetFields, params *TargetsCreateParams, opts ...RequestOption) (*TargetResponse, error) {
+func (s *TargetsService) Create(ctx context.Context, projectID string, body TargetFieldsParams, params *TargetsCreateParams, opts ...RequestOption) (*TargetResponse, error) {
 	headers := map[string]string{}
 	if params != nil {
 		if params.IdempotencyKey != nil {
@@ -245,7 +245,7 @@ func (s *TargetsService) RetrieveDraft(ctx context.Context, targetID string, opt
 // A `502` response means the selected version was saved, but regeneration failed.
 //
 // PATCH /targets/{target_id}/draft
-func (s *TargetsService) UpdateDraft(ctx context.Context, targetID string, body TargetDraftUpdate, opts ...RequestOption) (*TargetDraftResponse, error) {
+func (s *TargetsService) UpdateDraft(ctx context.Context, targetID string, body TargetDraftUpdateParams, opts ...RequestOption) (*TargetDraftResponse, error) {
 	req := request{
 		Method:    "PATCH",
 		Path:      fmt.Sprintf("/targets/%s/draft", url.PathEscape(targetID)),
