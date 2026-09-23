@@ -211,7 +211,8 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredE
 
 ```json
 {
-  "project_id": "prj_4f8k2m7x9q1v6b3n"
+  "project_id": "prj_4f8k2m7x9q1v6b3n",
+  "auto_generate": true
 }
 ```
 
@@ -451,7 +452,11 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ```json
 {
-  "definition_id": "def_2p8m4q7k1v9d6h3c"
+  "definition_id": "def_2p8m4q7k1v9d6h3c",
+  "source": {
+    "kind": "url",
+    "url": "https://api.parcel.example/openapi.json"
+  }
 }
 ```
 
@@ -502,7 +507,7 @@ Safety: **write** · Authentication: **required**
 | `projectID` | path | `string` | yes | — |
 | `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
 
-Body: `TargetFields` (required)
+Body: `TargetFieldsParams` (required)
 
 Returns: `(*TargetResponse, error)`
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredError` (402), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500)
@@ -515,7 +520,23 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredE
   "project_id": "prj_4f8k2m7x9q1v6b3n",
   "name": "Parcel CLI",
   "definition_id": "def_2p8m4q7k1v9d6h3c",
-  "generator": "cli"
+  "generator": "cli",
+  "config": {
+    "cli": {
+      "command_name": "parcel"
+    }
+  },
+  "deliveries": [
+    {
+      "kind": "repository",
+      "repository": {
+        "provider": "github",
+        "identifier": "parcel-example/parcel-client"
+      },
+      "package_name": "parcel-client",
+      "publish_on_merge": false
+    }
+  ]
 }
 ```
 
@@ -599,7 +620,8 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredE
 
 ```json
 {
-  "target_id": "tgt_5m8q2v7k1p9d4h6c"
+  "target_id": "tgt_5m8q2v7k1p9d4h6c",
+  "state": "disabled"
 }
 ```
 
@@ -677,7 +699,7 @@ Safety: **write** · Authentication: **required**
 | --- | --- | --- | --- | --- |
 | `targetID` | path | `string` | yes | — |
 
-Body: `TargetDraftUpdate` (required)
+Body: `TargetDraftUpdateParams` (required)
 
 Returns: `(*TargetDraftResponse, error)`
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
@@ -688,7 +710,8 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 ```json
 {
   "target_id": "tgt_5m8q2v7k1p9d4h6c",
-  "version": "1.1.0"
+  "version": "1.1.0",
+  "expected_revision": 2
 }
 ```
 

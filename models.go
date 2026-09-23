@@ -783,25 +783,61 @@ type DefinitionID string
 
 // CreateProjectRequest is an API model.
 type CreateProjectRequest struct {
-	Name       string           `json:"name"`
-	Definition DefinitionFields `json:"definition"`
+	Name       string                 `json:"name"`
+	Definition DefinitionFieldsParams `json:"definition"`
 	// Targets Initial first-class Targets. More than one may use the same generator with different identities or Deliveries.
-	Targets []InitialTargetFields `json:"targets"`
+	Targets []InitialTargetFieldsParams `json:"targets"`
 	// AutoGenerate Whether Typeship should regenerate automatically when the source changes.
 	AutoGenerate *bool `json:"auto_generate,omitempty"`
 	// RelayEnabled Enable webhook relay sessions. Requires the CLI target and Pro.
 	RelayEnabled *bool `json:"relay_enabled,omitempty"`
 	// Config Shared defaults inherited by every Target. GraphQL settings belong in definition.graphql.
-	Config *Nullable[ProjectConfig] `json:"config,omitempty"`
+	Config *Nullable[ProjectConfigParams] `json:"config,omitempty"`
 }
 
-// DefinitionFields is an API model.
-type DefinitionFields struct {
-	Source  DefinitionSourceInput `json:"source"`
-	Patches []DefinitionPatch     `json:"patches,omitempty"`
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *CreateProjectRequest) UnmarshalJSON(data []byte) error {
+	type plain CreateProjectRequest
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["config"]) == "null" {
+		decoded.Config = NullableNull[ProjectConfigParams]()
+	}
+	*v = CreateProjectRequest(decoded)
+	return nil
+}
+
+// DefinitionFieldsParams is an API model.
+type DefinitionFieldsParams struct {
+	Source  DefinitionSourceInput   `json:"source"`
+	Patches []DefinitionPatchParams `json:"patches,omitempty"`
 	// Graphql GraphQL-only endpoint, auth, environment, title, and scalar settings.
-	Graphql          *GraphqlSettings  `json:"graphql,omitempty"`
-	DiagnosticPolicy *DiagnosticPolicy `json:"diagnostic_policy,omitempty"`
+	Graphql          *Nullable[GraphqlSettings] `json:"graphql,omitempty"`
+	DiagnosticPolicy *DiagnosticPolicy          `json:"diagnostic_policy,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *DefinitionFieldsParams) UnmarshalJSON(data []byte) error {
+	type plain DefinitionFieldsParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["graphql"]) == "null" {
+		decoded.Graphql = NullableNull[GraphqlSettings]()
+	}
+	*v = DefinitionFieldsParams(decoded)
+	return nil
 }
 
 // DefinitionSourceInput is one of URLDefinitionSourceInput, RepositoryDefinitionSourceInput.
@@ -901,16 +937,37 @@ type RepositoryReference struct {
 	Identifier string `json:"identifier"`
 }
 
-// DefinitionPatch is an API model. A fix applied to the resolved Definition before generation. Paths are JSON Pointers into the document. A patch whose target no longer exists is skipped and reported as a warning on the generation, never silently.
-type DefinitionPatch struct {
+// DefinitionPatchParams is an API model. A fix applied to the resolved Definition before generation. Paths are JSON Pointers into the document. A patch whose target no longer exists is skipped and reported as a warning on the generation, never silently.
+type DefinitionPatchParams struct {
 	Op Op `json:"op"`
 	// Path JSON-Pointer-style path. Pattern segments enable bulk fixes: * (any child), ** (any depth), [key=value] (filter), e.g. /paths/**/parameters/[name=account_id]/schema/type. Renaming a schema under /components/schemas also rewrites its $refs.
 	Path string `json:"path"`
 	// Value set only; the replacement value.
 	Value any `json:"value,omitempty"`
 	// To rename only; the new key name.
-	To     *string `json:"to,omitempty"`
-	Reason *string `json:"reason,omitempty"`
+	To     *Nullable[string] `json:"to,omitempty"`
+	Reason *Nullable[string] `json:"reason,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *DefinitionPatchParams) UnmarshalJSON(data []byte) error {
+	type plain DefinitionPatchParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["to"]) == "null" {
+		decoded.To = NullableNull[string]()
+	}
+	if string(fields["reason"]) == "null" {
+		decoded.Reason = NullableNull[string]()
+	}
+	*v = DefinitionPatchParams(decoded)
+	return nil
 }
 
 // Op is one of "set", "append", "remove", "rename".
@@ -950,18 +1007,39 @@ type DiagnosticSuppression struct {
 	Reason string `json:"reason"`
 }
 
-// InitialTargetFields is an API model.
-type InitialTargetFields struct {
-	Name            string          `json:"name"`
-	Generator       GeneratorKind   `json:"generator"`
-	State           *State          `json:"state,omitempty"`
-	Edition         *string         `json:"edition,omitempty"`
-	ReleaseChannel  *ReleaseChannel `json:"release_channel,omitempty"`
-	ProposedVersion *string         `json:"proposed_version,omitempty"`
-	Checks          *TargetChecks   `json:"checks,omitempty"`
+// InitialTargetFieldsParams is an API model.
+type InitialTargetFieldsParams struct {
+	Name            string            `json:"name"`
+	Generator       GeneratorKind     `json:"generator"`
+	State           *State            `json:"state,omitempty"`
+	Edition         *string           `json:"edition,omitempty"`
+	ReleaseChannel  *ReleaseChannel   `json:"release_channel,omitempty"`
+	ProposedVersion *Nullable[string] `json:"proposed_version,omitempty"`
+	Checks          *TargetChecks     `json:"checks,omitempty"`
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are rejected here and belong to the Definition.
-	Config     *TargetConfig   `json:"config,omitempty"`
-	Deliveries []DeliveryInput `json:"deliveries,omitempty"`
+	Config     *Nullable[TargetConfigParams] `json:"config,omitempty"`
+	Deliveries []DeliveryInput               `json:"deliveries,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *InitialTargetFieldsParams) UnmarshalJSON(data []byte) error {
+	type plain InitialTargetFieldsParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["proposed_version"]) == "null" {
+		decoded.ProposedVersion = NullableNull[string]()
+	}
+	if string(fields["config"]) == "null" {
+		decoded.Config = NullableNull[TargetConfigParams]()
+	}
+	*v = InitialTargetFieldsParams(decoded)
+	return nil
 }
 
 // State is one of "active", "disabled".
@@ -1002,30 +1080,51 @@ type TargetChecksCustomerItem struct {
 	Command string `json:"command"`
 }
 
-// TargetConfig is an API model. Target-specific generation and delivery overrides. Authentication may only select a Project-owned OAuth application. OAuth server metadata, applications, and identity policy remain Project-owned. Self-hosted MCP access may be overridden for a Target-specific deployment.
-type TargetConfig struct {
-	Globals      []string                               `json:"globals,omitempty"`
-	Retries      *RetryTuning                           `json:"retries,omitempty"`
-	Pagination   map[string]TargetConfigPaginationValue `json:"pagination,omitempty"`
-	Auth         *TargetAuthenticationConfig            `json:"auth,omitempty"`
-	CLI          *CLIBehavior                           `json:"cli,omitempty"`
-	MCP          *MCPBehavior                           `json:"mcp,omitempty"`
-	Readme       *ReadmeBehavior                        `json:"readme,omitempty"`
-	Package      *PackageBehavior                       `json:"package,omitempty"`
-	DocsURL      *string                                `json:"docs_url,omitempty"`
-	DocsIndexURL *string                                `json:"docs_index_url,omitempty"`
+// TargetConfigParams is an API model. Target-specific generation and delivery overrides. Authentication may only select a Project-owned OAuth application. OAuth server metadata, applications, and identity policy remain Project-owned. Self-hosted MCP access may be overridden for a Target-specific deployment.
+type TargetConfigParams struct {
+	Globals      []string                                     `json:"globals,omitempty"`
+	Retries      *RetryTuning                                 `json:"retries,omitempty"`
+	Pagination   map[string]TargetConfigParamsPaginationValue `json:"pagination,omitempty"`
+	Auth         *TargetAuthenticationConfigParams            `json:"auth,omitempty"`
+	CLI          *CLIBehaviorParams                           `json:"cli,omitempty"`
+	MCP          *MCPBehaviorParams                           `json:"mcp,omitempty"`
+	Readme       *ReadmeBehaviorParams                        `json:"readme,omitempty"`
+	Package      *PackageBehaviorParams                       `json:"package,omitempty"`
+	DocsURL      *Nullable[string]                            `json:"docs_url,omitempty"`
+	DocsIndexURL *Nullable[string]                            `json:"docs_index_url,omitempty"`
 }
 
-// TargetConfigPaginationValue is one of PaginationRule, bool.
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *TargetConfigParams) UnmarshalJSON(data []byte) error {
+	type plain TargetConfigParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["docs_url"]) == "null" {
+		decoded.DocsURL = NullableNull[string]()
+	}
+	if string(fields["docs_index_url"]) == "null" {
+		decoded.DocsIndexURL = NullableNull[string]()
+	}
+	*v = TargetConfigParams(decoded)
+	return nil
+}
+
+// TargetConfigParamsPaginationValue is one of PaginationRule, bool.
 // Go has no sum types, so it holds the JSON as received and decodes on
 // request: try the As* accessors, or switch on Discriminator() when the
 // spec names one.
-type TargetConfigPaginationValue struct {
+type TargetConfigParamsPaginationValue struct {
 	union json.RawMessage
 }
 
 // MarshalJSON writes the value as it was set or received.
-func (u TargetConfigPaginationValue) MarshalJSON() ([]byte, error) {
+func (u TargetConfigParamsPaginationValue) MarshalJSON() ([]byte, error) {
 	if u.union == nil {
 		return []byte("null"), nil
 	}
@@ -1033,25 +1132,25 @@ func (u TargetConfigPaginationValue) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *TargetConfigPaginationValue) UnmarshalJSON(data []byte) error {
+func (u *TargetConfigParamsPaginationValue) UnmarshalJSON(data []byte) error {
 	u.union = append(u.union[:0], data...)
 	return nil
 }
 
 // Raw returns the JSON exactly as received.
-func (u TargetConfigPaginationValue) Raw() json.RawMessage {
+func (u TargetConfigParamsPaginationValue) Raw() json.RawMessage {
 	return u.union
 }
 
 // AsPaginationRule decodes the value as PaginationRule.
-func (u TargetConfigPaginationValue) AsPaginationRule() (PaginationRule, error) {
+func (u TargetConfigParamsPaginationValue) AsPaginationRule() (PaginationRule, error) {
 	var v PaginationRule
 	err := json.Unmarshal(u.union, &v)
 	return v, err
 }
 
 // FromPaginationRule sets the value to a PaginationRule.
-func (u *TargetConfigPaginationValue) FromPaginationRule(v PaginationRule) error {
+func (u *TargetConfigParamsPaginationValue) FromPaginationRule(v PaginationRule) error {
 	encoded, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -1061,14 +1160,14 @@ func (u *TargetConfigPaginationValue) FromPaginationRule(v PaginationRule) error
 }
 
 // AsBool decodes the value as bool.
-func (u TargetConfigPaginationValue) AsBool() (bool, error) {
+func (u TargetConfigParamsPaginationValue) AsBool() (bool, error) {
 	var v bool
 	err := json.Unmarshal(u.union, &v)
 	return v, err
 }
 
 // FromBool sets the value to a bool.
-func (u *TargetConfigPaginationValue) FromBool(v bool) error {
+func (u *TargetConfigParamsPaginationValue) FromBool(v bool) error {
 	encoded, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -1077,17 +1176,290 @@ func (u *TargetConfigPaginationValue) FromBool(v bool) error {
 	return nil
 }
 
-// TargetAuthenticationConfig is an API model. Selects a Project OAuth application for one Target. OAuth server metadata, applications, and identity policy remain Project-owned.
-type TargetAuthenticationConfig struct {
+// TargetAuthenticationConfigParams is an API model. Selects a Project OAuth application for one Target. OAuth server metadata, applications, and identity policy remain Project-owned.
+type TargetAuthenticationConfigParams struct {
 	// OauthApplication Project OAuth application to use. Omit to inherit the Project default.
-	OauthApplication *string `json:"oauth_application,omitempty"`
+	OauthApplication *Nullable[string] `json:"oauth_application,omitempty"`
 	// Environments Project OAuth application selections keyed by API environment.
-	Environments map[string]TargetAuthenticationEnvironment `json:"environments,omitempty"`
+	Environments *Nullable[map[string]TargetAuthenticationEnvironmentParams] `json:"environments,omitempty"`
 }
 
-// TargetAuthenticationEnvironment is an API model.
-type TargetAuthenticationEnvironment struct {
-	OauthApplication *string `json:"oauth_application,omitempty"`
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *TargetAuthenticationConfigParams) UnmarshalJSON(data []byte) error {
+	type plain TargetAuthenticationConfigParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["oauth_application"]) == "null" {
+		decoded.OauthApplication = NullableNull[string]()
+	}
+	if string(fields["environments"]) == "null" {
+		decoded.Environments = NullableNull[map[string]TargetAuthenticationEnvironmentParams]()
+	}
+	*v = TargetAuthenticationConfigParams(decoded)
+	return nil
+}
+
+// TargetAuthenticationEnvironmentParams is an API model.
+type TargetAuthenticationEnvironmentParams struct {
+	OauthApplication *Nullable[string] `json:"oauth_application,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *TargetAuthenticationEnvironmentParams) UnmarshalJSON(data []byte) error {
+	type plain TargetAuthenticationEnvironmentParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["oauth_application"]) == "null" {
+		decoded.OauthApplication = NullableNull[string]()
+	}
+	*v = TargetAuthenticationEnvironmentParams(decoded)
+	return nil
+}
+
+// CLIBehaviorParams is an API model. How the generated CLI behaves. Part of Config.
+type CLIBehaviorParams struct {
+	// CommandName Command users run, independent of how the CLI is distributed.
+	CommandName *Nullable[string] `json:"command_name,omitempty"`
+	// UpdateNotice Opt in to a once-a-day registry check that prints an upgrade hint. Off by default; generated code phones nobody unless this is enabled.
+	UpdateNotice *bool `json:"update_notice,omitempty"`
+	// ChangelogURL Public HTTP(S) URL read by the optional changelog command in generated CLIs. Supports UTF-8 Markdown, plain text, and static HTML; embedded credentials are not allowed. Omit or clear to disable, then regenerate.
+	ChangelogURL *Nullable[string] `json:"changelog_url,omitempty"`
+	// SupportURL Where the generated CLI's feedback command sends users. GitHub issues/new URLs get a prefilled title and environment details.
+	SupportURL *Nullable[string] `json:"support_url,omitempty"`
+	// MCPURL Hosted MCP endpoint installed by the generated CLI instead of launching the package's local stdio server.
+	MCPURL *Nullable[string] `json:"mcp_url,omitempty"`
+	// SkillsRepo GitHub owner/name of the skills package the generated CLI offers to install during init.
+	SkillsRepo *Nullable[string] `json:"skills_repo,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *CLIBehaviorParams) UnmarshalJSON(data []byte) error {
+	type plain CLIBehaviorParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["command_name"]) == "null" {
+		decoded.CommandName = NullableNull[string]()
+	}
+	if string(fields["changelog_url"]) == "null" {
+		decoded.ChangelogURL = NullableNull[string]()
+	}
+	if string(fields["support_url"]) == "null" {
+		decoded.SupportURL = NullableNull[string]()
+	}
+	if string(fields["mcp_url"]) == "null" {
+		decoded.MCPURL = NullableNull[string]()
+	}
+	if string(fields["skills_repo"]) == "null" {
+		decoded.SkillsRepo = NullableNull[string]()
+	}
+	*v = CLIBehaviorParams(decoded)
+	return nil
+}
+
+// MCPBehaviorParams is an API model. How generated MCP servers and the Typeship-hosted endpoint behave. Part of Config.
+type MCPBehaviorParams struct {
+	// RegistryName Stable official MCP registry name, independent of the server runtime.
+	RegistryName *Nullable[string] `json:"registry_name,omitempty"`
+	// Access Authorization for callers connecting to a generated MCP server deployed over HTTP. The hosting application resolves upstream API credentials separately at runtime. This setting does not apply to the Typeship-hosted endpoint.
+	Access *MCPBehaviorParamsAccess `json:"access,omitempty"`
+	// ToolMode MCP tool shape. meta collapses per-operation tools into search_docs, read_docs, and execute so large APIs don't flood an agent's context window. Auto considers the serialized tool schemas, switching near 10k tokens or above 100 operations.
+	ToolMode *ToolMode `json:"tool_mode,omitempty"`
+	// Instructions Guidance appended to the MCP server's instructions, which agents read once when they connect (server/discover): what to call first, conventions the spec does not state, what not to do. Carried by the package's server and the hosted endpoint alike.
+	Instructions *Nullable[string] `json:"instructions,omitempty"`
+	// ToolDescriptions Hand-written MCP tool descriptions keyed by operationId or "METHOD /path". Each replaces the text typeship derives for that operation (summary, first sentence, method and path, deprecation and auth notes). For flows the spec cannot describe, such as a multi-step upload. Keys that match no operation are reported as generation warnings.
+	ToolDescriptions map[string]string `json:"tool_descriptions,omitempty"`
+	// ReferenceResolvers Exact name-or-ID resolver overrides keyed first by the target operationId or "METHOD /path", then by its wire argument name. A resolver names one read collection operation plus 1-4 item fields to match case-insensitively; false opts that argument out of strict inference.
+	ReferenceResolvers map[string]map[string]MCPBehaviorParamsReferenceResolversValueValue `json:"reference_resolvers,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *MCPBehaviorParams) UnmarshalJSON(data []byte) error {
+	type plain MCPBehaviorParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["registry_name"]) == "null" {
+		decoded.RegistryName = NullableNull[string]()
+	}
+	if string(fields["instructions"]) == "null" {
+		decoded.Instructions = NullableNull[string]()
+	}
+	*v = MCPBehaviorParams(decoded)
+	return nil
+}
+
+// MCPBehaviorParamsAccess is an API model. Authorization for callers connecting to a generated MCP server deployed over HTTP. The hosting application resolves upstream API credentials separately at runtime. This setting does not apply to the Typeship-hosted endpoint.
+type MCPBehaviorParamsAccess struct {
+	// Issuer Exact issuer allowed to sign MCP connection tokens.
+	Issuer string `json:"issuer"`
+	// Resource Canonical public URL of the self-hosted MCP endpoint that connection tokens must target.
+	Resource string `json:"resource"`
+	// JwksURL Public signing-key endpoint. Omit to discover it from the issuer.
+	JwksURL *string `json:"jwks_url,omitempty"`
+	// Scopes Minimum scopes required to connect to the self-hosted MCP server.
+	Scopes []string `json:"scopes,omitempty"`
+}
+
+// MCPBehaviorParamsReferenceResolversValueValue is one of bool, MCPBehaviorParamsReferenceResolversValueValueVariant2.
+// Go has no sum types, so it holds the JSON as received and decodes on
+// request: try the As* accessors, or switch on Discriminator() when the
+// spec names one.
+type MCPBehaviorParamsReferenceResolversValueValue struct {
+	union json.RawMessage
+}
+
+// MarshalJSON writes the value as it was set or received.
+func (u MCPBehaviorParamsReferenceResolversValueValue) MarshalJSON() ([]byte, error) {
+	if u.union == nil {
+		return []byte("null"), nil
+	}
+	return u.union, nil
+}
+
+// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
+func (u *MCPBehaviorParamsReferenceResolversValueValue) UnmarshalJSON(data []byte) error {
+	u.union = append(u.union[:0], data...)
+	return nil
+}
+
+// Raw returns the JSON exactly as received.
+func (u MCPBehaviorParamsReferenceResolversValueValue) Raw() json.RawMessage {
+	return u.union
+}
+
+// AsBool decodes the value as bool.
+func (u MCPBehaviorParamsReferenceResolversValueValue) AsBool() (bool, error) {
+	var v bool
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromBool sets the value to a bool.
+func (u *MCPBehaviorParamsReferenceResolversValueValue) FromBool(v bool) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AsMCPBehaviorParamsReferenceResolversValueValueVariant2 decodes the value as MCPBehaviorParamsReferenceResolversValueValueVariant2.
+func (u MCPBehaviorParamsReferenceResolversValueValue) AsMCPBehaviorParamsReferenceResolversValueValueVariant2() (MCPBehaviorParamsReferenceResolversValueValueVariant2, error) {
+	var v MCPBehaviorParamsReferenceResolversValueValueVariant2
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromMCPBehaviorParamsReferenceResolversValueValueVariant2 sets the value to a MCPBehaviorParamsReferenceResolversValueValueVariant2.
+func (u *MCPBehaviorParamsReferenceResolversValueValue) FromMCPBehaviorParamsReferenceResolversValueValueVariant2(v MCPBehaviorParamsReferenceResolversValueValueVariant2) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// MCPBehaviorParamsReferenceResolversValueValueVariant2 is an API model.
+type MCPBehaviorParamsReferenceResolversValueValueVariant2 struct {
+	// Via OperationId, "METHOD /path", MCP tool name, or dotted resource.method of the list operation.
+	Via string `json:"via"`
+	// Match Item fields compared exactly and case-insensitively, such as name, slug, key, or email.
+	Match []string `json:"match"`
+	// ID Item field substituted into the requested argument. Defaults to id.
+	ID *string `json:"id,omitempty"`
+}
+
+// ReadmeBehaviorParams is an API model. Generated README behavior. Part of Config.
+type ReadmeBehaviorParams struct {
+	// QuickstartOperation operationId or "METHOD /path" to feature as the README's first API call. It must be present in the generated package and callable with no required input beyond path placeholders. Missing or unsuitable choices produce a warning and use the automatic example.
+	QuickstartOperation *Nullable[string] `json:"quickstart_operation,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *ReadmeBehaviorParams) UnmarshalJSON(data []byte) error {
+	type plain ReadmeBehaviorParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["quickstart_operation"]) == "null" {
+		decoded.QuickstartOperation = NullableNull[string]()
+	}
+	*v = ReadmeBehaviorParams(decoded)
+	return nil
+}
+
+// PackageBehaviorParams is an API model. Published-package metadata the API spec does not own. Repository is derived from each destination.
+type PackageBehaviorParams struct {
+	// Homepage Homepage written into registry metadata.
+	Homepage *Nullable[string] `json:"homepage,omitempty"`
+	// License SPDX identifier written into registry metadata. Defaults to info.license.
+	License *Nullable[string] `json:"license,omitempty"`
+	// LicenseText Exact LICENSE file contents. Supply this for licences the engine does not build in; MIT is built in when copyright is also set.
+	LicenseText *Nullable[string] `json:"license_text,omitempty"`
+	// Copyright Copyright line used in generated license files.
+	Copyright *Nullable[string] `json:"copyright,omitempty"`
+	// GoPackageName Go identifier when the destination repository name is unsuitable.
+	GoPackageName *Nullable[string] `json:"go_package_name,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *PackageBehaviorParams) UnmarshalJSON(data []byte) error {
+	type plain PackageBehaviorParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["homepage"]) == "null" {
+		decoded.Homepage = NullableNull[string]()
+	}
+	if string(fields["license"]) == "null" {
+		decoded.License = NullableNull[string]()
+	}
+	if string(fields["license_text"]) == "null" {
+		decoded.LicenseText = NullableNull[string]()
+	}
+	if string(fields["copyright"]) == "null" {
+		decoded.Copyright = NullableNull[string]()
+	}
+	if string(fields["go_package_name"]) == "null" {
+		decoded.GoPackageName = NullableNull[string]()
+	}
+	*v = PackageBehaviorParams(decoded)
+	return nil
 }
 
 // DeliveryInput is one of RepositoryDeliveryInput, HostedMCPDeliveryInput.
@@ -1180,34 +1552,55 @@ type HostedMCPDeliveryInput struct {
 	Kind string `json:"kind"`
 }
 
-// ProjectConfig is an API model. Shared generated-client and tooling behavior for a stored Project. Every Target inherits these defaults. Target.config is merged over them for one Target; top-level values replace defaults while cli, mcp, auth, readme, and package merge by field. GraphQL-only source settings live on the Project's Definition and are rejected in both stored config scopes.
-type ProjectConfig struct {
+// ProjectConfigParams is an API model. Shared generated-client and tooling behavior for a stored Project. Every Target inherits these defaults. Target.config is merged over them for one Target; top-level values replace defaults while cli, mcp, auth, readme, and package merge by field. GraphQL-only source settings live on the Project's Definition and are rejected in both stored config scopes.
+type ProjectConfigParams struct {
 	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
 	Globals []string     `json:"globals,omitempty"`
 	Retries *RetryTuning `json:"retries,omitempty"`
 	// Pagination Per-operation pagination control, keyed by operationId or "METHOD /path". Unmatched keys are reported as generation warnings.
-	Pagination map[string]ProjectConfigPaginationValue `json:"pagination,omitempty"`
-	Auth       *AuthenticationConfig                   `json:"auth,omitempty"`
-	CLI        *CLIBehavior                            `json:"cli,omitempty"`
-	MCP        *MCPBehavior                            `json:"mcp,omitempty"`
-	Readme     *ReadmeBehavior                         `json:"readme,omitempty"`
-	Package    *PackageBehavior                        `json:"package,omitempty"`
+	Pagination map[string]ProjectConfigParamsPaginationValue `json:"pagination,omitempty"`
+	Auth       *AuthenticationConfigParams                   `json:"auth,omitempty"`
+	CLI        *CLIBehaviorParams                            `json:"cli,omitempty"`
+	MCP        *MCPBehaviorParams                            `json:"mcp,omitempty"`
+	Readme     *ReadmeBehaviorParams                         `json:"readme,omitempty"`
+	Package    *PackageBehaviorParams                        `json:"package,omitempty"`
 	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Definition's externalDocs URL.
-	DocsURL *string `json:"docs_url,omitempty"`
+	DocsURL *Nullable[string] `json:"docs_url,omitempty"`
 	// DocsIndexURL Exact llms.txt URL when the documentation site does not publish it at docs_url + /llms.txt.
-	DocsIndexURL *string `json:"docs_index_url,omitempty"`
+	DocsIndexURL *Nullable[string] `json:"docs_index_url,omitempty"`
 }
 
-// ProjectConfigPaginationValue is one of PaginationRule, bool.
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *ProjectConfigParams) UnmarshalJSON(data []byte) error {
+	type plain ProjectConfigParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["docs_url"]) == "null" {
+		decoded.DocsURL = NullableNull[string]()
+	}
+	if string(fields["docs_index_url"]) == "null" {
+		decoded.DocsIndexURL = NullableNull[string]()
+	}
+	*v = ProjectConfigParams(decoded)
+	return nil
+}
+
+// ProjectConfigParamsPaginationValue is one of PaginationRule, bool.
 // Go has no sum types, so it holds the JSON as received and decodes on
 // request: try the As* accessors, or switch on Discriminator() when the
 // spec names one.
-type ProjectConfigPaginationValue struct {
+type ProjectConfigParamsPaginationValue struct {
 	union json.RawMessage
 }
 
 // MarshalJSON writes the value as it was set or received.
-func (u ProjectConfigPaginationValue) MarshalJSON() ([]byte, error) {
+func (u ProjectConfigParamsPaginationValue) MarshalJSON() ([]byte, error) {
 	if u.union == nil {
 		return []byte("null"), nil
 	}
@@ -1215,25 +1608,25 @@ func (u ProjectConfigPaginationValue) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *ProjectConfigPaginationValue) UnmarshalJSON(data []byte) error {
+func (u *ProjectConfigParamsPaginationValue) UnmarshalJSON(data []byte) error {
 	u.union = append(u.union[:0], data...)
 	return nil
 }
 
 // Raw returns the JSON exactly as received.
-func (u ProjectConfigPaginationValue) Raw() json.RawMessage {
+func (u ProjectConfigParamsPaginationValue) Raw() json.RawMessage {
 	return u.union
 }
 
 // AsPaginationRule decodes the value as PaginationRule.
-func (u ProjectConfigPaginationValue) AsPaginationRule() (PaginationRule, error) {
+func (u ProjectConfigParamsPaginationValue) AsPaginationRule() (PaginationRule, error) {
 	var v PaginationRule
 	err := json.Unmarshal(u.union, &v)
 	return v, err
 }
 
 // FromPaginationRule sets the value to a PaginationRule.
-func (u *ProjectConfigPaginationValue) FromPaginationRule(v PaginationRule) error {
+func (u *ProjectConfigParamsPaginationValue) FromPaginationRule(v PaginationRule) error {
 	encoded, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -1243,19 +1636,240 @@ func (u *ProjectConfigPaginationValue) FromPaginationRule(v PaginationRule) erro
 }
 
 // AsBool decodes the value as bool.
-func (u ProjectConfigPaginationValue) AsBool() (bool, error) {
+func (u ProjectConfigParamsPaginationValue) AsBool() (bool, error) {
 	var v bool
 	err := json.Unmarshal(u.union, &v)
 	return v, err
 }
 
 // FromBool sets the value to a bool.
-func (u *ProjectConfigPaginationValue) FromBool(v bool) error {
+func (u *ProjectConfigParamsPaginationValue) FromBool(v bool) error {
 	encoded, err := json.Marshal(v)
 	if err != nil {
 		return err
 	}
 	u.union = encoded
+	return nil
+}
+
+// AuthenticationConfigParams is an API model. Public authentication defaults for generated clients and tools. Stored Projects own the OAuth server, application catalog, and identity policy; one-shot generation accepts the same shape for one run. Runtime credentials and client secrets are never accepted.
+type AuthenticationConfigParams struct {
+	OauthServer *Nullable[OAuthServerParams] `json:"oauth_server,omitempty"`
+	// OauthApplications OAuth applications keyed by a stable name.
+	OauthApplications *Nullable[map[string]OAuthApplicationParams] `json:"oauth_applications,omitempty"`
+	// OauthApplication Default OAuth application used by generated products.
+	OauthApplication     *Nullable[string]                     `json:"oauth_application,omitempty"`
+	IdentityVerification *Nullable[IdentityVerificationParams] `json:"identity_verification,omitempty"`
+	// ApprovalURL Base URL of a custom browser-approval backend implementing the start, status, and revoke contract. Used only when OAuth is not configured.
+	ApprovalURL *Nullable[string] `json:"approval_url,omitempty"`
+	// Environments Authentication selections keyed by generated API environment name.
+	Environments *Nullable[map[string]AuthenticationEnvironmentParams] `json:"environments,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *AuthenticationConfigParams) UnmarshalJSON(data []byte) error {
+	type plain AuthenticationConfigParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["oauth_server"]) == "null" {
+		decoded.OauthServer = NullableNull[OAuthServerParams]()
+	}
+	if string(fields["oauth_applications"]) == "null" {
+		decoded.OauthApplications = NullableNull[map[string]OAuthApplicationParams]()
+	}
+	if string(fields["oauth_application"]) == "null" {
+		decoded.OauthApplication = NullableNull[string]()
+	}
+	if string(fields["identity_verification"]) == "null" {
+		decoded.IdentityVerification = NullableNull[IdentityVerificationParams]()
+	}
+	if string(fields["approval_url"]) == "null" {
+		decoded.ApprovalURL = NullableNull[string]()
+	}
+	if string(fields["environments"]) == "null" {
+		decoded.Environments = NullableNull[map[string]AuthenticationEnvironmentParams]()
+	}
+	*v = AuthenticationConfigParams(decoded)
+	return nil
+}
+
+// OAuthServerParams is an API model. Authorization-server metadata used by generated OAuth flows. Secrets and runtime credentials are never accepted here.
+type OAuthServerParams struct {
+	// Issuer Exact authorization-server issuer, including any tenant path.
+	Issuer *Nullable[string] `json:"issuer,omitempty"`
+	// DiscoveryURL Exact metadata URL when it cannot be derived from the issuer.
+	DiscoveryURL *Nullable[string] `json:"discovery_url,omitempty"`
+	// AuthorizationURL Authorization endpoint override.
+	AuthorizationURL *Nullable[string] `json:"authorization_url,omitempty"`
+	// TokenURL Token endpoint override.
+	TokenURL *Nullable[string] `json:"token_url,omitempty"`
+	// DeviceAuthorizationURL Device-authorization endpoint override.
+	DeviceAuthorizationURL *Nullable[string] `json:"device_authorization_url,omitempty"`
+	// Scopes Default scopes requested during login.
+	Scopes *Nullable[[]string] `json:"scopes,omitempty"`
+	// Audience Default audience included in authorization and token requests.
+	Audience *Nullable[string] `json:"audience,omitempty"`
+	// Resource Protected API resource included in authorization and token requests.
+	Resource *Nullable[string] `json:"resource,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *OAuthServerParams) UnmarshalJSON(data []byte) error {
+	type plain OAuthServerParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["issuer"]) == "null" {
+		decoded.Issuer = NullableNull[string]()
+	}
+	if string(fields["discovery_url"]) == "null" {
+		decoded.DiscoveryURL = NullableNull[string]()
+	}
+	if string(fields["authorization_url"]) == "null" {
+		decoded.AuthorizationURL = NullableNull[string]()
+	}
+	if string(fields["token_url"]) == "null" {
+		decoded.TokenURL = NullableNull[string]()
+	}
+	if string(fields["device_authorization_url"]) == "null" {
+		decoded.DeviceAuthorizationURL = NullableNull[string]()
+	}
+	if string(fields["scopes"]) == "null" {
+		decoded.Scopes = NullableNull[[]string]()
+	}
+	if string(fields["audience"]) == "null" {
+		decoded.Audience = NullableNull[string]()
+	}
+	if string(fields["resource"]) == "null" {
+		decoded.Resource = NullableNull[string]()
+	}
+	*v = OAuthServerParams(decoded)
+	return nil
+}
+
+// OAuthApplicationParams is an API model. OAuth application available to generated products. Public clients support interactive login; confidential clients support runtime-supplied machine credentials. Client secrets are never stored.
+type OAuthApplicationParams struct {
+	// ClientID OAuth client identifier.
+	ClientID string `json:"client_id"`
+	// LoginMethod Interactive login method. Browser login uses Authorization Code with PKCE.
+	LoginMethod *Nullable[LoginMethod] `json:"login_method,omitempty"`
+	// ClientAuthMethod How a runtime-supplied client secret is sent for machine grants.
+	ClientAuthMethod *Nullable[ClientAuthMethod] `json:"client_auth_method,omitempty"`
+	// RedirectURI Loopback callback URL for browser login.
+	RedirectURI *Nullable[string] `json:"redirect_uri,omitempty"`
+	// OrganizationParameter Provider parameter used to request an organization during browser login.
+	OrganizationParameter *Nullable[OrganizationParameter] `json:"organization_parameter,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *OAuthApplicationParams) UnmarshalJSON(data []byte) error {
+	type plain OAuthApplicationParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["login_method"]) == "null" {
+		decoded.LoginMethod = NullableNull[LoginMethod]()
+	}
+	if string(fields["client_auth_method"]) == "null" {
+		decoded.ClientAuthMethod = NullableNull[ClientAuthMethod]()
+	}
+	if string(fields["redirect_uri"]) == "null" {
+		decoded.RedirectURI = NullableNull[string]()
+	}
+	if string(fields["organization_parameter"]) == "null" {
+		decoded.OrganizationParameter = NullableNull[OrganizationParameter]()
+	}
+	*v = OAuthApplicationParams(decoded)
+	return nil
+}
+
+// IdentityVerificationParams is an API model. Authenticated identity read used to verify a login before it is saved. Operation is auto-detected when omitted or null. Requests must include at least one of subject_field, account_field, or organization_field; send null for a field to clear it.
+type IdentityVerificationParams struct {
+	// Operation resource.method of a safe identity read with no required arguments.
+	Operation *Nullable[string] `json:"operation,omitempty"`
+	// SubjectField JSON Pointer to the stable caller ID in the identity response.
+	SubjectField *Nullable[string] `json:"subject_field,omitempty"`
+	// AccountField JSON Pointer to the customer account ID.
+	AccountField *Nullable[string] `json:"account_field,omitempty"`
+	// OrganizationField JSON Pointer to the customer organization ID.
+	OrganizationField *Nullable[string] `json:"organization_field,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *IdentityVerificationParams) UnmarshalJSON(data []byte) error {
+	type plain IdentityVerificationParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["operation"]) == "null" {
+		decoded.Operation = NullableNull[string]()
+	}
+	if string(fields["subject_field"]) == "null" {
+		decoded.SubjectField = NullableNull[string]()
+	}
+	if string(fields["account_field"]) == "null" {
+		decoded.AccountField = NullableNull[string]()
+	}
+	if string(fields["organization_field"]) == "null" {
+		decoded.OrganizationField = NullableNull[string]()
+	}
+	*v = IdentityVerificationParams(decoded)
+	return nil
+}
+
+// AuthenticationEnvironmentParams is an API model. OAuth application and request-value overrides for one named API environment.
+type AuthenticationEnvironmentParams struct {
+	OauthApplication *Nullable[string]   `json:"oauth_application,omitempty"`
+	Scopes           *Nullable[[]string] `json:"scopes,omitempty"`
+	Audience         *Nullable[string]   `json:"audience,omitempty"`
+	Resource         *Nullable[string]   `json:"resource,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *AuthenticationEnvironmentParams) UnmarshalJSON(data []byte) error {
+	type plain AuthenticationEnvironmentParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["oauth_application"]) == "null" {
+		decoded.OauthApplication = NullableNull[string]()
+	}
+	if string(fields["scopes"]) == "null" {
+		decoded.Scopes = NullableNull[[]string]()
+	}
+	if string(fields["audience"]) == "null" {
+		decoded.Audience = NullableNull[string]()
+	}
+	if string(fields["resource"]) == "null" {
+		decoded.Resource = NullableNull[string]()
+	}
+	*v = AuthenticationEnvironmentParams(decoded)
 	return nil
 }
 
@@ -1602,7 +2216,25 @@ type UpdateProjectRequest struct {
 	// RelayEnabled Enable webhook relay sessions. Requires the CLI target and Pro.
 	RelayEnabled *bool `json:"relay_enabled,omitempty"`
 	// Config Replaces the Project's shared Target defaults. Send null to clear them.
-	Config *Nullable[ProjectConfig] `json:"config,omitempty"`
+	Config *Nullable[ProjectConfigParams] `json:"config,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *UpdateProjectRequest) UnmarshalJSON(data []byte) error {
+	type plain UpdateProjectRequest
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["config"]) == "null" {
+		decoded.Config = NullableNull[ProjectConfigParams]()
+	}
+	*v = UpdateProjectRequest(decoded)
+	return nil
 }
 
 // DiagnosticReport is an API model. Deterministic Diagnostics for one immutable Definition Revision after existing patches. No model-generated facts or silent edits.
@@ -2280,9 +2912,27 @@ type RepositoryDefinitionSource struct {
 // DefinitionUpdateRequest is an API model.
 type DefinitionUpdateRequest struct {
 	Source           *DefinitionSourceInput     `json:"source,omitempty"`
-	Patches          []DefinitionPatch          `json:"patches,omitempty"`
+	Patches          []DefinitionPatchParams    `json:"patches,omitempty"`
 	Graphql          *Nullable[GraphqlSettings] `json:"graphql,omitempty"`
 	DiagnosticPolicy *DiagnosticPolicy          `json:"diagnostic_policy,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *DefinitionUpdateRequest) UnmarshalJSON(data []byte) error {
+	type plain DefinitionUpdateRequest
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["graphql"]) == "null" {
+		decoded.Graphql = NullableNull[GraphqlSettings]()
+	}
+	*v = DefinitionUpdateRequest(decoded)
+	return nil
 }
 
 // TargetList is an API model.
@@ -2550,8 +3200,8 @@ type HostedMCPDelivery struct {
 	UpdatedAt string     `json:"updated_at"`
 }
 
-// TargetFields is an API model.
-type TargetFields struct {
+// TargetFieldsParams is an API model.
+type TargetFieldsParams struct {
 	Name           string          `json:"name"`
 	DefinitionID   DefinitionID    `json:"definition_id"`
 	Generator      GeneratorKind   `json:"generator"`
@@ -2559,11 +3209,32 @@ type TargetFields struct {
 	Edition        *string         `json:"edition,omitempty"`
 	ReleaseChannel *ReleaseChannel `json:"release_channel,omitempty"`
 	// ProposedVersion Optional larger or prerelease SemVer for the next reviewed release.
-	ProposedVersion *string       `json:"proposed_version,omitempty"`
-	Checks          *TargetChecks `json:"checks,omitempty"`
+	ProposedVersion *Nullable[string] `json:"proposed_version,omitempty"`
+	Checks          *TargetChecks     `json:"checks,omitempty"`
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are rejected here and belong to the Definition.
-	Config     *TargetConfig   `json:"config,omitempty"`
-	Deliveries []DeliveryInput `json:"deliveries,omitempty"`
+	Config     *Nullable[TargetConfigParams] `json:"config,omitempty"`
+	Deliveries []DeliveryInput               `json:"deliveries,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *TargetFieldsParams) UnmarshalJSON(data []byte) error {
+	type plain TargetFieldsParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["proposed_version"]) == "null" {
+		decoded.ProposedVersion = NullableNull[string]()
+	}
+	if string(fields["config"]) == "null" {
+		decoded.Config = NullableNull[TargetConfigParams]()
+	}
+	*v = TargetFieldsParams(decoded)
+	return nil
 }
 
 // TargetResponse is an API model.
@@ -2620,9 +3291,30 @@ type TargetUpdateRequest struct {
 	ProposedVersion *Nullable[string] `json:"proposed_version,omitempty"`
 	Checks          *TargetChecks     `json:"checks,omitempty"`
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are rejected here and belong to the Definition.
-	Config *Nullable[TargetConfig] `json:"config,omitempty"`
+	Config *Nullable[TargetConfigParams] `json:"config,omitempty"`
 	// Deliveries Replaces the Delivery set; include each kind you want to keep. Retained kinds preserve their ID, creation time, and hosted URL. Each supplied Delivery replaces its configuration, so omitted optional settings reset to their defaults. Omit deliveries to keep the existing set, or send [] to remove all Deliveries. Removing and later recreating a kind allocates a new ID and, for hosted_mcp, a new URL.
 	Deliveries []DeliveryInput `json:"deliveries,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *TargetUpdateRequest) UnmarshalJSON(data []byte) error {
+	type plain TargetUpdateRequest
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["proposed_version"]) == "null" {
+		decoded.ProposedVersion = NullableNull[string]()
+	}
+	if string(fields["config"]) == "null" {
+		decoded.Config = NullableNull[TargetConfigParams]()
+	}
+	*v = TargetUpdateRequest(decoded)
+	return nil
 }
 
 // TargetReleaseList is an API model.
@@ -2877,11 +3569,11 @@ type TargetDraftResponseChanges struct {
 	PreviousVersion *string `json:"previous_version,omitempty"`
 }
 
-// TargetDraftUpdate is an API model.
-type TargetDraftUpdate struct {
+// TargetDraftUpdateParams is an API model.
+type TargetDraftUpdateParams struct {
 	// Version Exact SemVer, or null to return to automatic selection.
-	Version          string `json:"version"`
-	ExpectedRevision *int64 `json:"expected_revision,omitempty"`
+	Version          *string `json:"version"`
+	ExpectedRevision *int64  `json:"expected_revision,omitempty"`
 }
 
 // TargetCustomizationsResponse is an API model.
