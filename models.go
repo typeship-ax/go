@@ -356,7 +356,7 @@ const (
 	OAuthApplicationOrganizationParameterOrganizationID OAuthApplicationOrganizationParameter = "organization_id"
 )
 
-// IdentityVerification is an API model. Authenticated identity read used to verify a login before it is saved. Operation is auto-detected when omitted. Requests must include at least one of subject_field, account_field, or organization_field.
+// IdentityVerification is an API model. Authenticated identity read used to verify a login before it is saved. Operation is auto-detected when omitted or null. Requests must include at least one of subject_field, account_field, or organization_field; send null for a field to clear it.
 type IdentityVerification struct {
 	// Operation resource.method of a safe identity read with no required arguments.
 	Operation *string `json:"operation,omitempty"`
