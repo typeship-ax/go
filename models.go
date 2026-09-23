@@ -2764,7 +2764,7 @@ const (
 	ErrorTypeUnknownError        ErrorType = "unknown_error"
 )
 
-// ErrorCode is one of "invalid_request", "idempotency_key_reused", "unauthorized", "organization_required", "insufficient_scope", "forbidden", "not_found", "method_not_allowed", "spec_error", "fetch_error", "repository_provider_unsupported", "edition_unavailable", "target_busy", "no_draft", "stale_draft", "no_changes", "invalid_version", "stale_release_revision", "version_occupied", "version_too_low", "release_analysis_stale", "target_already_released", "adoption_unverified", "publication_disabled", "publication_not_retryable", "publication_recovery_unavailable", "publication_dispatch_failed", "repository_disconnected", "regeneration_failed", "delivery_conflict", "resource_has_dependencies", "plan_limit_reached", "payload_too_large", "rate_limited", "internal_error", "dependency_missing", "dependency_not_found", "dependency_self", "dependency_cycle", "dependency_cross_project", "dependency_cross_lineage", "dependency_wrong_generator", "dependency_disabled", "dependency_module_path_missing", "dependency_unreleased", "dependency_revision_mismatch", "dependency_edition_incompatible", "publication_failed", "customization_conflict", "checks_unavailable", "generation_stale", "unclassified_error". Stable programmatic identifier. Do not branch on message.
+// ErrorCode is one of "invalid_request", "idempotency_key_reused", "unauthorized", "organization_required", "insufficient_scope", "forbidden", "not_found", "method_not_allowed", "spec_error", "fetch_error", "repository_provider_unsupported", "edition_unavailable", "target_busy", "no_draft", "stale_draft", "no_changes", "invalid_version", "stale_release_revision", "definition_changed", "version_occupied", "version_too_low", "release_analysis_stale", "target_already_released", "adoption_unverified", "publication_disabled", "publication_not_retryable", "publication_recovery_unavailable", "publication_dispatch_failed", "repository_disconnected", "regeneration_failed", "delivery_conflict", "resource_has_dependencies", "plan_limit_reached", "payload_too_large", "rate_limited", "internal_error", "dependency_missing", "dependency_not_found", "dependency_self", "dependency_cycle", "dependency_cross_project", "dependency_cross_lineage", "dependency_wrong_generator", "dependency_disabled", "dependency_module_path_missing", "dependency_unreleased", "dependency_revision_mismatch", "dependency_edition_incompatible", "publication_failed", "customization_conflict", "checks_unavailable", "generation_stale", "unclassified_error". Stable programmatic identifier. Do not branch on message.
 type ErrorCode string
 
 const (
@@ -2786,6 +2786,7 @@ const (
 	ErrorCodeNoChanges                      ErrorCode = "no_changes"
 	ErrorCodeInvalidVersion                 ErrorCode = "invalid_version"
 	ErrorCodeStaleReleaseRevision           ErrorCode = "stale_release_revision"
+	ErrorCodeDefinitionChanged              ErrorCode = "definition_changed"
 	ErrorCodeVersionOccupied                ErrorCode = "version_occupied"
 	ErrorCodeVersionTooLow                  ErrorCode = "version_too_low"
 	ErrorCodeReleaseAnalysisStale           ErrorCode = "release_analysis_stale"
@@ -3022,12 +3023,15 @@ type RepositoryDefinitionSource struct {
 	Path string `json:"path"`
 }
 
-// DefinitionUpdateRequest is an API model.
+// DefinitionUpdateRequest is an API model. Omitted fields remain unchanged. Supplied objects and arrays replace the whole field. URL source headers are preserved when the URL is unchanged and headers are omitted; null or empty headers clear them.
 type DefinitionUpdateRequest struct {
-	Source           *DefinitionSourceInput     `json:"source,omitempty"`
-	Patches          []DefinitionPatchParams    `json:"patches,omitempty"`
-	Graphql          *Nullable[GraphqlSettings] `json:"graphql,omitempty"`
-	DiagnosticPolicy *DiagnosticPolicy          `json:"diagnostic_policy,omitempty"`
+	Source *DefinitionSourceInput `json:"source,omitempty"`
+	// Patches Replace all patches in order. An empty array removes every patch; null is invalid.
+	Patches []DefinitionPatchParams `json:"patches,omitempty"`
+	// Graphql Replace all GraphQL settings. Null or an empty object clears them.
+	Graphql *Nullable[GraphqlSettings] `json:"graphql,omitempty"`
+	// DiagnosticPolicy Replace the complete policy and suppression list. Null and an empty object are invalid.
+	DiagnosticPolicy *DiagnosticPolicy `json:"diagnostic_policy,omitempty"`
 }
 
 // UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
