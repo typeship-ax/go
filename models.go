@@ -356,7 +356,7 @@ const (
 	OrganizationParameterOrganizationID OrganizationParameter = "organization_id"
 )
 
-// IdentityVerification is an API model. Authenticated identity read used to verify a login before it is saved. Operation is auto-detected when omitted or null. Requests must include at least one of subject_field, account_field, or organization_field; send null for a field to clear it.
+// IdentityVerification is an API model. Authenticated identity read used to verify a login before it is saved. Operation is auto-detected when omitted or null. At least one of subject_field, account_field, or organization_field must be a non-null JSON Pointer. Null clears an individual mapping while another remains. Set identity_verification itself to null to remove the whole policy.
 type IdentityVerification struct {
 	// Operation resource.method of a safe identity read with no required arguments.
 	Operation *string `json:"operation,omitempty"`
@@ -1798,7 +1798,7 @@ func (v *OAuthApplicationParams) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// IdentityVerificationParams is an API model. Authenticated identity read used to verify a login before it is saved. Operation is auto-detected when omitted or null. Requests must include at least one of subject_field, account_field, or organization_field; send null for a field to clear it.
+// IdentityVerificationParams is an API model. Authenticated identity read used to verify a login before it is saved. Operation is auto-detected when omitted or null. At least one of subject_field, account_field, or organization_field must be a non-null JSON Pointer. Null clears an individual mapping while another remains. Set identity_verification itself to null to remove the whole policy.
 type IdentityVerificationParams struct {
 	// Operation resource.method of a safe identity read with no required arguments.
 	Operation *Nullable[string] `json:"operation,omitempty"`
@@ -2045,7 +2045,7 @@ type OAuthApplicationResponse struct {
 	OrganizationParameter *OrganizationParameter `json:"organization_parameter,omitempty"`
 }
 
-// IdentityVerificationResponse is an API model. Authenticated identity read used to verify a login before it is saved. Operation is auto-detected when omitted or null. Requests must include at least one of subject_field, account_field, or organization_field; send null for a field to clear it.
+// IdentityVerificationResponse is an API model. Authenticated identity read used to verify a login before it is saved. Operation is auto-detected when omitted or null. At least one of subject_field, account_field, or organization_field must be a non-null JSON Pointer. Null clears an individual mapping while another remains. Set identity_verification itself to null to remove the whole policy.
 type IdentityVerificationResponse struct {
 	// Operation resource.method of a safe identity read with no required arguments.
 	Operation *string `json:"operation,omitempty"`
