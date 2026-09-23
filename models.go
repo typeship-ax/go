@@ -1990,16 +1990,111 @@ const (
 type GenerationProvenance struct {
 	// GeneratorEdition Pinned generator contract edition.
 	GeneratorEdition string `json:"generator_edition"`
-	// EngineBuild Exact engine build identifier used for replay and support.
-	EngineBuild string `json:"engine_build"`
-	// ResolvedConfig Immutable effective Target configuration used by this run; source credentials are never included.
-	ResolvedConfig map[string]any `json:"resolved_config"`
-	ConfigHash     string         `json:"config_hash"`
-	// SurfacePlan Resolved generator and entitlement plan used to select the emitted public surface.
-	SurfacePlan     map[string]any `json:"surface_plan"`
-	SurfacePlanHash string         `json:"surface_plan_hash"`
-	EntitlementCap  int64          `json:"entitlement_cap"`
-	PackageVersion  string         `json:"package_version"`
+	// ResolvedConfig Recorded configuration for this Generation in the public Config format, including inherited Project defaults and Target overrides. Later edits do not change it. Source credentials are never included. Null when no configuration was recorded.
+	ResolvedConfig ConfigResponse `json:"resolved_config"`
+	PackageVersion string         `json:"package_version"`
+}
+
+// ConfigResponse is an API model. Everything Typeship needs beyond the Definition, in one object: generation customization (globals, retries, pagination, readme) and how the generated tooling behaves (cli, mcp, package, docs_url). Plain configuration. Typeship never requires vendor extensions inside the Definition itself. One-shot generation also accepts GraphQL settings here; stored projects keep those settings on their Definition.
+type ConfigResponse struct {
+	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
+	Globals []string             `json:"globals,omitempty"`
+	Retries *RetryTuningResponse `json:"retries,omitempty"`
+	// Pagination Per-operation pagination control, keyed by operationId or "METHOD /path". Unmatched keys are reported as generation warnings.
+	Pagination map[string]ConfigResponsePaginationValue `json:"pagination,omitempty"`
+	Graphql    *GraphqlSettingsResponse                 `json:"graphql,omitempty"`
+	Auth       *AuthenticationConfigResponse            `json:"auth,omitempty"`
+	CLI        *CLIBehaviorResponse                     `json:"cli,omitempty"`
+	MCP        *MCPBehaviorResponse                     `json:"mcp,omitempty"`
+	Readme     *ReadmeBehaviorResponse                  `json:"readme,omitempty"`
+	Package    *PackageBehaviorResponse                 `json:"package,omitempty"`
+	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Definition's externalDocs URL.
+	DocsURL *string `json:"docs_url,omitempty"`
+	// DocsIndexURL Exact llms.txt URL when the documentation site does not publish it at docs_url + /llms.txt.
+	DocsIndexURL *string `json:"docs_index_url,omitempty"`
+}
+
+// ConfigResponsePaginationValue is one of PaginationRuleResponse, bool.
+// Go has no sum types, so it holds the JSON as received and decodes on
+// request: try the As* accessors, or switch on Discriminator() when the
+// spec names one.
+type ConfigResponsePaginationValue struct {
+	union json.RawMessage
+}
+
+// MarshalJSON writes the value as it was set or received.
+func (u ConfigResponsePaginationValue) MarshalJSON() ([]byte, error) {
+	if u.union == nil {
+		return []byte("null"), nil
+	}
+	return u.union, nil
+}
+
+// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
+func (u *ConfigResponsePaginationValue) UnmarshalJSON(data []byte) error {
+	u.union = append(u.union[:0], data...)
+	return nil
+}
+
+// Raw returns the JSON exactly as received.
+func (u ConfigResponsePaginationValue) Raw() json.RawMessage {
+	return u.union
+}
+
+// AsPaginationRuleResponse decodes the value as PaginationRuleResponse.
+func (u ConfigResponsePaginationValue) AsPaginationRuleResponse() (PaginationRuleResponse, error) {
+	var v PaginationRuleResponse
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromPaginationRuleResponse sets the value to a PaginationRuleResponse.
+func (u *ConfigResponsePaginationValue) FromPaginationRuleResponse(v PaginationRuleResponse) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AsBool decodes the value as bool.
+func (u ConfigResponsePaginationValue) AsBool() (bool, error) {
+	var v bool
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromBool sets the value to a bool.
+func (u *ConfigResponsePaginationValue) FromBool(v bool) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// GraphqlSettingsResponse is an API model. What a GraphQL schema cannot say about itself. Ignored for OpenAPI specs.
+type GraphqlSettingsResponse struct {
+	// Endpoint The URL every request is POSTed to; the generated client's default baseUrl. Defaults to the URL the schema was fetched from. Without either, baseUrl is a required client option.
+	Endpoint *string `json:"endpoint,omitempty"`
+	// Environments Named endpoints (sandbox, production). Each becomes a client environment; the first is the default unless endpoint is set.
+	Environments []GraphqlSettingsResponseEnvironmentsItem `json:"environments,omitempty"`
+	// Auth How requests authenticate. bearer sends Authorization: Bearer; basic is for key-pair APIs (public key as username, private key as password); api_key sends a header named by api_key_header; none generates no auth option.
+	Auth *Auth `json:"auth,omitempty"`
+	// APIKeyHeader Header carrying the key when auth is api_key. Required for that mode; Typeship does not invent a vendor-specific header name.
+	APIKeyHeader *string `json:"api_key_header,omitempty"`
+	// Title The API's name; drives the package and client names ("Acme" gives acme and AcmeClient). Defaults to a name derived from the endpoint's host.
+	Title *string `json:"title,omitempty"`
+	// Scalars JSON representation of each custom scalar, keyed by GraphQL scalar name. Unmapped scalars generate as the language's untyped JSON value and produce a warning. Unmatched keys warn.
+	Scalars map[string]Scalars `json:"scalars,omitempty"`
+}
+
+// GraphqlSettingsResponseEnvironmentsItem is an API model.
+type GraphqlSettingsResponseEnvironmentsItem struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
 }
 
 // GenerationBatch is an API model. Metadata for each Target generation attempted by a Project run. Retrieve one Generation separately for generated files.
@@ -2182,28 +2277,6 @@ type RepositoryDefinitionSource struct {
 	Path string `json:"path"`
 }
 
-// GraphqlSettingsResponse is an API model. What a GraphQL schema cannot say about itself. Ignored for OpenAPI specs.
-type GraphqlSettingsResponse struct {
-	// Endpoint The URL every request is POSTed to; the generated client's default baseUrl. Defaults to the URL the schema was fetched from. Without either, baseUrl is a required client option.
-	Endpoint *string `json:"endpoint,omitempty"`
-	// Environments Named endpoints (sandbox, production). Each becomes a client environment; the first is the default unless endpoint is set.
-	Environments []GraphqlSettingsResponseEnvironmentsItem `json:"environments,omitempty"`
-	// Auth How requests authenticate. bearer sends Authorization: Bearer; basic is for key-pair APIs (public key as username, private key as password); api_key sends a header named by api_key_header; none generates no auth option.
-	Auth *Auth `json:"auth,omitempty"`
-	// APIKeyHeader Header carrying the key when auth is api_key. Required for that mode; Typeship does not invent a vendor-specific header name.
-	APIKeyHeader *string `json:"api_key_header,omitempty"`
-	// Title The API's name; drives the package and client names ("Acme" gives acme and AcmeClient). Defaults to a name derived from the endpoint's host.
-	Title *string `json:"title,omitempty"`
-	// Scalars JSON representation of each custom scalar, keyed by GraphQL scalar name. Unmapped scalars generate as the language's untyped JSON value and produce a warning. Unmatched keys warn.
-	Scalars map[string]Scalars `json:"scalars,omitempty"`
-}
-
-// GraphqlSettingsResponseEnvironmentsItem is an API model.
-type GraphqlSettingsResponseEnvironmentsItem struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
-
 // DefinitionUpdateRequest is an API model.
 type DefinitionUpdateRequest struct {
 	Source           *DefinitionSourceInput     `json:"source,omitempty"`
@@ -2235,7 +2308,7 @@ type Target struct {
 	Edition        string              `json:"edition"`
 	ReleaseChannel ReleaseChannel      `json:"release_channel"`
 	VersionPolicy  TargetVersionPolicy `json:"version_policy"`
-	// CurrentVersion Deprecated projection of the newest immutable Target Release; null until a release becomes Current. Deprecated.
+	// CurrentVersion Read-only version of the Target's Current release, or null before its first release. Registry publication status is separate; inspect the Target Release for publication results.
 	CurrentVersion        string                `json:"current_version"`
 	ProposedVersion       string                `json:"proposed_version"`
 	ProposedVersionSource ProposedVersionSource `json:"proposed_version_source"`
@@ -2507,7 +2580,7 @@ type TargetResponse struct {
 	Edition        string                      `json:"edition"`
 	ReleaseChannel ReleaseChannel              `json:"release_channel"`
 	VersionPolicy  TargetResponseVersionPolicy `json:"version_policy"`
-	// CurrentVersion Deprecated projection of the newest immutable Target Release; null until a release becomes Current. Deprecated.
+	// CurrentVersion Read-only version of the Target's Current release, or null before its first release. Registry publication status is separate; inspect the Target Release for publication results.
 	CurrentVersion        string                `json:"current_version"`
 	ProposedVersion       string                `json:"proposed_version"`
 	ProposedVersionSource ProposedVersionSource `json:"proposed_version_source"`
