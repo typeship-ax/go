@@ -44,6 +44,7 @@ type Iter[T any] struct {
 	offset  int
 	err     error
 	started bool
+	first   map[string]json.RawMessage
 }
 
 func newIter[T any](ctx context.Context, c *core, req request, opts []RequestOption, cfg pageConfig) *Iter[T] {
@@ -81,6 +82,25 @@ func (it *Iter[T]) Value() T { return it.current }
 // Err returns the first error encountered, if any.
 func (it *Iter[T]) Err() error { return it.err }
 
+// FirstPage returns the raw first page the iterator uses, before item
+// decoding: its items plus every envelope field the page carried, exactly
+// as the server sent them. It fetches the first page when the walk has not
+// started, so a caller presenting the page's own metadata makes exactly one
+// request. The fetch error surfaces here the same way it would through
+// Err. A walk continued afterwards reuses the page already fetched; it
+// does not request page one again.
+func (it *Iter[T]) FirstPage() (map[string]json.RawMessage, error) {
+	if it.err != nil {
+		return nil, it.err
+	}
+	if !it.started {
+		if !it.fetch() && it.err != nil {
+			return nil, it.err
+		}
+	}
+	return it.first, nil
+}
+
 func (it *Iter[T]) fetch() bool {
 	var raw map[string]json.RawMessage
 	if err := it.core.do(it.ctx, it.req, &raw, it.opts...); err != nil {
@@ -88,6 +108,9 @@ func (it *Iter[T]) fetch() bool {
 		return false
 	}
 	it.started = true
+	if it.first == nil {
+		it.first = raw
+	}
 
 	itemsRaw, ok := lookupPath(raw, it.cfg.ItemsField)
 	if !ok {

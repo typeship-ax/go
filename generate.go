@@ -18,9 +18,11 @@ type GenerateRunParams struct {
 	IdempotencyKey *string `json:"-"`
 }
 
-// Run — generate one Target from a Definition.
+// Run — generate one package from a Definition.
 //
-// Returns one generated package without saving a Project or retaining source files or generated files.
+// Returns one generated package without creating a Project.
+//
+// Supports [idempotent retries](https://typeship.dev/docs/typeship-api/idempotency); keyed responses include generated files in the replay cache.
 //
 // Anonymous and Free requests include the first 25 operations. Paid plans include all operations. Anonymous requests are rate limited by IP address. Check `limits` for omitted operations; an invalid API key returns `401`.
 //
@@ -39,7 +41,7 @@ func (s *GenerateService) Run(ctx context.Context, body GenerateRequest, params 
 		Path:              "/generate",
 		Headers:           headers,
 		Body:              body,
-		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "409": newConflictError, "413": newPayloadTooLargeError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "default": newAPIResponseError},
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "409": newConflictError, "413": newPayloadTooLargeError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError, "default": newAPIResponseError},
 		Security:          []map[string][]string{{}, {"apiKey": {}}},
 		SchemaKey:         "generate.run",
 		IdempotencyHeader: "Idempotency-Key",

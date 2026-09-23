@@ -80,7 +80,7 @@ func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, 
 		Method:     "GET",
 		Path:       "/projects",
 		Query:      query,
-		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "projects.list",
 		Idempotent: true,
@@ -99,7 +99,7 @@ func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, 
 //
 // Creates a Project from a URL or GitHub Definition.
 //
-// Free includes one saved Project, all selected Targets, and the first 25 operations per Target, with regeneration, history, delivery pull requests, and previews. Pro supports additional Projects and all operations. Stateless generation does not use a Project slot.
+// Free includes one saved Project, all selected Targets, and the first 25 operations per Target, with regeneration, history, delivery pull requests, and previews. Pro supports additional Projects and all operations. One-shot generation does not use a Project slot.
 //
 // POST /projects
 func (s *ProjectsService) Create(ctx context.Context, body CreateProjectRequest, params *ProjectsCreateParams, opts ...RequestOption) (*Project, error) {
@@ -135,7 +135,7 @@ func (s *ProjectsService) Retrieve(ctx context.Context, projectID string, opts .
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "projects.retrieve",
 		Idempotent: true,
@@ -149,12 +149,14 @@ func (s *ProjectsService) Retrieve(ctx context.Context, projectID string, opts .
 
 // Delete a project.
 //
+// A `502` response means the Project was not deleted because its release pull requests could not be retired.
+//
 // DELETE /projects/{project_id}
 func (s *ProjectsService) Delete(ctx context.Context, projectID string, opts ...RequestOption) (*DeletedProject, error) {
 	req := request{
 		Method:     "DELETE",
 		Path:       fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "projects.delete",
 		Idempotent: true,
@@ -168,13 +170,15 @@ func (s *ProjectsService) Delete(ctx context.Context, projectID string, opts ...
 
 // Update a project.
 //
+// A `502` response means the Project was saved, but an obsolete release pull request could not be retired.
+//
 // PATCH /projects/{project_id}
 func (s *ProjectsService) Update(ctx context.Context, projectID string, body UpdateProjectRequest, opts ...RequestOption) (*Project, error) {
 	req := request{
 		Method:    "PATCH",
 		Path:      fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
 		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "502": newBadGatewayError},
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
 		Security:  []map[string][]string{{"apiKey": {}}},
 		SchemaKey: "projects.update",
 	}
@@ -194,7 +198,7 @@ func (s *ProjectsService) RetrieveDiagnostics(ctx context.Context, projectID str
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/projects/%s/diagnostics", url.PathEscape(projectID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "projects.retrieveDiagnostics",
 		Idempotent: true,
@@ -222,7 +226,7 @@ func (s *ProjectsService) RefreshDiagnostics(ctx context.Context, projectID stri
 		Method:            "POST",
 		Path:              fmt.Sprintf("/projects/%s/diagnostics", url.PathEscape(projectID)),
 		Headers:           headers,
-		Errors:            map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:          []map[string][]string{{"apiKey": {}}},
 		SchemaKey:         "projects.refreshDiagnostics",
 		IdempotencyHeader: "Idempotency-Key",
@@ -253,7 +257,7 @@ func (s *ProjectsService) RemediateDiagnostics(ctx context.Context, projectID st
 		Path:              fmt.Sprintf("/projects/%s/diagnostics/remediations", url.PathEscape(projectID)),
 		Headers:           headers,
 		Body:              body,
-		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:          []map[string][]string{{"apiKey": {}}},
 		SchemaKey:         "projects.remediateDiagnostics",
 		IdempotencyHeader: "Idempotency-Key",
@@ -274,7 +278,7 @@ func (s *ProjectsService) RetrieveIntegrationHealth(ctx context.Context, project
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/projects/%s/integration-health", url.PathEscape(projectID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "projects.retrieveIntegrationHealth",
 		Idempotent: true,
@@ -314,7 +318,7 @@ func (s *ProjectsService) ListGenerations(ctx context.Context, projectID string,
 		Method:     "GET",
 		Path:       fmt.Sprintf("/projects/%s/generations", url.PathEscape(projectID)),
 		Query:      query,
-		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "projects.listGenerations",
 		Idempotent: true,
@@ -347,7 +351,7 @@ func (s *ProjectsService) Generate(ctx context.Context, projectID string, params
 		Method:            "POST",
 		Path:              fmt.Sprintf("/projects/%s/generations", url.PathEscape(projectID)),
 		Headers:           headers,
-		Errors:            map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:          []map[string][]string{{"apiKey": {}}},
 		SchemaKey:         "projects.generate",
 		IdempotencyHeader: "Idempotency-Key",

@@ -60,6 +60,14 @@ type RateLimitedError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *RateLimitedError) Unwrap() error { return &e.APIError }
 
+// InternalServerError is returned for 500 responses. An unexpected error prevented the request from completing.
+type InternalServerError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *InternalServerError) Unwrap() error { return &e.APIError }
+
 // APIResponseError is returned for default responses. Unexpected error.
 type APIResponseError struct {
 	APIError
@@ -76,14 +84,6 @@ type PaymentRequiredError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *PaymentRequiredError) Unwrap() error { return &e.APIError }
 
-// InternalServerError is returned for 500 responses. Project setup failed unexpectedly; the key reservation is released.
-type InternalServerError struct {
-	APIError
-}
-
-// Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *InternalServerError) Unwrap() error { return &e.APIError }
-
 // NotFoundError is returned for 404 responses. No such resource in this account.
 type NotFoundError struct {
 	APIError
@@ -92,7 +92,7 @@ type NotFoundError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *NotFoundError) Unwrap() error { return &e.APIError }
 
-// BadGatewayError is returned for 502 responses. The Project was saved, but an obsolete release pull request could not be retired.
+// BadGatewayError is returned for 502 responses. Dependent work failed while completing the request.
 type BadGatewayError struct {
 	APIError
 }
@@ -142,16 +142,16 @@ func newRateLimitedError(status int, body []byte, requestID string) error {
 	return &RateLimitedError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
+func newInternalServerError(status int, body []byte, requestID string) error {
+	return &InternalServerError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+}
+
 func newAPIResponseError(status int, body []byte, requestID string) error {
 	return &APIResponseError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
 func newPaymentRequiredError(status int, body []byte, requestID string) error {
 	return &PaymentRequiredError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
-}
-
-func newInternalServerError(status int, body []byte, requestID string) error {
-	return &InternalServerError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
 func newNotFoundError(status int, body []byte, requestID string) error {

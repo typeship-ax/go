@@ -48,7 +48,7 @@ func (s *DefinitionRevisionsService) List(ctx context.Context, definitionID stri
 		Method:     "GET",
 		Path:       fmt.Sprintf("/definitions/%s/revisions", url.PathEscape(definitionID)),
 		Query:      query,
-		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "definitionRevisions.list",
 		Idempotent: true,
@@ -72,7 +72,7 @@ func (s *DefinitionRevisionsService) Retrieve(ctx context.Context, definitionRev
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/definition_revisions/%s", url.PathEscape(definitionRevisionID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "definitionRevisions.retrieve",
 		Idempotent: true,
@@ -93,7 +93,7 @@ func (s *DefinitionRevisionsService) RetrieveContent(ctx context.Context, defini
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/definition_revisions/%s/content", url.PathEscape(definitionRevisionID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "definitionRevisions.retrieveContent",
 		Idempotent: true,
@@ -112,7 +112,7 @@ func (s *DefinitionRevisionsService) RetrieveDocumentContent(ctx context.Context
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/definition_revisions/%s/documents/%s/content", url.PathEscape(definitionRevisionID), url.PathEscape(documentID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "definitionRevisions.retrieveDocumentContent",
 		Idempotent: true,
