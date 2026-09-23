@@ -7,16 +7,17 @@ import "encoding/json"
 // GenerateRequest is an API model.
 type GenerateRequest struct {
 	Definition DefinitionInput `json:"definition"`
-	// Target Stateless generator descriptor; no persisted Target is created.
+	// Target One-shot generator descriptor; no persisted Target is created.
 	Target GenerateRequestTarget `json:"target"`
 	// PackageName npm package or Python distribution override. Valid only for the TypeScript and Python SDK targets.
 	PackageName *string `json:"package_name,omitempty"`
-	// ModulePath Go module path override. Valid only for the Go SDK. Linked projects derive this from the Go destination repository by default.
-	ModulePath *string `json:"module_path,omitempty"`
-	Config     *Config `json:"config,omitempty"`
+	// ModulePath Go module path override for the generated artifact's own module. Valid only for the Go SDK and Go CLI outputs. Linked projects derive this from the Go destination repository by default.
+	ModulePath *string          `json:"module_path,omitempty"`
+	GoSDK      *GoSDKDescriptor `json:"go_sdk,omitempty"`
+	Config     *Config          `json:"config,omitempty"`
 }
 
-// DefinitionInput is one of URLDefinitionInput, InlineDefinitionInput — A Definition for stateless generation, provided as exactly one URL or inline entrypoint.
+// DefinitionInput is one of URLDefinitionInput, InlineDefinitionInput — A Definition for one-shot generation, provided as exactly one URL or inline entrypoint.
 // Go has no sum types, so it holds the JSON as received and decodes on
 // request: try the As* accessors, or switch on Discriminator() when the
 // spec names one.
@@ -81,7 +82,7 @@ func (u *DefinitionInput) FromInlineDefinitionInput(v InlineDefinitionInput) err
 type URLDefinitionInput struct {
 	// URL URL of an OpenAPI document, a GraphQL SDL file, or a GraphQL endpoint (introspected automatically). Fetched server-side.
 	URL string `json:"url"`
-	// Headers Request headers for a protected URL. Sent on the document GET and GraphQL introspection POST, never returned or retained by stateless generation.
+	// Headers Request headers for a protected URL. Sent on the document GET and GraphQL introspection POST, never returned or retained by one-shot generation.
 	Headers map[string]string `json:"headers,omitempty"`
 }
 
@@ -91,12 +92,12 @@ type InlineDefinitionInput struct {
 	Inline string `json:"inline"`
 }
 
-// GenerateRequestTarget is an API model. Stateless generator descriptor; no persisted Target is created.
+// GenerateRequestTarget is an API model. One-shot generator descriptor; no persisted Target is created.
 type GenerateRequestTarget struct {
 	Generator GeneratorKind `json:"generator"`
 }
 
-// GeneratorKind is one of "typescript-sdk", "python-sdk", "go-sdk", "cli", "mcp". Generator implementation selected by a Target. This is configuration, not identity; several Targets may use the same generator.
+// GeneratorKind is one of "typescript-sdk", "python-sdk", "go-sdk", "cli", "go-cli", "mcp". Generator implementation selected by a Target. This is configuration, not identity; several Targets may use the same generator. cli is the TypeScript CLI; go-cli is the native Go CLI, a distinct product that imports one exact paired Go SDK module rather than a client of its own.
 type GeneratorKind string
 
 const (
@@ -104,10 +105,25 @@ const (
 	GeneratorKindPythonSDK     GeneratorKind = "python-sdk"
 	GeneratorKindGoSDK         GeneratorKind = "go-sdk"
 	GeneratorKindCLI           GeneratorKind = "cli"
+	GeneratorKindGoCLI         GeneratorKind = "go-cli"
 	GeneratorKindMCP           GeneratorKind = "mcp"
 )
 
-// Config is an API model. Everything Typeship needs beyond the Definition, in one object: generation customization (globals, retries, pagination, readme) and how the generated tooling behaves (cli, mcp, package, docs_url). Plain configuration. Typeship never requires vendor extensions inside the Definition itself. Stateless generation also accepts GraphQL settings here; stored projects keep those settings on their Definition.
+// GoSDKDescriptor is an API model. The exact paired Go SDK a go-cli generation is built on. Required when target.generator is go-cli and rejected otherwise. The descriptor is closed and immutable, because a CLI that pins a range or a branch pins nothing.
+type GoSDKDescriptor struct {
+	// ModulePath Go module path of the SDK the CLI imports, for example github.com/acme/payments-go. Must be a valid Go module path.
+	ModulePath string `json:"module_path"`
+	// Version Exact SDK module version the CLI requires: v-prefixed SemVer such as v1.2.3, or an immutable Go pseudo-version naming a commit such as v0.0.0-20240824120000-abcdef123456. Ranges, branches, and "latest" are rejected.
+	Version string `json:"version"`
+	// DefinitionDigest SHA-256 hex digest of the Definition the SDK was generated from. Must match the resolved Definition, or the request fails with spec_error.
+	DefinitionDigest string `json:"definition_digest"`
+	// Edition The generator edition the SDK was generated with. Only the current edition, 2026-08-24, is accepted.
+	Edition string `json:"edition"`
+	// PackageName Go package identifier of the SDK, when the module path's last element does not imply it. Optional.
+	PackageName *string `json:"package_name,omitempty"`
+}
+
+// Config is an API model. Everything Typeship needs beyond the Definition, in one object: generation customization (globals, retries, pagination, readme) and how the generated tooling behaves (cli, mcp, package, docs_url). Plain configuration. Typeship never requires vendor extensions inside the Definition itself. One-shot generation also accepts GraphQL settings here; stored projects keep those settings on their Definition.
 type Config struct {
 	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
 	Globals []string     `json:"globals,omitempty"`
@@ -268,7 +284,7 @@ const (
 	GraphqlSettingsScalarsValueJSON    GraphqlSettingsScalarsValue = "json"
 )
 
-// AuthenticationConfig is an API model. Public authentication defaults for generated clients and tools. Stored Projects own the OAuth server, application catalog, and identity policy; stateless generation accepts the same shape for one run. Runtime credentials and client secrets are never accepted.
+// AuthenticationConfig is an API model. Public authentication defaults for generated clients and tools. Stored Projects own the OAuth server, application catalog, and identity policy; one-shot generation accepts the same shape for one run. Runtime credentials and client secrets are never accepted.
 type AuthenticationConfig struct {
 	OauthServer *OAuthServer `json:"oauth_server,omitempty"`
 	// OauthApplications OAuth applications keyed by a stable name.
@@ -520,7 +536,7 @@ type GeneratedFile struct {
 	// Path Repo-relative path inside the generated package.
 	Path    string `json:"path"`
 	Content string `json:"content"`
-	// Mode Exact Git file mode. Omitted stateless outputs are regular files.
+	// Mode Exact Git file mode. Omitted one-shot outputs are regular files.
 	Mode *Mode `json:"mode,omitempty"`
 }
 
@@ -548,11 +564,13 @@ type GenerationMeta struct {
 	ArtifactName string `json:"artifact_name"`
 	ClientName   string `json:"client_name"`
 	// Generators Generator implementations present in this artifact. Persisted Target identity is reported on Generation.
-	Generators              []GeneratorKind `json:"generators"`
-	ResourceCount           *int64          `json:"resource_count,omitempty"`
-	OperationCount          *int64          `json:"operation_count,omitempty"`
-	SchemaCount             *int64          `json:"schema_count,omitempty"`
-	PaginatedOperationCount *int64          `json:"paginated_operation_count,omitempty"`
+	Generators []GeneratorKind `json:"generators"`
+	// GoSDK Present for go-cli generations only. Names the exact paired Go SDK module and version the CLI was generated against, as its go.mod requires it.
+	GoSDK                   *GenerationMetaGoSDK `json:"go_sdk,omitempty"`
+	ResourceCount           *int64               `json:"resource_count,omitempty"`
+	OperationCount          *int64               `json:"operation_count,omitempty"`
+	SchemaCount             *int64               `json:"schema_count,omitempty"`
+	PaginatedOperationCount *int64               `json:"paginated_operation_count,omitempty"`
 	// OmittedOperationCount Operations beyond the plan's endpoint allowance, not generated.
 	OmittedOperationCount *int64 `json:"omitted_operation_count,omitempty"`
 	// OmittedOperations METHOD/path identities of operations omitted by the generation cap.
@@ -604,6 +622,16 @@ const (
 	FormatOpenapi Format = "openapi"
 	FormatGraphql Format = "graphql"
 )
+
+// GenerationMetaGoSDK is an API model. Present for go-cli generations only. Names the exact paired Go SDK module and version the CLI was generated against, as its go.mod requires it.
+type GenerationMetaGoSDK struct {
+	// ModulePath Go module path of the SDK the Go CLI imports and pins.
+	ModulePath string `json:"module_path"`
+	// Version Exact SDK module version the Go CLI requires, v-prefixed SemVer or a Go pseudo-version.
+	Version string `json:"version"`
+	// PackageName Go package identifier of the SDK, when the module path does not imply it.
+	PackageName *string `json:"package_name,omitempty"`
+}
 
 // GenerationMetaPrStatus is one of "opened", "no_changes", "blocked". Whether a destination pull request opened, was unnecessary because the generated tree already matched, or could not be opened.
 type GenerationMetaPrStatus string
@@ -1141,7 +1169,7 @@ type RepositoryDeliveryInput struct {
 	Directory  *string             `json:"directory,omitempty"`
 	// PackageName npm or Python registry identity where applicable.
 	PackageName *string `json:"package_name,omitempty"`
-	// ModulePath Explicit Go module path where applicable.
+	// ModulePath Go module identity for the Go SDK or Go CLI Target where applicable.
 	ModulePath *string `json:"module_path,omitempty"`
 	// PublishOnMerge Commit repository-owned registry automation and report publication after the Draft merges.
 	PublishOnMerge *bool `json:"publish_on_merge,omitempty"`
@@ -1577,7 +1605,7 @@ type GenerationSummary struct {
 	DefinitionRevisionID DefinitionRevisionID `json:"definition_revision_id"`
 	Status               GenerationStatus     `json:"status"`
 	Trigger              GenerationTrigger    `json:"trigger"`
-	// TargetID Persisted Target identity. Null only for stateless generation.
+	// TargetID Persisted Target identity. Null only for one-shot generation.
 	TargetID TargetID `json:"target_id"`
 	// Generator Resolved generator implementation; provenance rather than resource identity.
 	Generator  GeneratorKind        `json:"generator"`
@@ -1825,12 +1853,14 @@ type TargetList struct {
 
 // Target is an API model.
 type Target struct {
-	ID             TargetID            `json:"id"`
-	Object         string              `json:"object"`
-	ProjectID      ProjectID           `json:"project_id"`
-	DefinitionID   DefinitionID        `json:"definition_id"`
-	Name           string              `json:"name"`
-	Generator      GeneratorKind       `json:"generator"`
+	ID           TargetID      `json:"id"`
+	Object       string        `json:"object"`
+	ProjectID    ProjectID     `json:"project_id"`
+	DefinitionID DefinitionID  `json:"definition_id"`
+	Name         string        `json:"name"`
+	Generator    GeneratorKind `json:"generator"`
+	// Dependency Present only on a go-cli Target, naming the sibling Go SDK Target the CLI is generated against. Every other generator reports null.
+	Dependency     TargetDependency    `json:"dependency"`
 	State          State               `json:"state"`
 	Edition        string              `json:"edition"`
 	ReleaseChannel ReleaseChannel      `json:"release_channel"`
@@ -1850,6 +1880,12 @@ type Target struct {
 	CreatedAt  string     `json:"created_at"`
 	UpdatedAt  string     `json:"updated_at"`
 	RequestID  *RequestID `json:"request_id,omitempty"`
+}
+
+// TargetDependency is an API model. One Target generated from a sibling Target. A go-cli Target carries kind go_sdk_module, naming the Go SDK Target it is generated against.
+type TargetDependency struct {
+	Kind     string   `json:"kind"`
+	TargetID TargetID `json:"target_id"`
 }
 
 // TargetVersionPolicy is an API model.
@@ -1988,12 +2024,14 @@ type TargetFields struct {
 
 // TargetResponse is an API model.
 type TargetResponse struct {
-	ID             TargetID                    `json:"id"`
-	Object         string                      `json:"object"`
-	ProjectID      ProjectID                   `json:"project_id"`
-	DefinitionID   DefinitionID                `json:"definition_id"`
-	Name           string                      `json:"name"`
-	Generator      GeneratorKind               `json:"generator"`
+	ID           TargetID      `json:"id"`
+	Object       string        `json:"object"`
+	ProjectID    ProjectID     `json:"project_id"`
+	DefinitionID DefinitionID  `json:"definition_id"`
+	Name         string        `json:"name"`
+	Generator    GeneratorKind `json:"generator"`
+	// Dependency Present only on a go-cli Target, naming the sibling Go SDK Target the CLI is generated against. Every other generator reports null.
+	Dependency     TargetDependency            `json:"dependency"`
 	State          State                       `json:"state"`
 	Edition        string                      `json:"edition"`
 	ReleaseChannel ReleaseChannel              `json:"release_channel"`
@@ -2038,8 +2076,9 @@ type TargetUpdateRequest struct {
 	ProposedVersion *Nullable[string] `json:"proposed_version,omitempty"`
 	Checks          *TargetChecks     `json:"checks,omitempty"`
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are rejected here and belong to the Definition.
-	Config     *Nullable[TargetConfig] `json:"config,omitempty"`
-	Deliveries []DeliveryInput         `json:"deliveries,omitempty"`
+	Config *Nullable[TargetConfig] `json:"config,omitempty"`
+	// Deliveries Replaces the Delivery set; include each kind you want to keep. Retained kinds preserve their ID, creation time, and hosted URL. Each supplied Delivery replaces its configuration, so omitted optional settings reset to their defaults. Omit deliveries to keep the existing set, or send [] to remove all Deliveries. Removing and later recreating a kind allocates a new ID and, for hosted_mcp, a new URL.
+	Deliveries []DeliveryInput `json:"deliveries,omitempty"`
 }
 
 // TargetReleaseList is an API model.
@@ -2602,7 +2641,7 @@ type GenerationResponse struct {
 	DefinitionRevisionID DefinitionRevisionID `json:"definition_revision_id"`
 	Status               GenerationStatus     `json:"status"`
 	Trigger              GenerationTrigger    `json:"trigger"`
-	// TargetID Persisted Target identity. Null only for stateless generation.
+	// TargetID Persisted Target identity. Null only for one-shot generation.
 	TargetID TargetID `json:"target_id"`
 	// Generator Resolved generator implementation; provenance rather than resource identity.
 	Generator  GeneratorKind        `json:"generator"`

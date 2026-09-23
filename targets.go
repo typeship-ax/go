@@ -72,7 +72,7 @@ func (s *TargetsService) List(ctx context.Context, projectID string, params *Tar
 		Method:     "GET",
 		Path:       fmt.Sprintf("/projects/%s/targets", url.PathEscape(projectID)),
 		Query:      query,
-		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "targets.list",
 		Idempotent: true,
@@ -104,7 +104,7 @@ func (s *TargetsService) Create(ctx context.Context, projectID string, body Targ
 		Path:              fmt.Sprintf("/projects/%s/targets", url.PathEscape(projectID)),
 		Headers:           headers,
 		Body:              body,
-		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:          []map[string][]string{{"apiKey": {}}},
 		SchemaKey:         "targets.create",
 		IdempotencyHeader: "Idempotency-Key",
@@ -123,7 +123,7 @@ func (s *TargetsService) Retrieve(ctx context.Context, targetID string, opts ...
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/targets/%s", url.PathEscape(targetID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "targets.retrieve",
 		Idempotent: true,
@@ -144,7 +144,7 @@ func (s *TargetsService) Delete(ctx context.Context, targetID string, opts ...Re
 	req := request{
 		Method:     "DELETE",
 		Path:       fmt.Sprintf("/targets/%s", url.PathEscape(targetID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "targets.delete",
 		Idempotent: true,
@@ -158,13 +158,15 @@ func (s *TargetsService) Delete(ctx context.Context, targetID string, opts ...Re
 
 // Update a Target, its Deliveries, or its next reviewed version.
 //
+// A `502` response means the selected version was saved, but regeneration failed.
+//
 // PATCH /targets/{target_id}
 func (s *TargetsService) Update(ctx context.Context, targetID string, body TargetUpdateRequest, opts ...RequestOption) (*TargetResponse, error) {
 	req := request{
 		Method:    "PATCH",
 		Path:      fmt.Sprintf("/targets/%s", url.PathEscape(targetID)),
 		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
 		Security:  []map[string][]string{{"apiKey": {}}},
 		SchemaKey: "targets.update",
 	}
@@ -200,7 +202,7 @@ func (s *TargetsService) ListReleases(ctx context.Context, targetID string, para
 		Method:     "GET",
 		Path:       fmt.Sprintf("/targets/%s/releases", url.PathEscape(targetID)),
 		Query:      query,
-		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "targets.listReleases",
 		Idempotent: true,
@@ -224,7 +226,7 @@ func (s *TargetsService) RetrieveDraft(ctx context.Context, targetID string, opt
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/targets/%s/draft", url.PathEscape(targetID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "targets.retrieveDraft",
 		Idempotent: true,
@@ -240,13 +242,15 @@ func (s *TargetsService) RetrieveDraft(ctx context.Context, targetID string, opt
 //
 // Checks your version choice against the required version bump, then regenerates the existing Draft pull request.
 //
+// A `502` response means the selected version was saved, but regeneration failed.
+//
 // PATCH /targets/{target_id}/draft
 func (s *TargetsService) UpdateDraft(ctx context.Context, targetID string, body TargetDraftUpdate, opts ...RequestOption) (*TargetDraftResponse, error) {
 	req := request{
 		Method:    "PATCH",
 		Path:      fmt.Sprintf("/targets/%s/draft", url.PathEscape(targetID)),
 		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
 		Security:  []map[string][]string{{"apiKey": {}}},
 		SchemaKey: "targets.updateDraft",
 	}
@@ -266,7 +270,7 @@ func (s *TargetsService) RetrieveCustomizations(ctx context.Context, targetID st
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/targets/%s/customizations", url.PathEscape(targetID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "targets.retrieveCustomizations",
 		Idempotent: true,
@@ -282,13 +286,15 @@ func (s *TargetsService) RetrieveCustomizations(ctx context.Context, targetID st
 //
 // Keeps the current or generated side of selected conflicts, or resets all customizations. Reruns integration and checks on the same Draft. Supply the expected head revision to prevent a stale choice from changing a newer Draft.
 //
+// A `502` response means regeneration failed after the reset commit.
+//
 // POST /targets/{target_id}/customizations/reset
 func (s *TargetsService) ResetCustomizations(ctx context.Context, targetID string, body ResetTargetCustomizations, opts ...RequestOption) (*TargetCustomizationsResponse, error) {
 	req := request{
 		Method:    "POST",
 		Path:      fmt.Sprintf("/targets/%s/customizations/reset", url.PathEscape(targetID)),
 		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "502": newBadGatewayError},
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
 		Security:  []map[string][]string{{"apiKey": {}}},
 		SchemaKey: "targets.resetCustomizations",
 	}
@@ -316,7 +322,7 @@ func (s *TargetsService) AdoptRelease(ctx context.Context, targetID string, body
 		Path:              fmt.Sprintf("/targets/%s/adopt", url.PathEscape(targetID)),
 		Headers:           headers,
 		Body:              body,
-		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError},
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:          []map[string][]string{{"apiKey": {}}},
 		SchemaKey:         "targets.adoptRelease",
 		IdempotencyHeader: "Idempotency-Key",
@@ -335,7 +341,7 @@ func (s *TargetsService) RetrieveRelease(ctx context.Context, targetReleaseID st
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/target_releases/%s", url.PathEscape(targetReleaseID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError},
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "targets.retrieveRelease",
 		Idempotent: true,
@@ -351,6 +357,8 @@ func (s *TargetsService) RetrieveRelease(ctx context.Context, targetReleaseID st
 //
 // Retries publication of the specified release through its repository workflow. Uses that release's version and accepted commit, even if a newer Draft or release exists.
 //
+// A `502` response means the repository publication workflow could not be dispatched.
+//
 // POST /target_releases/{target_release_id}/republish
 func (s *TargetsService) RepublishRelease(ctx context.Context, targetReleaseID string, params *TargetsRepublishReleaseParams, opts ...RequestOption) (*TargetReleaseResponse, error) {
 	headers := map[string]string{}
@@ -363,7 +371,7 @@ func (s *TargetsService) RepublishRelease(ctx context.Context, targetReleaseID s
 		Method:            "POST",
 		Path:              fmt.Sprintf("/target_releases/%s/republish", url.PathEscape(targetReleaseID)),
 		Headers:           headers,
-		Errors:            map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "502": newBadGatewayError},
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
 		Security:          []map[string][]string{{"apiKey": {}}},
 		SchemaKey:         "targets.republishRelease",
 		IdempotencyHeader: "Idempotency-Key",

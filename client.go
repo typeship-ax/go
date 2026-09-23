@@ -3,16 +3,19 @@
 package typeship
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
 // Version is this package's version, also sent as the User-Agent.
-const Version = "0.12.0"
+const Version = "0.13.0"
 
-const userAgent = "typeship/0.12.0 (typeship)"
+const userAgent = "typeship/0.13.0 (typeship)"
 
 // Option configures a Client at construction.
 type Option func(*core)
@@ -203,4 +206,334 @@ func New(opts ...Option) (*Client, error) {
 	client.Account = &AccountService{core: c}
 	client.APIKeys = &APIKeysService{core: c}
 	return client, nil
+}
+
+// RawAuth selects the credentials one raw request carries. The nil
+// value uses the API's default: the root security requirement when the
+// spec declares exactly one alternative, otherwise no credential.
+type RawAuth struct {
+	// Scheme names one security scheme this API declares, exactly as the
+	// spec named it; Raw sends that scheme's credential and no other.
+	Scheme string
+	// None sends the request unauthenticated.
+	None bool
+}
+
+// RawQueryValue is one query parameter. Values stay separate from names
+// and repeat verbatim, so ?a=1&a=2 and an empty ?e= survive exactly.
+type RawQueryValue struct {
+	Name  string
+	Value string
+}
+
+// RawHeader is one caller-supplied header. Credential, cookie, and
+// transport-owned headers are rejected by Raw rather than forwarded.
+type RawHeader struct {
+	Name  string
+	Value string
+}
+
+// RawRequest is one caller-shaped HTTP request. It enters the same
+// transport pipeline as every typed method: base URL, authentication,
+// retries, timeouts, request IDs, redirects, debug hooks, and typed
+// errors all apply unchanged.
+type RawRequest struct {
+	Method      string
+	Path        string
+	Query       []RawQueryValue
+	Headers     []RawHeader
+	Body        []byte
+	ContentType string
+	Auth        *RawAuth
+}
+
+// rawAPIMethods bounds the verbs a raw request may carry. CONNECT and
+// TRACE are absent by design: neither tunnels nor traces through the
+// credentials this client holds.
+var rawAPIMethods = map[string]bool{
+	"GET": true, "HEAD": true, "POST": true, "PUT": true, "PATCH": true, "DELETE": true, "OPTIONS": true,
+}
+
+// rawDefaultSecurity is nil: this spec's root security is absent or
+// ambiguous, so a raw request stays unauthenticated unless the
+// caller picks a scheme with RawAuth.
+var rawDefaultSecurity []map[string][]string
+
+// rawSchemeSecurity maps each generated scheme name to the security
+// requirement that selects exactly that scheme's credential.
+var rawSchemeSecurity = map[string][]map[string][]string{"apiKey": {{"apiKey": {}}}}
+
+// rawCredentialHeaders are the header names a raw caller may never
+// inject, lowercased for comparison: standard credentials and cookies,
+// and the transport-owned names.
+var rawCredentialHeaders = []string{"authorization", "cookie", "cookie2", "proxy-authorization", "www-authenticate", "host", "content-type", "content-length", "transfer-encoding", "connection"}
+
+var rawCredentialQuery []string
+
+// Raw sends one raw request through this client's transport and returns
+// the HTTP-level response: status, headers, request id, and body. Path
+// is relative to the configured base URL and must begin with exactly
+// one slash; absolute or protocol-relative URLs, query text or
+// fragments, control characters, backslashes, and traversal or
+// separator escapes are rejected before anything is sent. Non-2xx
+// responses return the same typed *APIError a typed method would.
+func (c *Client) Raw(ctx context.Context, req RawRequest, opts ...RequestOption) (*APIResponse, error) {
+	method := strings.ToUpper(strings.TrimSpace(req.Method))
+	if !rawAPIMethods[method] {
+		return nil, fmt.Errorf("raw: method %q is not supported (CONNECT and TRACE are never permitted)", req.Method)
+	}
+	if err := validateRawPath(req.Path); err != nil {
+		return nil, err
+	}
+	headers, err := validateRawHeaders(req.Headers)
+	if err != nil {
+		return nil, err
+	}
+	// Request options are applied after authentication, so a per-call
+	// WithRequestHeader could otherwise carry a credential header past the
+	// checks above. Probe the options on a scratch config and refuse any
+	// denied name before the request is built.
+	probe := &requestConfig{}
+	for _, opt := range opts {
+		opt(probe)
+	}
+	for name := range probe.headers {
+		if containsRawName(rawCredentialHeaders, strings.ToLower(name)) {
+			return nil, fmt.Errorf("raw: request options may not carry %s; credentials come from the configured authentication", name)
+		}
+	}
+	query, err := validateRawQuery(req.Query)
+	if err != nil {
+		return nil, err
+	}
+	security, err := c.rawSecurityFor(req.Auth)
+	if err != nil {
+		return nil, err
+	}
+	call := request{
+		Method:     method,
+		Path:       req.Path,
+		Query:      query,
+		Headers:    headers,
+		Security:   security,
+		Idempotent: method == "GET" || method == "HEAD",
+	}
+	if req.Body != nil {
+		call.Body = req.Body
+		call.BodyKind = "binary"
+		call.ContentType = req.ContentType
+	}
+	response := &APIResponse{}
+	callOpts := append(append([]RequestOption{}, opts...), WithAPIResponse(response))
+	if err := c.core.do(ctx, call, nil, callOpts...); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+// validateRawPath enforces the raw path contract: relative to the base
+// URL, a single leading slash, and no query, fragment, control
+// characters, backslashes, or traversal/separator escapes — literal or
+// percent-decoded. The original bytes travel on the wire; decoding is
+// for inspection only.
+func validateRawPath(path string) error {
+	if len(path) == 0 || path[0] != '/' || (len(path) >= 2 && path[1] == '/') {
+		return fmt.Errorf("raw path must be relative and begin with exactly one '/': %q", path)
+	}
+	if strings.ContainsAny(path, "?#") {
+		return fmt.Errorf("raw path must not carry a query or fragment; pass query values as RawRequest.Query: %q", path)
+	}
+	if strings.ContainsRune(path, '\\') {
+		return fmt.Errorf("raw path must not contain backslashes: %q", path)
+	}
+	lower := strings.ToLower(path)
+	if strings.Contains(lower, "%2f") || strings.Contains(lower, "%5c") {
+		return fmt.Errorf("raw path must not percent-encode path separators: %q", path)
+	}
+	if strings.Contains(lower, "%2e") {
+		return fmt.Errorf("raw path must not percent-encode path dots: %q", path)
+	}
+	for _, r := range path {
+		if r < 0x20 || r == 0x7f {
+			return fmt.Errorf("raw path must not contain control characters: %q", path)
+		}
+	}
+	decoded := make([]byte, 0, len(path))
+	for i := 0; i < len(path); i++ {
+		if path[i] == '%' {
+			if i+2 >= len(path) || !isRawHex(path[i+1]) || !isRawHex(path[i+2]) {
+				return fmt.Errorf("raw path has an invalid %%-escape: %q", path)
+			}
+			decoded = append(decoded, rawUnhex(path[i+1], path[i+2]))
+			i += 2
+			continue
+		}
+		decoded = append(decoded, path[i])
+	}
+	for _, r := range string(decoded) {
+		if r < 0x20 || r == 0x7f {
+			return fmt.Errorf("raw path must not percent-encode control characters: %q", path)
+		}
+	}
+	for _, segment := range strings.Split(string(decoded), "/") {
+		if segment == "." || segment == ".." {
+			return fmt.Errorf("raw path must not contain '.' or '..' segments: %q", path)
+		}
+	}
+	return nil
+}
+
+func isRawHex(c byte) bool {
+	return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
+}
+
+func rawUnhex(hi, lo byte) byte {
+	var value byte
+	switch {
+	case hi >= '0' && hi <= '9':
+		value = hi - '0'
+	case hi >= 'a' && hi <= 'f':
+		value = hi - 'a' + 10
+	default:
+		value = hi - 'A' + 10
+	}
+	value <<= 4
+	switch {
+	case lo >= '0' && lo <= '9':
+		value += lo - '0'
+	case lo >= 'a' && lo <= 'f':
+		value += lo - 'a' + 10
+	default:
+		value += lo - 'A' + 10
+	}
+	return value
+}
+
+// validateRawHeaders rejects the credential, cookie, and transport-owned
+// headers this client owns, then returns the caller's headers verbatim.
+func validateRawHeaders(headers []RawHeader) (map[string]string, error) {
+	out := map[string]string{}
+	for _, header := range headers {
+		name := strings.TrimSpace(header.Name)
+		if name == "" || name != header.Name || strings.ContainsAny(name, " \t\r\n") {
+			return nil, fmt.Errorf("raw header name must be a nonempty token without surrounding spaces: %q", header.Name)
+		}
+		for _, r := range name {
+			if r < 0x20 || r == 0x7f {
+				return nil, fmt.Errorf("raw header name must not contain control characters: %q", header.Name)
+			}
+		}
+		if containsRawName(rawCredentialHeaders, strings.ToLower(name)) {
+			return nil, fmt.Errorf("raw headers may not carry %s; credentials come from the configured authentication", name)
+		}
+		for _, r := range header.Value {
+			if (r < 0x20 && r != '\t') || r == 0x7f {
+				return nil, fmt.Errorf("raw header value must not contain control characters: %q", header.Value)
+			}
+		}
+		out[name] = header.Value
+	}
+	return out, nil
+}
+
+func containsRawName(names []string, lower string) bool {
+	for _, name := range names {
+		if name == lower {
+			return true
+		}
+	}
+	return false
+}
+
+// validateRawQuery keeps repeated and empty values and rejects the query
+// destinations this API's credentials use.
+func validateRawQuery(query []RawQueryValue) (map[string]any, error) {
+	out := map[string]any{}
+	for _, pair := range query {
+		if pair.Name == "" {
+			return nil, fmt.Errorf("raw query names must not be empty")
+		}
+		for _, r := range pair.Name {
+			if r < 0x20 || r == 0x7f {
+				return nil, fmt.Errorf("raw query names must not contain control characters: %q", pair.Name)
+			}
+		}
+		if containsRawName(rawCredentialQuery, strings.ToLower(pair.Name)) {
+			return nil, fmt.Errorf("raw query may not carry %s; credentials come from the configured authentication", pair.Name)
+		}
+		if existing, ok := out[pair.Name]; ok {
+			switch values := existing.(type) {
+			case []any:
+				out[pair.Name] = append(values, pair.Value)
+			default:
+				out[pair.Name] = []any{existing, pair.Value}
+			}
+			continue
+		}
+		out[pair.Name] = pair.Value
+	}
+	return out, nil
+}
+
+// rawSecurityFor resolves a raw request's credential selection.
+// Naming a scheme is a promise to send that scheme's credential, so a
+// selection with no configured credential is an error rather than a
+// silently unauthenticated request.
+func (c *Client) rawSecurityFor(auth *RawAuth) ([]map[string][]string, error) {
+	if auth == nil {
+		return rawDefaultSecurity, nil
+	}
+	if auth.None && auth.Scheme != "" {
+		return nil, fmt.Errorf("raw: RawAuth cannot select both a scheme and no authentication")
+	}
+	if auth.None {
+		return nil, nil
+	}
+	if auth.Scheme != "" {
+		if security, ok := rawSchemeSecurity[auth.Scheme]; ok {
+			credential, configured := c.core.credentials[auth.Scheme]
+			if !configured {
+				return nil, fmt.Errorf("raw: no credential is configured for scheme %q; supply one before selecting it", auth.Scheme)
+			}
+			// A configured credential must also resolve non-empty: a
+			// callback may legally return "", and the transport would then
+			// omit the header or query while this explicit selection claims
+			// to send it.
+			if err := rawCredentialSendsValue(credential); err != nil {
+				return nil, fmt.Errorf("raw: scheme %q would send no credential: %w", auth.Scheme, err)
+			}
+			return security, nil
+		}
+		return nil, fmt.Errorf("raw: unknown security scheme %q", auth.Scheme)
+	}
+	return rawDefaultSecurity, nil
+}
+
+// rawCredentialSendsValue reports whether a selected scheme's credential
+// resolves to at least one non-empty wire value, so an explicit raw
+// selection can never go out unauthenticated by accident.
+func rawCredentialSendsValue(credential securityCredential) error {
+	empty := true
+	for _, value := range credential.Headers {
+		resolved, err := value.resolve()
+		if err != nil {
+			return err
+		}
+		if resolved != "" {
+			empty = false
+		}
+	}
+	for _, value := range credential.Query {
+		resolved, err := value.resolve()
+		if err != nil {
+			return err
+		}
+		if resolved != "" {
+			empty = false
+		}
+	}
+	if empty {
+		return errors.New("the configured credential resolved empty")
+	}
+	return nil
 }
