@@ -1,42 +1,22 @@
 {
   "schema": 2,
   "target_id": "tgt_6fe5a2a8ea9697f6",
-  "attempt_id": "int_pn9y30x61yo5ulix",
+  "attempt_id": "int_qz2eyic9p2smynmc",
   "current_release_id": "rel_fconrgfmerzhxl8g",
   "previous_generation_id": "gen_6nd71yd7gfobxhi3",
   "previous_generated_snapshot_id": "snap_izpektkyz3lcshrp",
   "previous_combined_snapshot_id": "snap_s3riflj7nryi9yed",
-  "current_snapshot_id": "snap_mvx0rbp6udj4byhw",
-  "next_generation_id": "gen_xzbluz9syafmemwu",
-  "next_generated_snapshot_id": "snap_l419ysdsqer06tm5",
+  "current_snapshot_id": "snap_6gha7o6gmtwq6a7g",
+  "next_generation_id": "gen_fiulzlrdls3mmbc0",
+  "next_generated_snapshot_id": "snap_mfrjqh1oq2ejltvk",
   "default_revision": "dc1082401e0c9352fcc04f7f247e61fd6cb84993",
-  "draft_revision": "34d78e479526c72ad81c6bc0035ae53a168dc8ab",
+  "draft_revision": "2a1fbd2ebf4e9281f44720112e50f3089bad93e2",
   "conflict_stage": "generation",
   "conflicts": [
     {
-      "path": "api.json",
-      "kind": "overlapping_text",
-      "fingerprint": "sha256:a4a6c42eccd8fa80303ba0908d40caac2dfedcd7fa54e2b8fcdbdd0d33c25aae",
-      "previous": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:9a07d092a624ea5b1f8323d2af438fa7a9d8184016eb46743cd0c4d4fffd76f3"
-      },
-      "current": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:3c7b3c47abd6fec74d933629758fd052ec520f25f3aa092a0d2cf77baebe7c61"
-      },
-      "next": {
-        "present": true,
-        "mode": "100644",
-        "hash": "sha256:65a0ea909dc350e891ef7b9a69f651b601aecf31fcb94d0dd31bdd64826eaa7c"
-      }
-    },
-    {
       "path": "api.md",
       "kind": "overlapping_text",
-      "fingerprint": "sha256:10edbe55ba1d28d51040d1a5fa7523212ab4be55e92fd8ca8dc34a95b12bbca7",
+      "fingerprint": "sha256:4a3781aca1a1a1ab2ca345771c38033595055d58aad421f5434e3d6b716c4c98",
       "previous": {
         "present": true,
         "mode": "100644",
@@ -50,7 +30,7 @@
       "next": {
         "present": true,
         "mode": "100644",
-        "hash": "sha256:8b240aa1fe8b8e09de52517eb103b23669340a699d1f67278c04894892949512"
+        "hash": "sha256:b9aa0bb0c746d0ceafb371c76fb82e2ca5232ce2a881f86891db841c69a8c640"
       }
     }
   ]
