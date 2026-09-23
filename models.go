@@ -580,13 +580,11 @@ type GenerationMeta struct {
 	PrNumber *int64  `json:"pr_number,omitempty"`
 	// PrStatus Whether a destination pull request opened, was unnecessary because the generated tree already matched, or could not be opened.
 	PrStatus *GenerationMetaPrStatus `json:"pr_status,omitempty"`
-	// PrError Why the configured destination pull request was not opened. Generation itself still succeeded; fix this action and regenerate.
-	PrError *string `json:"pr_error,omitempty"`
 	// Changelog Markdown changelog entry for this regeneration, from the API surface diff. Absent on a first generation or when nothing changed.
 	Changelog *string `json:"changelog,omitempty"`
 	// BreakingCount Breaking changes in the diff; removed methods and fields, changed types, inputs that became required.
 	BreakingCount *int64 `json:"breaking_count,omitempty"`
-	// Baseline What the diff was measured against; "destination" means the .typeship/surface.json merged in the destination repository.
+	// Baseline What the diff was measured against. destination uses the accepted repository state; last-generation uses the previous successful Generation; none means no baseline was available.
 	Baseline *GenerationMetaBaseline `json:"baseline,omitempty"`
 	// APICompatibility Objective compatibility of the generated API surface against the merged destination baseline.
 	APICompatibility *APICompatibility `json:"api_compatibility,omitempty"`
@@ -642,12 +640,13 @@ const (
 	GenerationMetaPrStatusBlocked   GenerationMetaPrStatus = "blocked"
 )
 
-// GenerationMetaBaseline is one of "destination", "none". What the diff was measured against; "destination" means the .typeship/surface.json merged in the destination repository.
+// GenerationMetaBaseline is one of "destination", "last-generation", "none". What the diff was measured against. destination uses the accepted repository state; last-generation uses the previous successful Generation; none means no baseline was available.
 type GenerationMetaBaseline string
 
 const (
-	GenerationMetaBaselineDestination GenerationMetaBaseline = "destination"
-	GenerationMetaBaselineNone        GenerationMetaBaseline = "none"
+	GenerationMetaBaselineDestination    GenerationMetaBaseline = "destination"
+	GenerationMetaBaselineLastGeneration GenerationMetaBaseline = "last-generation"
+	GenerationMetaBaselineNone           GenerationMetaBaseline = "none"
 )
 
 // APICompatibility is one of "compatible", "breaking", "unknown".
@@ -2591,10 +2590,11 @@ type GenerationSummary struct {
 	Generator  GeneratorKind        `json:"generator"`
 	Provenance GenerationProvenance `json:"provenance"`
 	// Meta Null only for a failed or legacy generation that produced no metadata.
-	Meta      GenerationMeta `json:"meta"`
-	Warnings  []string       `json:"warnings"`
-	Error     string         `json:"error"`
-	CreatedAt string         `json:"created_at"`
+	Meta     GenerationMeta `json:"meta"`
+	Warnings []string       `json:"warnings"`
+	// Errors Recorded failures. Empty when this resource has no recorded failure.
+	Errors    []DomainError `json:"errors"`
+	CreatedAt string        `json:"created_at"`
 }
 
 // GenerationID is a generated API type.
@@ -2729,6 +2729,118 @@ type GraphqlSettingsResponseEnvironmentsItem struct {
 	URL  string `json:"url"`
 }
 
+// DomainError is an API model.
+type DomainError struct {
+	Type  ErrorType    `json:"type"`
+	Code  ErrorCode    `json:"code"`
+	Phase FailurePhase `json:"phase"`
+	// TargetID The affected Target when an operation reports failures for multiple Targets.
+	TargetID *TargetID `json:"target_id,omitempty"`
+	// Field JSON Pointer to the invalid field within the request part named by in. When in is omitted, the pointer refers to the request body. Header pointers use lowercase header names, such as /idempotency-key.
+	Field *string `json:"field,omitempty"`
+	// In Request part containing field. Query-parameter errors use query; header errors use header. Body errors use body or omit in.
+	In *DomainErrorIn `json:"in,omitempty"`
+	// Message Human-readable explanation. Its wording may change.
+	Message string `json:"message"`
+	// Retryable Whether another attempt can succeed without correcting the inputs. For a recorded failure, start generation or publication again; retrieving the resource or replaying an idempotency key does not start another attempt.
+	Retryable bool `json:"retryable"`
+	// SuggestedAction Stable, concise recovery instruction suitable for a person or agent.
+	SuggestedAction string `json:"suggested_action"`
+	// DocsURL Documentation for this class of error.
+	DocsURL string `json:"docs_url"`
+}
+
+// ErrorType is one of "request_error", "authentication_error", "authorization_error", "plan_error", "source_error", "rate_limit_error", "api_error", "unknown_error". Stable category for deciding how to handle the error.
+type ErrorType string
+
+const (
+	ErrorTypeRequestError        ErrorType = "request_error"
+	ErrorTypeAuthenticationError ErrorType = "authentication_error"
+	ErrorTypeAuthorizationError  ErrorType = "authorization_error"
+	ErrorTypePlanError           ErrorType = "plan_error"
+	ErrorTypeSourceError         ErrorType = "source_error"
+	ErrorTypeRateLimitError      ErrorType = "rate_limit_error"
+	ErrorTypeAPIError            ErrorType = "api_error"
+	ErrorTypeUnknownError        ErrorType = "unknown_error"
+)
+
+// ErrorCode is one of "invalid_request", "idempotency_key_reused", "unauthorized", "organization_required", "insufficient_scope", "forbidden", "not_found", "method_not_allowed", "spec_error", "fetch_error", "repository_provider_unsupported", "edition_unavailable", "target_busy", "no_draft", "stale_draft", "no_changes", "invalid_version", "stale_release_revision", "version_occupied", "version_too_low", "release_analysis_stale", "target_already_released", "adoption_unverified", "publication_disabled", "publication_not_retryable", "publication_recovery_unavailable", "publication_dispatch_failed", "repository_disconnected", "regeneration_failed", "delivery_conflict", "resource_has_dependencies", "plan_limit_reached", "payload_too_large", "rate_limited", "internal_error", "dependency_missing", "dependency_not_found", "dependency_self", "dependency_cycle", "dependency_cross_project", "dependency_cross_lineage", "dependency_wrong_generator", "dependency_disabled", "dependency_module_path_missing", "dependency_unreleased", "dependency_revision_mismatch", "dependency_edition_incompatible", "publication_failed", "customization_conflict", "checks_unavailable", "generation_stale", "unclassified_error". Stable programmatic identifier. Do not branch on message.
+type ErrorCode string
+
+const (
+	ErrorCodeInvalidRequest                 ErrorCode = "invalid_request"
+	ErrorCodeIdempotencyKeyReused           ErrorCode = "idempotency_key_reused"
+	ErrorCodeUnauthorized                   ErrorCode = "unauthorized"
+	ErrorCodeOrganizationRequired           ErrorCode = "organization_required"
+	ErrorCodeInsufficientScope              ErrorCode = "insufficient_scope"
+	ErrorCodeForbidden                      ErrorCode = "forbidden"
+	ErrorCodeNotFound                       ErrorCode = "not_found"
+	ErrorCodeMethodNotAllowed               ErrorCode = "method_not_allowed"
+	ErrorCodeSpecError                      ErrorCode = "spec_error"
+	ErrorCodeFetchError                     ErrorCode = "fetch_error"
+	ErrorCodeRepositoryProviderUnsupported  ErrorCode = "repository_provider_unsupported"
+	ErrorCodeEditionUnavailable             ErrorCode = "edition_unavailable"
+	ErrorCodeTargetBusy                     ErrorCode = "target_busy"
+	ErrorCodeNoDraft                        ErrorCode = "no_draft"
+	ErrorCodeStaleDraft                     ErrorCode = "stale_draft"
+	ErrorCodeNoChanges                      ErrorCode = "no_changes"
+	ErrorCodeInvalidVersion                 ErrorCode = "invalid_version"
+	ErrorCodeStaleReleaseRevision           ErrorCode = "stale_release_revision"
+	ErrorCodeVersionOccupied                ErrorCode = "version_occupied"
+	ErrorCodeVersionTooLow                  ErrorCode = "version_too_low"
+	ErrorCodeReleaseAnalysisStale           ErrorCode = "release_analysis_stale"
+	ErrorCodeTargetAlreadyReleased          ErrorCode = "target_already_released"
+	ErrorCodeAdoptionUnverified             ErrorCode = "adoption_unverified"
+	ErrorCodePublicationDisabled            ErrorCode = "publication_disabled"
+	ErrorCodePublicationNotRetryable        ErrorCode = "publication_not_retryable"
+	ErrorCodePublicationRecoveryUnavailable ErrorCode = "publication_recovery_unavailable"
+	ErrorCodePublicationDispatchFailed      ErrorCode = "publication_dispatch_failed"
+	ErrorCodeRepositoryDisconnected         ErrorCode = "repository_disconnected"
+	ErrorCodeRegenerationFailed             ErrorCode = "regeneration_failed"
+	ErrorCodeDeliveryConflict               ErrorCode = "delivery_conflict"
+	ErrorCodeResourceHasDependencies        ErrorCode = "resource_has_dependencies"
+	ErrorCodePlanLimitReached               ErrorCode = "plan_limit_reached"
+	ErrorCodePayloadTooLarge                ErrorCode = "payload_too_large"
+	ErrorCodeRateLimited                    ErrorCode = "rate_limited"
+	ErrorCodeInternalError                  ErrorCode = "internal_error"
+	ErrorCodeDependencyMissing              ErrorCode = "dependency_missing"
+	ErrorCodeDependencyNotFound             ErrorCode = "dependency_not_found"
+	ErrorCodeDependencySelf                 ErrorCode = "dependency_self"
+	ErrorCodeDependencyCycle                ErrorCode = "dependency_cycle"
+	ErrorCodeDependencyCrossProject         ErrorCode = "dependency_cross_project"
+	ErrorCodeDependencyCrossLineage         ErrorCode = "dependency_cross_lineage"
+	ErrorCodeDependencyWrongGenerator       ErrorCode = "dependency_wrong_generator"
+	ErrorCodeDependencyDisabled             ErrorCode = "dependency_disabled"
+	ErrorCodeDependencyModulePathMissing    ErrorCode = "dependency_module_path_missing"
+	ErrorCodeDependencyUnreleased           ErrorCode = "dependency_unreleased"
+	ErrorCodeDependencyRevisionMismatch     ErrorCode = "dependency_revision_mismatch"
+	ErrorCodeDependencyEditionIncompatible  ErrorCode = "dependency_edition_incompatible"
+	ErrorCodePublicationFailed              ErrorCode = "publication_failed"
+	ErrorCodeCustomizationConflict          ErrorCode = "customization_conflict"
+	ErrorCodeChecksUnavailable              ErrorCode = "checks_unavailable"
+	ErrorCodeGenerationStale                ErrorCode = "generation_stale"
+	ErrorCodeUnclassifiedError              ErrorCode = "unclassified_error"
+)
+
+// FailurePhase is one of "definition", "generation", "delivery", "publication". The stage that failed. A delivery failure does not change a Generation's succeeded status.
+type FailurePhase string
+
+const (
+	FailurePhaseDefinition  FailurePhase = "definition"
+	FailurePhaseGeneration  FailurePhase = "generation"
+	FailurePhaseDelivery    FailurePhase = "delivery"
+	FailurePhasePublication FailurePhase = "publication"
+)
+
+// DomainErrorIn is one of "body", "query", "header". Request part containing field. Query-parameter errors use query; header errors use header. Body errors use body or omit in.
+type DomainErrorIn string
+
+const (
+	DomainErrorInBody   DomainErrorIn = "body"
+	DomainErrorInQuery  DomainErrorIn = "query"
+	DomainErrorInHeader DomainErrorIn = "header"
+)
+
 // GenerationBatch is an API model. Metadata for each Target generation attempted by a Project run. Retrieve one Generation separately for generated files.
 type GenerationBatch struct {
 	Data      []GenerationBatchDataItem `json:"data"`
@@ -2801,7 +2913,8 @@ type GenerationFailure struct {
 	TargetID  TargetID      `json:"target_id"`
 	Generator GeneratorKind `json:"generator"`
 	Status    string        `json:"status"`
-	Error     string        `json:"error"`
+	// Errors Recorded failures. Empty when this resource has no recorded failure.
+	Errors []DomainError `json:"errors"`
 }
 
 // Definition is an API model.
@@ -3441,10 +3554,11 @@ type Publication struct {
 	RunURL          string                 `json:"run_url"`
 	RegistryURL     string                 `json:"registry_url"`
 	ArtifactDigest  string                 `json:"artifact_digest"`
-	Error           string                 `json:"error"`
-	StartedAt       string                 `json:"started_at"`
-	FinishedAt      string                 `json:"finished_at"`
-	UpdatedAt       string                 `json:"updated_at"`
+	// Errors Recorded failures. Empty when this resource has no recorded failure.
+	Errors     []DomainError `json:"errors"`
+	StartedAt  string        `json:"started_at"`
+	FinishedAt string        `json:"finished_at"`
+	UpdatedAt  string        `json:"updated_at"`
 }
 
 // PublicationID is a generated API type.
@@ -3886,10 +4000,11 @@ type GenerationResponse struct {
 	Meta     GenerationMeta `json:"meta"`
 	Warnings []string       `json:"warnings"`
 	// Files Present on retrieve and create; omitted in lists.
-	Files     []GeneratedFile `json:"files,omitempty"`
-	Error     string          `json:"error"`
-	CreatedAt string          `json:"created_at"`
-	RequestID RequestID       `json:"request_id"`
+	Files []GeneratedFile `json:"files,omitempty"`
+	// Errors Recorded failures. Empty when this resource has no recorded failure.
+	Errors    []DomainError `json:"errors"`
+	CreatedAt string        `json:"created_at"`
+	RequestID RequestID     `json:"request_id"`
 }
 
 // FileStub is an API model.

@@ -351,7 +351,7 @@ func (s *ProjectsService) Generate(ctx context.Context, projectID string, params
 		Method:            "POST",
 		Path:              fmt.Sprintf("/projects/%s/generations", url.PathEscape(projectID)),
 		Headers:           headers,
-		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "413": newPayloadTooLargeError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
 		Security:          []map[string][]string{{"apiKey": {}}},
 		SchemaKey:         "projects.generate",
 		IdempotencyHeader: "Idempotency-Key",
