@@ -106,7 +106,18 @@ func validateValue(value any, schema any, path string, out *[]Violation, defs ma
 	if variants == nil {
 		variants, _ = s["oneOf"].([]any)
 	}
-	if len(variants) > 0 {
+	discriminator, _ := s["responseDiscriminator"].(map[string]any)
+	key, _ := discriminator["propertyName"].(string)
+	object, _ := value.(map[string]any)
+	tag, hasTag := object[key].(string)
+	if discriminator != nil && hasTag {
+		if mapping, ok := discriminator["mapping"].(map[string]any); ok {
+			if selected, known := mapping[tag]; known {
+				validateValue(value, selected, path, out, defs)
+			}
+		}
+		// Unknown variants remain raw data for the caller to handle explicitly.
+	} else if len(variants) > 0 {
 		matched := false
 		for _, sub := range variants {
 			var scratch []Violation
