@@ -1,16 +1,16 @@
 {
   "schema": 2,
   "target_id": "tgt_6fe5a2a8ea9697f6",
-  "attempt_id": "int_b2ci0jkgdvn7itx4",
+  "attempt_id": "int_7ottqgk2bsqbcr47",
   "current_release_id": "rel_cwfduooviywesb9d",
   "previous_generation_id": "gen_8ckjctscsnh9m8vl",
   "previous_generated_snapshot_id": "snap_bedb02sy3pot0l61",
   "previous_combined_snapshot_id": "snap_uxqog7k847bg73ax",
-  "current_snapshot_id": "snap_w0kbne1pznw6qp1q",
-  "next_generation_id": "gen_yy8xbhdeqn7pm8ao",
-  "next_generated_snapshot_id": "snap_oiz3z44lgjxqhdot",
+  "current_snapshot_id": "snap_dskmgx4bsb682hud",
+  "next_generation_id": "gen_9qe3e7lpcbn2narq",
+  "next_generated_snapshot_id": "snap_avw8psftjgfi7pvs",
   "default_revision": "60b2016941d52d6f9121ce23761287be4aac1cc7",
-  "draft_revision": "b6e383a1cfc82068379f35ca31e5312871a31f27",
+  "draft_revision": "d97b79b6c69ebdfd92c297fdf0d0b1cbf9a1ceea",
   "conflict_stage": "generation",
   "conflicts": [
     {
@@ -36,7 +36,7 @@
     {
       "path": "schemas.go",
       "kind": "overlapping_text",
-      "fingerprint": "sha256:973bf382d6090574a32c85e2de0c203b739963e55904b4be96350f3e1deaeaf8",
+      "fingerprint": "sha256:eb1c68a33ed64380edab60b1365af138841b97b819a1d8cc2dda7106a2a68499",
       "previous": {
         "present": true,
         "mode": "100644",
@@ -50,7 +50,7 @@
       "next": {
         "present": true,
         "mode": "100644",
-        "hash": "sha256:6d25ef102595bba5269ecbe7055950b724e12d45f0a950d9301562e0dc3ca769"
+        "hash": "sha256:3b49e62f9fe5a837e4aa39b0ad44df3d2b54db6c4c9fd7a250f7cf2ceaae3574"
       }
     }
   ]
