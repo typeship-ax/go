@@ -1212,7 +1212,8 @@
           "name": {
             "minLength": 1,
             "maxLength": 80,
-            "type": "string"
+            "type": "string",
+            "example": "Parcel API"
           },
           "definition": {
             "properties": {
@@ -1268,7 +1269,7 @@
                           "identifier": {
                             "description": "Provider-native repository identity, opaque outside its adapter.",
                             "examples": [
-                              "acme/payments-api"
+                              "parcel-example/api"
                             ],
                             "maxLength": 512,
                             "type": "string"
@@ -1474,7 +1475,13 @@
               "source"
             ],
             "additionalProperties": false,
-            "type": "object"
+            "type": "object",
+            "example": {
+              "source": {
+                "kind": "url",
+                "url": "https://api.parcel.example/openapi.json"
+              }
+            }
           },
           "targets": {
             "description": "Initial first-class Targets. More than one may use the same generator with different identities or Deliveries.",
@@ -1647,7 +1654,24 @@
               "additionalProperties": false,
               "type": "object"
             },
-            "type": "array"
+            "type": "array",
+            "example": [
+              {
+                "name": "Parcel CLI",
+                "generator": "cli",
+                "deliveries": [
+                  {
+                    "kind": "repository",
+                    "repository": {
+                      "provider": "github",
+                      "identifier": "parcel-example/parcel-client"
+                    },
+                    "package_name": "parcel-client",
+                    "publish_on_merge": false
+                  }
+                ]
+              }
+            ]
           },
           "auto_generate": {
             "description": "Whether Typeship should regenerate automatically when the source changes. Default: false.",
@@ -2130,17 +2154,28 @@
         "type": "object"
       },
       "example_arguments": {
-        "name": "example",
+        "name": "Parcel API",
         "definition": {
           "source": {
             "kind": "url",
-            "url": "https://example.com"
+            "url": "https://api.parcel.example/openapi.json"
           }
         },
         "targets": [
           {
-            "name": "example",
-            "generator": "typescript-sdk"
+            "name": "Parcel CLI",
+            "generator": "cli",
+            "deliveries": [
+              {
+                "kind": "repository",
+                "repository": {
+                  "provider": "github",
+                  "identifier": "parcel-example/parcel-client"
+                },
+                "package_name": "parcel-client",
+                "publish_on_merge": false
+              }
+            ]
           }
         ]
       }
@@ -2393,7 +2428,8 @@
             "type": "string"
           },
           "auto_generate": {
-            "type": "boolean"
+            "type": "boolean",
+            "example": true
           },
           "relay_enabled": {
             "description": "Enable webhook relay sessions. Requires the CLI target and Pro.",
@@ -3559,7 +3595,10 @@
             "items": {
               "type": "string"
             },
-            "type": "array"
+            "type": "array",
+            "example": [
+              "missing-operation-id"
+            ]
           }
         },
         "required": [
@@ -3606,7 +3645,7 @@
       "example_arguments": {
         "project_id": "prj_4f8k2m7x9q1v6b3n",
         "diagnostic_ids": [
-          "value"
+          "missing-operation-id"
         ]
       }
     },
@@ -3677,7 +3716,7 @@
                     "identifier": {
                       "description": "Provider-native repository identity, opaque outside its adapter.",
                       "examples": [
-                        "acme/payments-api"
+                        "parcel-example/api"
                       ],
                       "maxLength": 512,
                       "type": "string"
@@ -3878,26 +3917,30 @@
                   "status": "succeeded",
                   "trigger": "manual",
                   "target_id": "tgt_5m8q2v7k1p9d4h6c",
-                  "generator": "typescript-sdk",
+                  "generator": "cli",
                   "provenance": {
                     "generator_edition": "2026-08-24",
-                    "resolved_config": null,
+                    "resolved_config": {
+                      "cli": {
+                        "command_name": "parcel"
+                      }
+                    },
                     "package_version": "1.0.0"
                   },
                   "meta": {
-                    "title": "Acme Payments API",
+                    "title": "Parcel API",
                     "api_version": "1.0.0",
                     "version": "1.0.0",
                     "oas_version": "3.1",
-                    "artifact_name": "@acme/payments",
-                    "client_name": "AcmeClient",
+                    "artifact_name": "parcel-client",
+                    "client_name": "ParcelClient",
                     "generators": [
-                      "typescript-sdk"
+                      "cli"
                     ]
                   },
                   "warnings": [],
                   "error": null,
-                  "created_at": "2026-01-01T00:00:00Z"
+                  "created_at": "2026-09-23T08:00:00Z"
                 }
               ],
               "properties": {
@@ -4113,26 +4156,30 @@
                       "status": "succeeded",
                       "trigger": "manual",
                       "target_id": "tgt_5m8q2v7k1p9d4h6c",
-                      "generator": "typescript-sdk",
+                      "generator": "cli",
                       "provenance": {
                         "generator_edition": "2026-08-24",
-                        "resolved_config": null,
+                        "resolved_config": {
+                          "cli": {
+                            "command_name": "parcel"
+                          }
+                        },
                         "package_version": "1.0.0"
                       },
                       "meta": {
-                        "title": "Acme Payments API",
+                        "title": "Parcel API",
                         "api_version": "1.0.0",
                         "version": "1.0.0",
                         "oas_version": "3.1",
-                        "artifact_name": "@acme/payments",
-                        "client_name": "AcmeClient",
+                        "artifact_name": "parcel-client",
+                        "client_name": "ParcelClient",
                         "generators": [
-                          "typescript-sdk"
+                          "cli"
                         ]
                       },
                       "warnings": [],
                       "error": null,
-                      "created_at": "2026-01-01T00:00:00Z"
+                      "created_at": "2026-09-23T08:00:00Z"
                     }
                   ],
                   "properties": {
@@ -4390,7 +4437,7 @@
                       "identifier": {
                         "description": "Provider-native repository identity, opaque outside its adapter.",
                         "examples": [
-                          "acme/payments-api"
+                          "parcel-example/api"
                         ],
                         "maxLength": 512,
                         "type": "string"
@@ -4698,7 +4745,7 @@
                       "identifier": {
                         "description": "Provider-native repository identity, opaque outside its adapter.",
                         "examples": [
-                          "acme/payments-api"
+                          "parcel-example/api"
                         ],
                         "maxLength": 512,
                         "type": "string"
@@ -4727,7 +4774,11 @@
                 "additionalProperties": false,
                 "type": "object"
               }
-            ]
+            ],
+            "example": {
+              "kind": "url",
+              "url": "https://api.parcel.example/openapi.json"
+            }
           },
           "patches": {
             "maxItems": 50,
@@ -4979,7 +5030,7 @@
                       "identifier": {
                         "description": "Provider-native repository identity, opaque outside its adapter.",
                         "examples": [
-                          "acme/payments-api"
+                          "parcel-example/api"
                         ],
                         "maxLength": 512,
                         "type": "string"
@@ -5574,7 +5625,8 @@
           "name": {
             "minLength": 1,
             "maxLength": 80,
-            "type": "string"
+            "type": "string",
+            "example": "Parcel CLI"
           },
           "definition_id": {
             "description": "Unique identifier for a project's logical API Definition.",
@@ -5582,7 +5634,8 @@
               "def_2p8m4q7k1v9d6h3c"
             ],
             "pattern": "^def_[a-z0-9]{16}$",
-            "type": "string"
+            "type": "string",
+            "example": "def_2p8m4q7k1v9d6h3c"
           },
           "generator": {
             "enum": [
@@ -5594,7 +5647,8 @@
               "mcp"
             ],
             "description": "Generator implementation selected by a Target. This is configuration, not identity; several Targets may use the same generator. cli is the TypeScript CLI; go-cli is the native Go CLI, a distinct product that imports one exact paired Go SDK module rather than a client of its own.",
-            "type": "string"
+            "type": "string",
+            "example": "cli"
           },
           "state": {
             "enum": [
@@ -5982,7 +6036,12 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "example": {
+              "cli": {
+                "command_name": "parcel"
+              }
+            }
           },
           "deliveries": {
             "maxItems": 2,
@@ -6006,7 +6065,7 @@
                         "identifier": {
                           "description": "Provider-native repository identity, opaque outside its adapter.",
                           "examples": [
-                            "acme/payments-api"
+                            "parcel-example/api"
                           ],
                           "maxLength": 512,
                           "type": "string"
@@ -6067,7 +6126,18 @@
                 }
               ]
             },
-            "type": "array"
+            "type": "array",
+            "example": [
+              {
+                "kind": "repository",
+                "repository": {
+                  "provider": "github",
+                  "identifier": "parcel-example/parcel-client"
+                },
+                "package_name": "parcel-client",
+                "publish_on_merge": false
+              }
+            ]
           }
         },
         "required": [
@@ -6349,9 +6419,9 @@
       },
       "example_arguments": {
         "project_id": "prj_4f8k2m7x9q1v6b3n",
-        "name": "example",
+        "name": "Parcel CLI",
         "definition_id": "def_2p8m4q7k1v9d6h3c",
-        "generator": "typescript-sdk"
+        "generator": "cli"
       }
     },
     {
@@ -6758,7 +6828,8 @@
               "active",
               "disabled"
             ],
-            "type": "string"
+            "type": "string",
+            "example": "disabled"
           },
           "edition": {
             "type": "string"
@@ -7157,7 +7228,7 @@
                         "identifier": {
                           "description": "Provider-native repository identity, opaque outside its adapter.",
                           "examples": [
-                            "acme/payments-api"
+                            "parcel-example/api"
                           ],
                           "maxLength": 512,
                           "type": "string"
@@ -7621,7 +7692,7 @@
                         "identifier": {
                           "description": "Provider-native repository identity, opaque outside its adapter.",
                           "examples": [
-                            "acme/payments-api"
+                            "parcel-example/api"
                           ],
                           "maxLength": 512,
                           "type": "string"
@@ -8164,11 +8235,13 @@
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "example": "1.1.0"
           },
           "expected_revision": {
             "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "example": 2
           }
         },
         "required": [
@@ -8309,7 +8382,7 @@
       },
       "example_arguments": {
         "target_id": "tgt_5m8q2v7k1p9d4h6c",
-        "version": "1.0.0"
+        "version": "1.1.0"
       }
     },
     {
@@ -8919,7 +8992,14 @@
                 "additionalProperties": false,
                 "type": "object"
               }
-            ]
+            ],
+            "example": {
+              "paths": [
+                "README.md"
+              ],
+              "choice": "generated",
+              "expected_head_revision": "0123456789abcdef0123456789abcdef01234567"
+            }
           }
         },
         "required": [
@@ -9404,8 +9484,9 @@
         "target_id": "tgt_5m8q2v7k1p9d4h6c",
         "body": {
           "paths": [
-            "openapi.yaml"
+            "README.md"
           ],
+          "choice": "generated",
           "expected_head_revision": "0123456789abcdef0123456789abcdef01234567"
         }
       }
@@ -9445,13 +9526,15 @@
           },
           "version": {
             "description": "Exact already-published package version to make Current.",
-            "type": "string"
+            "type": "string",
+            "example": "1.0.0"
           },
           "tag": {
             "description": "Immutable repository tag containing the matching package source.",
             "minLength": 1,
             "maxLength": 255,
-            "type": "string"
+            "type": "string",
+            "example": "v1.0.0"
           }
         },
         "required": [
@@ -9533,7 +9616,7 @@
                   "identifier": {
                     "description": "Provider-native repository identity, opaque outside its adapter.",
                     "examples": [
-                      "acme/payments-api"
+                      "parcel-example/api"
                     ],
                     "maxLength": 512,
                     "type": "string"
@@ -9861,7 +9944,7 @@
       "example_arguments": {
         "target_id": "tgt_5m8q2v7k1p9d4h6c",
         "version": "1.0.0",
-        "tag": "value"
+        "tag": "v1.0.0"
       }
     },
     {
@@ -9966,7 +10049,7 @@
                   "identifier": {
                     "description": "Provider-native repository identity, opaque outside its adapter.",
                     "examples": [
-                      "acme/payments-api"
+                      "parcel-example/api"
                     ],
                     "maxLength": 512,
                     "type": "string"
@@ -10405,7 +10488,7 @@
                   "identifier": {
                     "description": "Provider-native repository identity, opaque outside its adapter.",
                     "examples": [
-                      "acme/payments-api"
+                      "parcel-example/api"
                     ],
                     "maxLength": 512,
                     "type": "string"
@@ -10960,6 +11043,7 @@
           },
           "path": {
             "type": "string",
+            "example": "README.md",
             "description": "Repo-relative path inside the generated package."
           }
         },
@@ -10970,7 +11054,7 @@
       },
       "example_arguments": {
         "generation_id": "gen_7h2p5d9c3m8w1k6q",
-        "path": "openapi.yaml"
+        "path": "README.md"
       }
     },
     {
@@ -11624,7 +11708,8 @@
             "description": "Identifier returned by the API key list. Accepts an ID or an exact name (resolved via api_keys_list). IDs come from api_keys_list.",
             "type": "string",
             "examples": [
-              "example-name"
+              "example-name",
+              "apikey_2nY8mR6pQ4vK9cH3"
             ]
           }
         },
@@ -11674,7 +11759,7 @@
         "type": "object"
       },
       "example_arguments": {
-        "api_key_id": "api_key_123"
+        "api_key_id": "apikey_2nY8mR6pQ4vK9cH3"
       }
     }
   ]

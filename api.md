@@ -102,17 +102,28 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredE
 
 ```json
 {
-  "name": "example",
+  "name": "Parcel API",
   "definition": {
     "source": {
       "kind": "url",
-      "url": "https://example.com"
+      "url": "https://api.parcel.example/openapi.json"
     }
   },
   "targets": [
     {
-      "name": "example",
-      "generator": "typescript-sdk"
+      "name": "Parcel CLI",
+      "generator": "cli",
+      "deliveries": [
+        {
+          "kind": "repository",
+          "repository": {
+            "provider": "github",
+            "identifier": "parcel-example/parcel-client"
+          },
+          "package_name": "parcel-client",
+          "publish_on_merge": false
+        }
+      ]
     }
   ]
 }
@@ -292,7 +303,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 {
   "project_id": "prj_4f8k2m7x9q1v6b3n",
   "diagnostic_ids": [
-    "value"
+    "missing-operation-id"
   ]
 }
 ```
@@ -502,9 +513,9 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredE
 ```json
 {
   "project_id": "prj_4f8k2m7x9q1v6b3n",
-  "name": "example",
+  "name": "Parcel CLI",
   "definition_id": "def_2p8m4q7k1v9d6h3c",
-  "generator": "typescript-sdk"
+  "generator": "cli"
 }
 ```
 
@@ -677,7 +688,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 ```json
 {
   "target_id": "tgt_5m8q2v7k1p9d4h6c",
-  "version": "1.0.0"
+  "version": "1.1.0"
 }
 ```
 
@@ -740,8 +751,9 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
   "target_id": "tgt_5m8q2v7k1p9d4h6c",
   "body": {
     "paths": [
-      "openapi.yaml"
+      "README.md"
     ],
+    "choice": "generated",
     "expected_head_revision": "0123456789abcdef0123456789abcdef01234567"
   }
 }
@@ -776,7 +788,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 {
   "target_id": "tgt_5m8q2v7k1p9d4h6c",
   "version": "1.0.0",
-  "tag": "value"
+  "tag": "v1.0.0"
 }
 ```
 
@@ -893,7 +905,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 ```json
 {
   "generation_id": "gen_7h2p5d9c3m8w1k6q",
-  "path": "openapi.yaml"
+  "path": "README.md"
 }
 ```
 
@@ -1092,7 +1104,7 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 
 ```json
 {
-  "api_key_id": "api_key_123"
+  "api_key_id": "apikey_2nY8mR6pQ4vK9cH3"
 }
 ```
 
