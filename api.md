@@ -708,7 +708,7 @@ Retrieve a Target's rolling Draft release
 
 `GET /targets/{target_id}/draft`
 
-Returns Current's version, the proposed Draft version, readiness, and commit. Pass `revision` as `expected_revision` when updating the Draft to avoid changing a newer candidate.
+Returns the Draft's status and its one next step, Current's version, the proposed version, readiness, checks, and conflict counts. Every status is described on `status`. The response carries an `ETag`; send it in `If-Match` when updating the Draft to avoid changing a newer version selection.
 
 Safety: **read** · Authentication: **required**
 
@@ -730,7 +730,7 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 
 </details>
 
-### `client.Targets.UpdateDraft(ctx, targetID, body)`
+### `client.Targets.UpdateDraft(ctx, targetID, body, params)`
 
 Select an exact Draft version or return to automatic versioning
 
@@ -738,21 +738,21 @@ Select an exact Draft version or return to automatic versioning
 
 Checks your version choice against the required version bump, then regenerates the existing Draft pull request.
 
-Send the last read revision as expected_revision to reject an intervening change with 409 stale_release_revision before saving or regenerating.
-The precondition is optional; omitting it applies the selection to the current Draft. Version is required; null restores automatic selection.
+Send the Draft's `ETag` in `If-Match` to reject an intervening change with 412 precondition_failed before saving or regenerating. Omitting `If-Match` applies the selection to the current Draft. Version is required; null restores automatic selection.
 
-A `502` response means the selected version was saved, but regeneration failed. Follow the error's retryable and suggested_action fields. Repeating an unfinished selection resumes generation; repeating a completed selection starts no new work. If using expected_revision, retrieve the Draft and confirm the saved selection before retrying with its current revision.
+A `502` response means the selected version was saved, but regeneration failed. Follow the error's retryable and suggested_action fields. Repeating an unfinished selection resumes generation; repeating a completed selection starts no new work. If using If-Match, retrieve the Draft and confirm the saved selection before retrying with its current ETag.
 
 Safety: **write** · Authentication: **required**
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `targetID` | path | `string` | yes | — |
+| `params.IfMatch` | header | `*string` | no | ETag from a preceding response. The update applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to update the current version. |
 
 Body: `TargetDraftUpdateParams` (required)
 
 Returns: `(*TargetDraftResponse, error)`
-Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*PreconditionFailedError` (412), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
 
 <details>
 <summary>Wire arguments (CLI and MCP)</summary>
@@ -760,8 +760,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 ```json
 {
   "target_id": "tgt_5m8q2v7k1p9d4h6c",
-  "version": "1.1.0",
-  "expected_revision": 2
+  "version": "1.1.0"
 }
 ```
 
@@ -857,53 +856,26 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 </details>
 
-### `client.Targets.RetrieveDraftCustomizations(ctx, targetID)`
+### `client.Targets.ListDraftFiles(ctx, targetID, params)`
 
-Inspect customizations on a Draft
+List customized and conflicted files on a Draft
 
-`GET /targets/{target_id}/draft/customizations`
+`GET /targets/{target_id}/draft/files`
 
-Returns the changed file paths from the latest Draft inspection. Read conflicts for all three file versions, and read the Draft for package-check readiness.
+Lists the Draft's files that differ from the last accepted package or need a conflict decision, ordered by path, without file content. Each conflict names its kind, where the incoming version comes from, the saved decision, and the sides you can read with retrieveDraftFileContent. With `filter=history`, lists the files affected by a default-branch history rewrite instead; the list is empty when none is pending.
 
-Safety: **read** · Authentication: **required**
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `targetID` | path | `string` | yes | — |
-
-Returns: `(*DraftCustomizationsResponse, error)`
-Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
-
-<details>
-<summary>Wire arguments (CLI and MCP)</summary>
-
-```json
-{
-  "target_id": "tgt_5m8q2v7k1p9d4h6c"
-}
-```
-
-</details>
-
-### `client.Targets.RetrieveDraftConflicts(ctx, targetID, params)`
-
-Inspect conflicts on a Draft
-
-`GET /targets/{target_id}/draft/conflicts`
-
-Returns every conflict with its base, repository, and incoming file bytes and modes in one response. An absent file is null. incoming_source distinguishes generated changes, default-branch changes, and recovered saved Draft code. Saved decisions require a separate Generate before conflicts clear.
+Returns `409 stale_draft` while Typeship has not integrated the Draft's latest commit (Draft status generating or branch_changed), or when the Draft changes between pages.
 
 Safety: **read** · Authentication: **required**
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `targetID` | path | `string` | yes | — |
-| `params.Path` | query | `*string` | no | Inspect this conflict path only. |
-| `params.AfterPath` | query | `*string` | no | Continue after next_path. Requires expected_head_revision. |
-| `params.ContentOffset` | query | `*int64` | no | Decoded byte offset for each side. Select one path and follow each side until next_offset is null. |
-| `params.ExpectedHeadRevision` | query | `*string` | no | Exact Draft head from the preceding response. Required when continuing a page or byte offset. |
+| `params.Filter` | query | `*TargetsListDraftFilesParamsFilter` | no | conflicted: conflicts only. customized: files that differ from the last accepted package. history: files affected by a default-branch history rewrite. Omit for conflicted and customized files. |
+| `params.Limit` | query | `*int64` | no | Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 invalid_request. List query parameters must appear only once; unrecognized parameters also return 400. |
+| `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it. Omit to start at the first page. Empty, malformed, or repeated cursors return 400 invalid_request. The page limit may change between requests. |
 
-Returns: `(*DraftConflictsResponse, error)`
+Returns: `*Iter[DraftFile]` — auto-paginating (`for it.Next()` walks every page)
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*RateLimitedError` (429), `*InternalServerError` (500)
 
 <details>
@@ -917,13 +889,48 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 </details>
 
+### `client.Targets.RetrieveDraftFileContent(ctx, targetID, params)`
+
+Read one side of a Draft file
+
+`GET /targets/{target_id}/draft/files/content`
+
+Returns up to 24 KiB of one side of a conflicted or history-affected file: text as UTF-8, binary content as base64. Follow `next_cursor` with the same path and side to read the rest, and concatenate the chunks in order. A side where the file is absent returns 404.
+
+Safety: **read** · Authentication: **required**
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `targetID` | path | `string` | yes | — |
+| `params.Path` | query | `string` | yes | File path from listDraftFiles. |
+| `params.Side` | query | `DraftFileSide` | yes | A side listed for the file. |
+| `params.Cursor` | query | `*string` | no | next_cursor from the preceding chunk of the same path and side. |
+
+Returns: `(*DraftFileContentResponse, error)`
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*RateLimitedError` (429), `*InternalServerError` (500)
+
+<details>
+<summary>Wire arguments (CLI and MCP)</summary>
+
+```json
+{
+  "target_id": "tgt_5m8q2v7k1p9d4h6c",
+  "path": "src/index.ts",
+  "side": "base"
+}
+```
+
+</details>
+
 ### `client.Targets.ResolveDraftConflicts(ctx, targetID, body)`
 
 Resolve selected Draft conflicts
 
 `POST /targets/{target_id}/draft/conflicts/resolve`
 
-Save deliberate decisions for the exact inspected Draft. Keep the repository or incoming side, or submit final file content, including binary bytes. Decisions save atomically. Use dry_run to preview them, then generate the Target separately to apply saved decisions and run its checks.
+Saves decisions for conflicts on the Draft's head_revision: keep the repository or incoming version, or supply the final content as text or, for binary files, base64. Decisions save together or not at all, and a decision can be replaced until it is applied. Use `dry_run` to validate them first.
+
+Saving changes no files. When every conflict has a decision, `remaining_conflicts` is 0 and the Draft status becomes `needs_generation`: generate the Target to apply the decisions and run its checks. Applying them can report conflicts from the next merge stage.
 
 Safety: **write** · Authentication: **required**
 
@@ -933,7 +940,7 @@ Safety: **write** · Authentication: **required**
 
 Body: `ResolveDraftConflicts` (required)
 
-Returns: `(*DraftCodeUpdateResponse, error)`
+Returns: `(*DraftConflictResolutionResponse, error)`
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*RateLimitedError` (429), `*InternalServerError` (500)
 
 <details>
@@ -946,7 +953,9 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
   "resolutions": [
     {
       "path": "src/index.ts",
-      "keep": "incoming"
+      "keep": "content",
+      "mode": "100644",
+      "content": "export { ParcelClient } from \"./client.js\";\nexport type { Shipment, Label } from \"./types.js\";\nexport { createParcelClient } from \"./helper.js\";\n"
     }
   ]
 }
@@ -960,7 +969,9 @@ Discard selected Draft customizations
 
 `POST /targets/{target_id}/draft/customizations/discard`
 
-Replace explicitly listed non-conflicting paths with generated files in one Draft commit. Listing a customer-only file deletes it. Use dry_run to inspect writes and deletions first. Resolve conflicts through the separate conflicts action. Generate afterward to refresh the Draft and its checks.
+Replaces the listed customized paths that are not conflicts with the generated files, in one commit on the Draft branch. A listed file that exists only on the Draft is deleted. Use `dry_run` to see the planned writes and deletions first. Resolve conflicts with resolveDraftConflicts.
+
+After the commit, the Draft status is `branch_changed` until Typeship integrates it from the repository's pull request event and reruns the checks; you do not need to generate the Target.
 
 Safety: **write** · Authentication: **required**
 
@@ -970,7 +981,7 @@ Safety: **write** · Authentication: **required**
 
 Body: `DiscardDraftCustomizations` (required)
 
-Returns: `(*DraftCodeUpdateResponse, error)`
+Returns: `(*DraftCustomizationDiscardResponse, error)`
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*RateLimitedError` (429), `*InternalServerError` (500)
 
 <details>
@@ -991,11 +1002,11 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ### `client.Targets.RecoverDraftHistory(ctx, targetID, body)`
 
-Review and recover rewritten repository history
+Approve recovery from rewritten default-branch history
 
 `POST /targets/{target_id}/draft/history/recover`
 
-Preview a rewritten default branch and the Draft code to preserve. Approve the exact inspected revisions with dry_run false, then Generate separately. Recovery preserves the previous Draft branch, opens a new Draft from the current default branch, and requires explicit decisions for overlapping code. A rewritten Draft alone recovers automatically during Generate.
+When the Draft status is `history_rewritten`, review the affected files with `listDraftFiles` and `filter=history`, then approve with the Draft's `history_recovery` revisions. Approval saves the recovery without changing Git, and the Draft status becomes `needs_generation`: generate the Target to open a new Draft from the rewritten default branch. The previous Draft branch stays available, and overlapping code comes back as conflicts to resolve. A rewritten Draft branch alone needs no approval.
 
 Safety: **write** · Authentication: **required**
 
@@ -1014,7 +1025,8 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 ```json
 {
   "target_id": "tgt_5m8q2v7k1p9d4h6c",
-  "dry_run": true
+  "expected_default_revision": "89abcdef0123456789abcdef0123456789abcdef",
+  "expected_head_revision": "0123456789abcdef0123456789abcdef01234567"
 }
 ```
 

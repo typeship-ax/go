@@ -2774,7 +2774,7 @@ const (
 	ErrorTypeUnknownError        ErrorType = "unknown_error"
 )
 
-// ErrorCode is one of "invalid_request", "idempotency_key_reused", "unauthorized", "organization_required", "insufficient_scope", "forbidden", "not_found", "method_not_allowed", "spec_error", "fetch_error", "repository_provider_unsupported", "edition_unavailable", "target_busy", "no_draft", "stale_draft", "no_changes", "invalid_version", "stale_release_revision", "definition_changed", "version_occupied", "version_too_low", "release_analysis_stale", "target_already_released", "adoption_unverified", "publication_disabled", "publication_not_retryable", "publication_recovery_unavailable", "publication_dispatch_failed", "repository_disconnected", "regeneration_failed", "delivery_conflict", "resource_has_dependencies", "plan_limit_reached", "payload_too_large", "rate_limited", "internal_error", "dependency_missing", "dependency_not_found", "dependency_self", "dependency_cycle", "dependency_cross_project", "dependency_cross_lineage", "dependency_wrong_generator", "dependency_disabled", "dependency_module_path_missing", "dependency_unreleased", "dependency_revision_mismatch", "dependency_edition_incompatible", "publication_failed", "customization_conflict", "history_recovery_required", "checks_unavailable", "generation_stale", "unclassified_error". Stable programmatic identifier. Do not branch on message.
+// ErrorCode is one of "invalid_request", "idempotency_key_reused", "unauthorized", "organization_required", "insufficient_scope", "forbidden", "not_found", "method_not_allowed", "spec_error", "fetch_error", "repository_provider_unsupported", "edition_unavailable", "target_busy", "no_draft", "stale_draft", "no_changes", "invalid_version", "precondition_failed", "definition_changed", "version_occupied", "version_too_low", "release_analysis_stale", "target_already_released", "adoption_unverified", "publication_disabled", "publication_not_retryable", "publication_recovery_unavailable", "publication_dispatch_failed", "repository_disconnected", "regeneration_failed", "delivery_conflict", "resource_has_dependencies", "plan_limit_reached", "payload_too_large", "rate_limited", "internal_error", "dependency_missing", "dependency_not_found", "dependency_self", "dependency_cycle", "dependency_cross_project", "dependency_cross_lineage", "dependency_wrong_generator", "dependency_disabled", "dependency_module_path_missing", "dependency_unreleased", "dependency_revision_mismatch", "dependency_edition_incompatible", "publication_failed", "customization_conflict", "history_recovery_required", "checks_unavailable", "generation_stale", "unclassified_error". Stable programmatic identifier. Do not branch on message.
 type ErrorCode string
 
 const (
@@ -2795,7 +2795,7 @@ const (
 	ErrorCodeStaleDraft                     ErrorCode = "stale_draft"
 	ErrorCodeNoChanges                      ErrorCode = "no_changes"
 	ErrorCodeInvalidVersion                 ErrorCode = "invalid_version"
-	ErrorCodeStaleReleaseRevision           ErrorCode = "stale_release_revision"
+	ErrorCodePreconditionFailed             ErrorCode = "precondition_failed"
 	ErrorCodeDefinitionChanged              ErrorCode = "definition_changed"
 	ErrorCodeVersionOccupied                ErrorCode = "version_occupied"
 	ErrorCodeVersionTooLow                  ErrorCode = "version_too_low"
@@ -3096,10 +3096,7 @@ type Target struct {
 	CurrentVersion        *string                `json:"current_version"`
 	ProposedVersion       *string                `json:"proposed_version"`
 	ProposedVersionSource *ProposedVersionSource `json:"proposed_version_source"`
-	ProposedVersionActor  *string                `json:"proposed_version_actor"`
-	// ReleaseRevision Optimistic concurrency revision for Draft selections.
-	ReleaseRevision int64                `json:"release_revision"`
-	Checks          TargetChecksResponse `json:"checks"`
+	Checks                TargetChecksResponse   `json:"checks"`
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are Definition-owned and never appear here.
 	Config *TargetConfigResponse `json:"config"`
 	// Deliveries At most one repository and one hosted MCP Delivery.
@@ -3393,10 +3390,7 @@ type TargetResponse struct {
 	CurrentVersion        *string                `json:"current_version"`
 	ProposedVersion       *string                `json:"proposed_version"`
 	ProposedVersionSource *ProposedVersionSource `json:"proposed_version_source"`
-	ProposedVersionActor  *string                `json:"proposed_version_actor"`
-	// ReleaseRevision Optimistic concurrency revision for Draft selections.
-	ReleaseRevision int64                `json:"release_revision"`
-	Checks          TargetChecksResponse `json:"checks"`
+	Checks                TargetChecksResponse   `json:"checks"`
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are Definition-owned and never appear here.
 	Config *TargetConfigResponse `json:"config"`
 	// Deliveries At most one repository and one hosted MCP Delivery.
@@ -3426,7 +3420,7 @@ type TargetUpdateRequest struct {
 	State          *State          `json:"state,omitempty"`
 	Edition        *string         `json:"edition,omitempty"`
 	ReleaseChannel *ReleaseChannel `json:"release_channel,omitempty"`
-	// ProposedVersion Send only this field to select an exact SemVer, or null for automatic selection. Use the Draft endpoint for an optional revision precondition.
+	// ProposedVersion Send only this field to select an exact SemVer, or null for automatic selection. Use the Draft endpoint for an optional If-Match precondition.
 	ProposedVersion *Nullable[string] `json:"proposed_version,omitempty"`
 	Checks          *TargetChecks     `json:"checks,omitempty"`
 	// Config Replaces the complete stored override object. Send null or an empty object to resume Project inheritance. Effective values merge over Project.config; GraphQL settings belong to the Definition.
@@ -3607,17 +3601,42 @@ const (
 type TargetDraftResponse struct {
 	Object         string                      `json:"object"`
 	TargetID       TargetID                    `json:"target_id"`
-	Revision       int64                       `json:"revision"`
+	ProjectID      ProjectID                   `json:"project_id"`
+	Status         DraftStatus                 `json:"status"`
 	CurrentVersion *string                     `json:"current_version"`
 	Version        *string                     `json:"version"`
 	Selection      TargetDraftSelection        `json:"selection"`
 	Readiness      *TargetDraftReadiness       `json:"readiness"`
 	Changes        *TargetDraftResponseChanges `json:"changes"`
-	HeadRevision   *string                     `json:"head_revision"`
-	PullRequestURL *string                     `json:"pull_request_url"`
-	RequestID      RequestID                   `json:"request_id"`
-	Checks         []PackageCheck              `json:"checks"`
+	// HeadRevision Draft commit that readiness, checks, and conflicts describe. Send it as expected_head_revision when resolving or discarding.
+	HeadRevision   *string `json:"head_revision"`
+	PullRequestURL *string `json:"pull_request_url"`
+	// GenerationID Generation whose package this Draft contains.
+	GenerationID *GenerationID `json:"generation_id"`
+	// Conflicts Conflict counts for the current merge stage; null when the Draft has no conflicts.
+	Conflicts *TargetDraftConflicts `json:"conflicts"`
+	// CustomizedFiles Files where the Draft differs from the last accepted package; null until the Draft is integrated.
+	CustomizedFiles *int64 `json:"customized_files"`
+	// HistoryRecovery Present only while status is history_rewritten.
+	HistoryRecovery *TargetDraftHistoryRecovery `json:"history_recovery"`
+	RequestID       RequestID                   `json:"request_id"`
+	Checks          []PackageCheck              `json:"checks"`
 }
+
+// DraftStatus is one of "no_draft", "generating", "branch_changed", "conflicted", "needs_generation", "history_rewritten", "checking", "failed", "ready". The Draft's state and its one next step. no_draft: no Draft is open; generate the Target. generating: Typeship is updating the Draft branch; retrieve the Draft again. branch_changed: the Draft branch has a commit Typeship has not integrated, such as your push or a discard; Typeship starts that integration from the repository event, so retrieve the Draft again, and generate the Target only if the status persists. conflicted: some conflicts have no decision; list files with filter=conflicted and resolve them. needs_generation: saved conflict decisions, an approved history recovery, or a settings change are not applied yet; generate the Target. history_rewritten: the default branch no longer contains the accepted package; review files with filter=history and approve history recovery. checking: package checks are running on head_revision; retrieve the Draft again. failed: readiness failed or could not be assessed; inspect readiness and checks, fix the package or pull request, and push to the Draft. ready: every required check passed on head_revision; merge the pull request.
+type DraftStatus string
+
+const (
+	DraftStatusNoDraft          DraftStatus = "no_draft"
+	DraftStatusGenerating       DraftStatus = "generating"
+	DraftStatusBranchChanged    DraftStatus = "branch_changed"
+	DraftStatusConflicted       DraftStatus = "conflicted"
+	DraftStatusNeedsGeneration  DraftStatus = "needs_generation"
+	DraftStatusHistoryRewritten DraftStatus = "history_rewritten"
+	DraftStatusChecking         DraftStatus = "checking"
+	DraftStatusFailed           DraftStatus = "failed"
+	DraftStatusReady            DraftStatus = "ready"
+)
 
 // TargetDraftSelection is one of TargetDraftSelectionVariant1, TargetDraftSelectionVariant2.
 // Go has no sum types, so it holds the JSON as received and decodes on
@@ -3687,10 +3706,10 @@ type TargetDraftSelectionVariant1 struct {
 
 // TargetDraftSelectionVariant2 is an API model.
 type TargetDraftSelectionVariant2 struct {
-	Mode    string                 `json:"mode"`
-	Version string                 `json:"version"`
-	Source  *ProposedVersionSource `json:"source"`
-	Actor   *string                `json:"actor"`
+	Mode    string `json:"mode"`
+	Version string `json:"version"`
+	// Source Where the selection was made.
+	Source *ProposedVersionSource `json:"source"`
 }
 
 // TargetDraftReadiness is an API model. Readiness decision for the Draft's head_revision. Null readiness on the Draft means no candidate exists.
@@ -3730,12 +3749,28 @@ type TargetDraftResponseChanges struct {
 	PreviousVersion *string `json:"previous_version,omitempty"`
 }
 
+// TargetDraftConflicts is an API model.
+type TargetDraftConflicts struct {
+	// Total Conflicts in the current merge stage.
+	Total int64 `json:"total"`
+	// Decided Conflicts with a saved decision for head_revision.
+	Decided int64 `json:"decided"`
+}
+
+// TargetDraftHistoryRecovery is an API model. The approval inputs for a default-branch history rewrite.
+type TargetDraftHistoryRecovery struct {
+	// DefaultRevision Rewritten default-branch commit. Send it as expected_default_revision.
+	DefaultRevision string `json:"default_revision"`
+	// HeadRevision Draft commit Typeship last observed. Send it as expected_head_revision.
+	HeadRevision *string `json:"head_revision"`
+	// PreservedBranch Existing Draft branch that stays available after recovery opens a new Draft.
+	PreservedBranch *string `json:"preserved_branch"`
+}
+
 // TargetDraftUpdateParams is an API model.
 type TargetDraftUpdateParams struct {
 	// Version Exact SemVer, or null to return to automatic selection.
 	Version *string `json:"version"`
-	// ExpectedRevision Optional revision from the last Draft read. An intervening change returns 409 stale_release_revision without saving or regenerating. Omit to apply the selection without this precondition.
-	ExpectedRevision *int64 `json:"expected_revision,omitempty"`
 }
 
 // TargetAdoption is an API model.
@@ -3781,151 +3816,166 @@ type TargetReleaseResponseImportProvenance struct {
 	ImportedAt     *string `json:"imported_at"`
 }
 
-// DraftCustomizationsResponse is an API model.
-type DraftCustomizationsResponse struct {
-	Object   string   `json:"object"`
-	TargetID TargetID `json:"target_id"`
-	// Status Availability of the saved inspection. Targets without a repository Delivery are not_applicable. Check the Draft separately for readiness.
-	Status       DraftCustomizationsResponseStatus        `json:"status"`
-	HeadRevision *string                                  `json:"head_revision"`
-	Changes      []DraftCustomizationsResponseChangesItem `json:"changes"`
-	RequestID    RequestID                                `json:"request_id"`
-}
-
-// DraftCustomizationsResponseStatus is one of "not_applicable", "no_draft", "outdated", "available". Availability of the saved inspection. Targets without a repository Delivery are not_applicable. Check the Draft separately for readiness.
-type DraftCustomizationsResponseStatus string
+// TargetsListDraftFilesParamsFilter is one of "conflicted", "customized", "history".
+type TargetsListDraftFilesParamsFilter string
 
 const (
-	DraftCustomizationsResponseStatusNotApplicable DraftCustomizationsResponseStatus = "not_applicable"
-	DraftCustomizationsResponseStatusNoDraft       DraftCustomizationsResponseStatus = "no_draft"
-	DraftCustomizationsResponseStatusOutdated      DraftCustomizationsResponseStatus = "outdated"
-	DraftCustomizationsResponseStatusAvailable     DraftCustomizationsResponseStatus = "available"
+	TargetsListDraftFilesParamsFilterConflicted TargetsListDraftFilesParamsFilter = "conflicted"
+	TargetsListDraftFilesParamsFilterCustomized TargetsListDraftFilesParamsFilter = "customized"
+	TargetsListDraftFilesParamsFilterHistory    TargetsListDraftFilesParamsFilter = "history"
 )
 
-// DraftCustomizationsResponseChangesItem is an API model.
-type DraftCustomizationsResponseChangesItem struct {
+// DraftFileList is an API model.
+type DraftFileList struct {
+	Object     ListObject  `json:"object"`
+	Data       []DraftFile `json:"data"`
+	HasMore    bool        `json:"has_more"`
+	NextCursor *string     `json:"next_cursor"`
+	RequestID  RequestID   `json:"request_id"`
+}
+
+// DraftFile is an API model.
+type DraftFile struct {
+	Object string `json:"object"`
+	// Path Path relative to the Target's package directory.
 	Path string `json:"path"`
-	Kind Kind   `json:"kind"`
+	// Customization How the Draft differs from the last accepted package at this path; null when it does not.
+	Customization *Change            `json:"customization"`
+	Conflict      *DraftFileConflict `json:"conflict"`
+	History       *DraftFileHistory  `json:"history"`
+	// Sides Sides of the comparison to read with retrieveDraftFileContent. A missing side means the file is absent there. Listed for conflicts and history files.
+	Sides []DraftFileSideSummary `json:"sides"`
 }
 
-// Kind is one of "added", "edited", "deleted", "mode_changed".
-type Kind string
+// Change is one of "added", "edited", "deleted", "mode_changed".
+type Change string
 
 const (
-	KindAdded       Kind = "added"
-	KindEdited      Kind = "edited"
-	KindDeleted     Kind = "deleted"
-	KindModeChanged Kind = "mode_changed"
+	ChangeAdded       Change = "added"
+	ChangeEdited      Change = "edited"
+	ChangeDeleted     Change = "deleted"
+	ChangeModeChanged Change = "mode_changed"
 )
 
-// DraftConflictsResponse is an API model.
-type DraftConflictsResponse struct {
-	Object   string   `json:"object"`
-	TargetID TargetID `json:"target_id"`
-	// Status pending_generation means every conflict has a saved decision; Generate this Target to apply them. Partial decisions are visible per conflict. Check Draft readiness separately.
-	Status         DraftConflictsResponseStatus          `json:"status"`
-	HeadRevision   *string                               `json:"head_revision"`
-	IncomingSource *DraftConflictsResponseIncomingSource `json:"incoming_source"`
-	Conflicts      []DraftConflict                       `json:"conflicts"`
-	RequestID      RequestID                             `json:"request_id"`
-	HasMore        bool                                  `json:"has_more"`
-	NextPath       *string                               `json:"next_path"`
-	TotalConflicts int64                                 `json:"total_conflicts"`
+// DraftFileConflict is an API model.
+type DraftFileConflict struct {
+	// Kind Why the merge stopped. no_common_version: there is no earlier version to compare, such as the first Draft of an adopted package. file_ownership: generated output collides with a file you added. repository_deleted_incoming_changed and incoming_deleted_repository_changed: one side deleted a file the other changed. overlapping_text: both sides edited the same lines. too_large_to_merge: the file has too many changed lines to merge line by line. binary_changed and file_mode_changed: both sides changed binary content or the file mode.
+	Kind DraftFileConflictKind `json:"kind"`
+	// Source Where the incoming version comes from: the new Generation, commits on the default branch, or the code of a Draft whose branch was rebased, reset, or deleted (its old branch is preserved). The merge applies previous_draft, then default_branch, then generation, and stops at the first stage with conflicts, so applying one stage's decisions can report conflicts from the next.
+	Source DraftFileConflictSource `json:"source"`
+	// Decision Decision saved for this conflict on head_revision; null when none. Saved decisions apply when the Target is generated.
+	Decision *DraftFileConflictDecision `json:"decision"`
 }
 
-// DraftConflictsResponseStatus is one of "not_applicable", "no_draft", "outdated", "unresolved", "pending_generation", "clear". pending_generation means every conflict has a saved decision; Generate this Target to apply them. Partial decisions are visible per conflict. Check Draft readiness separately.
-type DraftConflictsResponseStatus string
+// DraftFileConflictKind is one of "no_common_version", "file_ownership", "repository_deleted_incoming_changed", "incoming_deleted_repository_changed", "overlapping_text", "too_large_to_merge", "binary_changed", "file_mode_changed". Why the merge stopped. no_common_version: there is no earlier version to compare, such as the first Draft of an adopted package. file_ownership: generated output collides with a file you added. repository_deleted_incoming_changed and incoming_deleted_repository_changed: one side deleted a file the other changed. overlapping_text: both sides edited the same lines. too_large_to_merge: the file has too many changed lines to merge line by line. binary_changed and file_mode_changed: both sides changed binary content or the file mode.
+type DraftFileConflictKind string
 
 const (
-	DraftConflictsResponseStatusNotApplicable     DraftConflictsResponseStatus = "not_applicable"
-	DraftConflictsResponseStatusNoDraft           DraftConflictsResponseStatus = "no_draft"
-	DraftConflictsResponseStatusOutdated          DraftConflictsResponseStatus = "outdated"
-	DraftConflictsResponseStatusUnresolved        DraftConflictsResponseStatus = "unresolved"
-	DraftConflictsResponseStatusPendingGeneration DraftConflictsResponseStatus = "pending_generation"
-	DraftConflictsResponseStatusClear             DraftConflictsResponseStatus = "clear"
+	DraftFileConflictKindNoCommonVersion                  DraftFileConflictKind = "no_common_version"
+	DraftFileConflictKindFileOwnership                    DraftFileConflictKind = "file_ownership"
+	DraftFileConflictKindRepositoryDeletedIncomingChanged DraftFileConflictKind = "repository_deleted_incoming_changed"
+	DraftFileConflictKindIncomingDeletedRepositoryChanged DraftFileConflictKind = "incoming_deleted_repository_changed"
+	DraftFileConflictKindOverlappingText                  DraftFileConflictKind = "overlapping_text"
+	DraftFileConflictKindTooLargeToMerge                  DraftFileConflictKind = "too_large_to_merge"
+	DraftFileConflictKindBinaryChanged                    DraftFileConflictKind = "binary_changed"
+	DraftFileConflictKindFileModeChanged                  DraftFileConflictKind = "file_mode_changed"
 )
 
-// DraftConflictsResponseIncomingSource is one of "generation", "default_branch", "saved_draft".
-type DraftConflictsResponseIncomingSource string
+// DraftFileConflictSource is one of "generation", "default_branch", "previous_draft". Where the incoming version comes from: the new Generation, commits on the default branch, or the code of a Draft whose branch was rebased, reset, or deleted (its old branch is preserved). The merge applies previous_draft, then default_branch, then generation, and stops at the first stage with conflicts, so applying one stage's decisions can report conflicts from the next.
+type DraftFileConflictSource string
 
 const (
-	DraftConflictsResponseIncomingSourceGeneration    DraftConflictsResponseIncomingSource = "generation"
-	DraftConflictsResponseIncomingSourceDefaultBranch DraftConflictsResponseIncomingSource = "default_branch"
-	DraftConflictsResponseIncomingSourceSavedDraft    DraftConflictsResponseIncomingSource = "saved_draft"
+	DraftFileConflictSourceGeneration    DraftFileConflictSource = "generation"
+	DraftFileConflictSourceDefaultBranch DraftFileConflictSource = "default_branch"
+	DraftFileConflictSourcePreviousDraft DraftFileConflictSource = "previous_draft"
 )
 
-// DraftConflict is an API model.
-type DraftConflict struct {
-	Path string            `json:"path"`
-	Kind DraftConflictKind `json:"kind"`
-	// Base Common file version before the conflicting changes; null when absent.
-	Base *DraftFileVersion `json:"base"`
-	// Repository Preserved repository file; null when absent.
-	Repository *DraftFileVersion `json:"repository"`
-	// Incoming Incoming generated, default-branch, or saved Draft file; null when absent.
-	Incoming *DraftFileVersion `json:"incoming"`
-	// PendingDecision Decision saved for this exact Draft and conflict. Generate the Target to apply it.
-	PendingDecision *DraftConflictPendingDecision `json:"pending_decision"`
+// DraftFileConflictDecision is one of "repository", "incoming", "content". Decision saved for this conflict on head_revision; null when none. Saved decisions apply when the Target is generated.
+type DraftFileConflictDecision string
+
+const (
+	DraftFileConflictDecisionRepository DraftFileConflictDecision = "repository"
+	DraftFileConflictDecisionIncoming   DraftFileConflictDecision = "incoming"
+	DraftFileConflictDecisionContent    DraftFileConflictDecision = "content"
+)
+
+// DraftFileHistory is an API model.
+type DraftFileHistory struct {
+	// Change How the rewritten default branch differs from the last accepted package; null when only the Draft differs.
+	Change *Change `json:"change"`
+	// DraftDiffers The Draft branch has a different version than the rewritten default branch. Recovery carries the Draft version forward.
+	DraftDiffers bool `json:"draft_differs"`
 }
 
-// DraftConflictKind is one of "missing_baseline", "file_ownership", "customer_deleted_generator_changed", "generator_deleted_customer_changed", "overlapping_text", "too_large_to_merge", "binary_changed", "file_mode_changed".
-type DraftConflictKind string
-
-const (
-	DraftConflictKindMissingBaseline                 DraftConflictKind = "missing_baseline"
-	DraftConflictKindFileOwnership                   DraftConflictKind = "file_ownership"
-	DraftConflictKindCustomerDeletedGeneratorChanged DraftConflictKind = "customer_deleted_generator_changed"
-	DraftConflictKindGeneratorDeletedCustomerChanged DraftConflictKind = "generator_deleted_customer_changed"
-	DraftConflictKindOverlappingText                 DraftConflictKind = "overlapping_text"
-	DraftConflictKindTooLargeToMerge                 DraftConflictKind = "too_large_to_merge"
-	DraftConflictKindBinaryChanged                   DraftConflictKind = "binary_changed"
-	DraftConflictKindFileModeChanged                 DraftConflictKind = "file_mode_changed"
-)
-
-// DraftFileVersion is an API model.
-type DraftFileVersion struct {
-	// ContentBase64 Up to 16 KiB of exact file bytes. Select this path and follow next_offset using content_offset to read the rest.
-	ContentBase64 string               `json:"content_base64"`
-	Mode          DraftFileVersionMode `json:"mode"`
-	// SizeBytes Full file size in bytes; null when absent.
-	SizeBytes     *int64 `json:"size_bytes"`
-	ContentOffset int64  `json:"content_offset"`
-	// NextOffset Continue at this decoded byte offset until null.
-	NextOffset *int64 `json:"next_offset"`
+// DraftFileSideSummary is an API model.
+type DraftFileSideSummary struct {
+	Side      DraftFileSide `json:"side"`
+	Mode      GitFileMode   `json:"mode"`
+	SizeBytes int64         `json:"size_bytes"`
+	// Encoding utf8 for text; base64 for binary content.
+	Encoding Encoding `json:"encoding"`
 }
 
-// DraftFileVersionMode is one of "100644", "100755", "120000".
-type DraftFileVersionMode string
+// DraftFileSide is one of "base", "repository", "incoming", "accepted", "default", "draft". One side of a Draft file comparison. A conflict has base (the common version before both changes), repository (the file on the Draft), and incoming (the file the merge brings in). A default-branch history rewrite has accepted (the last accepted package), default (the rewritten default branch), and draft (the current Draft branch).
+type DraftFileSide string
 
 const (
-	DraftFileVersionMode100644 DraftFileVersionMode = "100644"
-	DraftFileVersionMode100755 DraftFileVersionMode = "100755"
-	DraftFileVersionMode120000 DraftFileVersionMode = "120000"
+	DraftFileSideBase       DraftFileSide = "base"
+	DraftFileSideRepository DraftFileSide = "repository"
+	DraftFileSideIncoming   DraftFileSide = "incoming"
+	DraftFileSideAccepted   DraftFileSide = "accepted"
+	DraftFileSideDefault    DraftFileSide = "default"
+	DraftFileSideDraft      DraftFileSide = "draft"
 )
 
-// DraftConflictPendingDecision is one of "repository", "incoming", "content". Decision saved for this exact Draft and conflict. Generate the Target to apply it.
-type DraftConflictPendingDecision string
+// GitFileMode is one of "100644", "100755", "120000". Git file mode. 100755 is executable; 120000 is a symbolic link whose content is its target.
+type GitFileMode string
 
 const (
-	DraftConflictPendingDecisionRepository DraftConflictPendingDecision = "repository"
-	DraftConflictPendingDecisionIncoming   DraftConflictPendingDecision = "incoming"
-	DraftConflictPendingDecisionContent    DraftConflictPendingDecision = "content"
+	GitFileMode100644 GitFileMode = "100644"
+	GitFileMode100755 GitFileMode = "100755"
+	GitFileMode120000 GitFileMode = "120000"
 )
+
+// Encoding is one of "utf8", "base64".
+type Encoding string
+
+const (
+	EncodingUTF8   Encoding = "utf8"
+	EncodingBase64 Encoding = "base64"
+)
+
+// DraftFileContentResponse is an API model.
+type DraftFileContentResponse struct {
+	Object   string        `json:"object"`
+	TargetID TargetID      `json:"target_id"`
+	Path     string        `json:"path"`
+	Side     DraftFileSide `json:"side"`
+	// Encoding utf8 means content is text; base64 means content is base64-encoded binary bytes.
+	Encoding Encoding `json:"encoding"`
+	// Content At most 24 KiB of the file starting at offset. Text chunks never split a character; concatenate chunks in order.
+	Content string      `json:"content"`
+	Mode    GitFileMode `json:"mode"`
+	// SizeBytes Size of the whole file in bytes.
+	SizeBytes int64 `json:"size_bytes"`
+	// Offset Byte offset of this chunk in the file.
+	Offset int64 `json:"offset"`
+	// NextCursor Pass as cursor, with the same path and side, to read the next chunk; null at the end of the file.
+	NextCursor *string   `json:"next_cursor"`
+	RequestID  RequestID `json:"request_id"`
+}
 
 // ResolveDraftConflicts is an API model.
 type ResolveDraftConflicts struct {
+	// ExpectedHeadRevision The Draft's head_revision. A newer Draft commit returns 409 stale_draft without saving.
 	ExpectedHeadRevision string `json:"expected_head_revision"`
 	// Resolutions Unique current conflict paths. Final file content must total at most 2 MiB. Decisions save together or not at all.
 	Resolutions []DraftConflictDecision `json:"resolutions"`
-	// DryRun Preview exact selected bytes and deletions without saving decisions.
+	// DryRun Validate the decisions and return the planned files without saving.
 	DryRun *bool `json:"dry_run,omitempty"`
-	// PreviewAfter Only with dry_run. Continue after the preceding preview next_path with the same selection and expected_head_revision.
-	PreviewAfter *string `json:"preview_after,omitempty"`
-	// ContentOffset Only with dry_run. Select one path and follow its next_offset to read subsequent file bytes.
-	ContentOffset *int64 `json:"content_offset,omitempty"`
 }
 
-// DraftConflictDecision is one of DraftConflictDecisionVariant1, DraftConflictDecisionVariant2, DraftConflictDecisionVariant3.
+// DraftConflictDecision is one of DraftConflictDecisionVariant1, DraftConflictDecisionVariant2, DraftConflictDecisionVariant3, DraftConflictDecisionVariant4.
 // Go has no sum types, so it holds the JSON as received and decodes on
 // request: try the As* accessors, or switch on Discriminator() when the
 // spec names one.
@@ -4003,14 +4053,31 @@ func (u *DraftConflictDecision) FromDraftConflictDecisionVariant3(v DraftConflic
 	return nil
 }
 
+// AsDraftConflictDecisionVariant4 decodes the value as DraftConflictDecisionVariant4.
+func (u DraftConflictDecision) AsDraftConflictDecisionVariant4() (DraftConflictDecisionVariant4, error) {
+	var v DraftConflictDecisionVariant4
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromDraftConflictDecisionVariant4 sets the value to a DraftConflictDecisionVariant4.
+func (u *DraftConflictDecision) FromDraftConflictDecisionVariant4(v DraftConflictDecisionVariant4) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
 // DraftConflictDecisionVariant1 is an API model.
 type DraftConflictDecisionVariant1 struct {
 	Path string `json:"path"`
-	// Keep Select the exact repository or incoming version from the inspection. Selecting an absent version deletes the path.
+	// Keep Keep that version of the file exactly. Keeping an absent version deletes the path.
 	Keep DraftConflictDecisionVariant1Keep `json:"keep"`
 }
 
-// DraftConflictDecisionVariant1Keep is one of "repository", "incoming". Select the exact repository or incoming version from the inspection. Selecting an absent version deletes the path.
+// DraftConflictDecisionVariant1Keep is one of "repository", "incoming". Keep that version of the file exactly. Keeping an absent version deletes the path.
 type DraftConflictDecisionVariant1Keep string
 
 const (
@@ -4022,156 +4089,127 @@ const (
 type DraftConflictDecisionVariant2 struct {
 	Path string `json:"path"`
 	Keep string `json:"keep"`
-	// ContentBase64 Final file bytes as canonical base64. Empty string creates an empty file.
-	ContentBase64 string               `json:"content_base64"`
-	Mode          DraftFileVersionMode `json:"mode"`
+	// Content Final file text, stored as UTF-8. An empty string creates an empty file.
+	Content string      `json:"content"`
+	Mode    GitFileMode `json:"mode"`
 }
 
 // DraftConflictDecisionVariant3 is an API model.
 type DraftConflictDecisionVariant3 struct {
 	Path string `json:"path"`
 	Keep string `json:"keep"`
-	// ContentBase64 Explicitly delete this file.
-	ContentBase64 any `json:"content_base64"`
-	Mode          any `json:"mode,omitempty"`
+	// ContentBase64 Final file bytes as canonical base64, for binary files.
+	ContentBase64 string      `json:"content_base64"`
+	Mode          GitFileMode `json:"mode"`
 }
 
-// DraftCodeUpdateResponse is an API model.
-type DraftCodeUpdateResponse struct {
-	RequestID    RequestID `json:"request_id"`
-	Object       string    `json:"object"`
-	TargetID     TargetID  `json:"target_id"`
-	HeadRevision string    `json:"head_revision"`
-	// Status A preview saves nothing. After a saved update, generate the Target to apply conflict decisions and refresh package checks.
-	Status   DraftCodeUpdateResponseStatus      `json:"status"`
-	Files    []DraftCodeUpdateResponseFilesItem `json:"files"`
-	HasMore  bool                               `json:"has_more"`
-	NextPath *string                            `json:"next_path"`
-	// TotalFiles All selected paths affected by the decision, including paths beyond the first response page.
-	TotalFiles int64 `json:"total_files"`
+// DraftConflictDecisionVariant4 is an API model.
+type DraftConflictDecisionVariant4 struct {
+	Path string `json:"path"`
+	Keep string `json:"keep"`
+	// Content Delete this file.
+	Content any `json:"content"`
 }
 
-// DraftCodeUpdateResponseStatus is one of "preview", "pending_generation". A preview saves nothing. After a saved update, generate the Target to apply conflict decisions and refresh package checks.
-type DraftCodeUpdateResponseStatus string
+// DraftConflictResolutionResponse is an API model.
+type DraftConflictResolutionResponse struct {
+	Object   string   `json:"object"`
+	TargetID TargetID `json:"target_id"`
+	// HeadRevision Draft commit the decisions belong to.
+	HeadRevision string `json:"head_revision"`
+	// Status preview: nothing was saved. saved: the decisions are stored and apply when the Target is generated.
+	Status DraftConflictResolutionResponseStatus `json:"status"`
+	Files  []DraftPlannedFile                    `json:"files"`
+	// RemainingConflicts Conflicts without a decision once these are saved. At 0 the Draft status becomes needs_generation.
+	RemainingConflicts int64     `json:"remaining_conflicts"`
+	RequestID          RequestID `json:"request_id"`
+}
+
+// DraftConflictResolutionResponseStatus is one of "preview", "saved". preview: nothing was saved. saved: the decisions are stored and apply when the Target is generated.
+type DraftConflictResolutionResponseStatus string
 
 const (
-	DraftCodeUpdateResponseStatusPreview           DraftCodeUpdateResponseStatus = "preview"
-	DraftCodeUpdateResponseStatusPendingGeneration DraftCodeUpdateResponseStatus = "pending_generation"
+	DraftConflictResolutionResponseStatusPreview DraftConflictResolutionResponseStatus = "preview"
+	DraftConflictResolutionResponseStatusSaved   DraftConflictResolutionResponseStatus = "saved"
 )
 
-// DraftCodeUpdateResponseFilesItem is an API model.
-type DraftCodeUpdateResponseFilesItem struct {
-	Path   string                                 `json:"path"`
-	Action DraftCodeUpdateResponseFilesItemAction `json:"action"`
-	// ContentBase64 Up to 16 KiB of exact file bytes. null indicates deletion. Follow next_offset in a dry-run preview to read the rest.
-	ContentBase64 *string               `json:"content_base64"`
-	Mode          *DraftFileVersionMode `json:"mode"`
-	// SizeBytes Full file size in bytes; null when absent.
-	SizeBytes     *int64 `json:"size_bytes"`
-	ContentOffset int64  `json:"content_offset"`
-	// NextOffset Continue at this decoded byte offset until null.
-	NextOffset *int64 `json:"next_offset"`
+// DraftPlannedFile is an API model.
+type DraftPlannedFile struct {
+	Path string `json:"path"`
+	// Action keep: the Draft's version stays. write: the file gets new content. delete: the path is removed.
+	Action DraftPlannedFileAction `json:"action"`
+	Mode   *GitFileMode           `json:"mode"`
+	// SizeBytes Size of the resulting file; null when it is deleted.
+	SizeBytes *int64 `json:"size_bytes"`
 }
 
-// DraftCodeUpdateResponseFilesItemAction is one of "keep", "write", "delete".
-type DraftCodeUpdateResponseFilesItemAction string
+// DraftPlannedFileAction is one of "keep", "write", "delete". keep: the Draft's version stays. write: the file gets new content. delete: the path is removed.
+type DraftPlannedFileAction string
 
 const (
-	DraftCodeUpdateResponseFilesItemActionKeep   DraftCodeUpdateResponseFilesItemAction = "keep"
-	DraftCodeUpdateResponseFilesItemActionWrite  DraftCodeUpdateResponseFilesItemAction = "write"
-	DraftCodeUpdateResponseFilesItemActionDelete DraftCodeUpdateResponseFilesItemAction = "delete"
+	DraftPlannedFileActionKeep   DraftPlannedFileAction = "keep"
+	DraftPlannedFileActionWrite  DraftPlannedFileAction = "write"
+	DraftPlannedFileActionDelete DraftPlannedFileAction = "delete"
 )
 
 // DiscardDraftCustomizations is an API model.
 type DiscardDraftCustomizations struct {
+	// ExpectedHeadRevision The Draft's head_revision. A newer Draft commit returns 409 stale_draft without committing.
 	ExpectedHeadRevision string `json:"expected_head_revision"`
-	// Paths Explicit non-conflicting customization paths to replace with generated files. A listed customer-only file is deleted.
+	// Paths Customized paths that are not conflicts, to replace with the generated files. A listed file that exists only on the Draft is deleted.
 	Paths []string `json:"paths"`
-	// DryRun Preview exact writes and deletions before discarding customizations.
+	// DryRun Return the planned writes and deletions without committing.
 	DryRun *bool `json:"dry_run,omitempty"`
-	// PreviewAfter Only with dry_run. Continue after the preceding preview next_path with the same selection and expected_head_revision.
-	PreviewAfter *string `json:"preview_after,omitempty"`
-	// ContentOffset Only with dry_run. Select one path and follow its next_offset to read subsequent file bytes.
-	ContentOffset *int64 `json:"content_offset,omitempty"`
 }
+
+// DraftCustomizationDiscardResponse is an API model.
+type DraftCustomizationDiscardResponse struct {
+	Object   string   `json:"object"`
+	TargetID TargetID `json:"target_id"`
+	// HeadRevision preview: the inspected Draft commit. committed: the new Draft commit.
+	HeadRevision string `json:"head_revision"`
+	// Status preview: nothing was written. committed: one commit was added to the Draft branch; the Draft status is branch_changed until Typeship integrates it.
+	Status    DraftCustomizationDiscardResponseStatus `json:"status"`
+	Files     []DraftPlannedFile                      `json:"files"`
+	RequestID RequestID                               `json:"request_id"`
+}
+
+// DraftCustomizationDiscardResponseStatus is one of "preview", "committed". preview: nothing was written. committed: one commit was added to the Draft branch; the Draft status is branch_changed until Typeship integrates it.
+type DraftCustomizationDiscardResponseStatus string
+
+const (
+	DraftCustomizationDiscardResponseStatusPreview   DraftCustomizationDiscardResponseStatus = "preview"
+	DraftCustomizationDiscardResponseStatusCommitted DraftCustomizationDiscardResponseStatus = "committed"
+)
 
 // RecoverDraftHistoryParams is an API model.
 type RecoverDraftHistoryParams struct {
-	// DryRun Preview without saving when true. Set false with both inspected revisions to approve recovery.
-	DryRun                  bool    `json:"dry_run"`
-	ExpectedDefaultRevision *string `json:"expected_default_revision,omitempty"`
-	// ExpectedDraftRevision Exact inspected Draft commit; null when the branch is absent.
-	ExpectedDraftRevision *Nullable[string] `json:"expected_draft_revision,omitempty"`
-	// AfterPath Continue after next_path from the preceding preview. Requires both inspected revisions and dry_run true.
-	AfterPath *string `json:"after_path,omitempty"`
-	// Path Inspect one differing file. Requires both inspected revisions and dry_run true.
-	Path *string `json:"path,omitempty"`
-	// ContentOffset Decoded byte offset for the next content chunk. Requires both inspected revisions and dry_run true.
-	ContentOffset *int64 `json:"content_offset,omitempty"`
-}
-
-// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
-func (v *RecoverDraftHistoryParams) UnmarshalJSON(data []byte) error {
-	type plain RecoverDraftHistoryParams
-	decoded := plain(*v)
-	if err := json.Unmarshal(data, &decoded); err != nil {
-		return err
-	}
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return err
-	}
-	if string(fields["expected_draft_revision"]) == "null" {
-		decoded.ExpectedDraftRevision = NullableNull[string]()
-	}
-	*v = RecoverDraftHistoryParams(decoded)
-	return nil
+	// ExpectedDefaultRevision The Draft's history_recovery.default_revision.
+	ExpectedDefaultRevision string `json:"expected_default_revision"`
+	// ExpectedHeadRevision The Draft's history_recovery.head_revision; null when the Draft branch is absent.
+	ExpectedHeadRevision *string `json:"expected_head_revision"`
 }
 
 // DraftHistoryRecoveryResponse is an API model.
 type DraftHistoryRecoveryResponse struct {
-	RequestID RequestID `json:"request_id"`
-	Object    string    `json:"object"`
-	TargetID  TargetID  `json:"target_id"`
-	// Status Approval saves a recovery plan. Generate separately to open the recovered Draft and run its checks.
+	Object   string   `json:"object"`
+	TargetID TargetID `json:"target_id"`
+	// Status approved: recovery is saved and the Draft status is needs_generation. not_needed: the default branch still contains the accepted package.
 	Status          DraftHistoryRecoveryResponseStatus `json:"status"`
 	DefaultRevision string                             `json:"default_revision"`
-	DraftRevision   *string                            `json:"draft_revision"`
-	// PreservedBranch Existing Draft branch that remains available when Generate opens the recovered Draft.
-	PreservedBranch *string `json:"preserved_branch"`
-	// Changes New default-branch files that differ from the last accepted combined package. Pages contain at most 50 distinct paths across changes and draft_changes; each file side contains at most 16 KiB of decoded content. Follow next_path or request a path and content_offset, with both inspected revisions.
-	Changes []DraftHistoryRecoveryResponseChangesItem `json:"changes"`
-	// DraftChanges Differences between the rewritten default tree and the current Draft that Generate must reconcile.
-	DraftChanges      []DraftHistoryRecoveryResponseDraftChangesItem `json:"draft_changes"`
-	TotalChanges      int64                                          `json:"total_changes"`
-	TotalDraftChanges int64                                          `json:"total_draft_changes"`
-	HasMore           bool                                           `json:"has_more"`
-	NextPath          *string                                        `json:"next_path"`
+	HeadRevision    *string                            `json:"head_revision"`
+	// PreservedBranch Existing Draft branch that stays available when Generate opens the recovered Draft.
+	PreservedBranch *string   `json:"preserved_branch"`
+	RequestID       RequestID `json:"request_id"`
 }
 
-// DraftHistoryRecoveryResponseStatus is one of "not_needed", "preview", "pending_generation". Approval saves a recovery plan. Generate separately to open the recovered Draft and run its checks.
+// DraftHistoryRecoveryResponseStatus is one of "approved", "not_needed". approved: recovery is saved and the Draft status is needs_generation. not_needed: the default branch still contains the accepted package.
 type DraftHistoryRecoveryResponseStatus string
 
 const (
-	DraftHistoryRecoveryResponseStatusNotNeeded         DraftHistoryRecoveryResponseStatus = "not_needed"
-	DraftHistoryRecoveryResponseStatusPreview           DraftHistoryRecoveryResponseStatus = "preview"
-	DraftHistoryRecoveryResponseStatusPendingGeneration DraftHistoryRecoveryResponseStatus = "pending_generation"
+	DraftHistoryRecoveryResponseStatusApproved  DraftHistoryRecoveryResponseStatus = "approved"
+	DraftHistoryRecoveryResponseStatusNotNeeded DraftHistoryRecoveryResponseStatus = "not_needed"
 )
-
-// DraftHistoryRecoveryResponseChangesItem is an API model.
-type DraftHistoryRecoveryResponseChangesItem struct {
-	Path       string            `json:"path"`
-	Kind       Kind              `json:"kind"`
-	Repository *DraftFileVersion `json:"repository"`
-	Accepted   *DraftFileVersion `json:"accepted"`
-}
-
-// DraftHistoryRecoveryResponseDraftChangesItem is an API model.
-type DraftHistoryRecoveryResponseDraftChangesItem struct {
-	Path       string            `json:"path"`
-	Repository *DraftFileVersion `json:"repository"`
-	Draft      *DraftFileVersion `json:"draft"`
-}
 
 // GenerationResponse is an API model.
 type GenerationResponse struct {

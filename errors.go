@@ -100,6 +100,14 @@ type BadGatewayError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *BadGatewayError) Unwrap() error { return &e.APIError }
 
+// PreconditionFailedError is returned for 412 responses. The Draft's version selection changed since the ETag in If-Match.
+type PreconditionFailedError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *PreconditionFailedError) Unwrap() error { return &e.APIError }
+
 // apiError maps a status onto the documented error type for an operation.
 func apiError(status int, body []byte, requestID string, errs map[string]func(int, []byte, string) error) error {
 	base := APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}
@@ -160,4 +168,8 @@ func newPaymentRequiredError(status int, body []byte, requestID string) error {
 
 func newBadGatewayError(status int, body []byte, requestID string) error {
 	return &BadGatewayError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+}
+
+func newPreconditionFailedError(status int, body []byte, requestID string) error {
+	return &PreconditionFailedError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
