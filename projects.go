@@ -343,7 +343,7 @@ func (s *ProjectsService) ListGenerations(ctx context.Context, projectID string,
 // If the package already matches a destination and no Draft is open, returns `pr_status: no_changes` without creating a commit, branch, or pull request. An existing Draft stays open. Automatic generation uses the same workflow.
 //
 // POST /projects/{project_id}/generations
-func (s *ProjectsService) Generate(ctx context.Context, projectID string, params *ProjectsGenerateParams, opts ...RequestOption) (*GenerationBatch, error) {
+func (s *ProjectsService) Generate(ctx context.Context, projectID string, body GenerateProjectRequest, params *ProjectsGenerateParams, opts ...RequestOption) (*GenerationBatch, error) {
 	headers := map[string]string{}
 	if params != nil {
 		if params.IdempotencyKey != nil {
@@ -354,6 +354,7 @@ func (s *ProjectsService) Generate(ctx context.Context, projectID string, params
 		Method:            "POST",
 		Path:              fmt.Sprintf("/projects/%s/generations", url.PathEscape(projectID)),
 		Headers:           headers,
+		Body:              body,
 		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "413": newPayloadTooLargeError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
 		Security:          []map[string][]string{{"apiKey": {}}},
 		SchemaKey:         "projects.generate",

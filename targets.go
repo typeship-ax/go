@@ -47,6 +47,18 @@ type TargetsRepublishReleaseParams struct {
 	IdempotencyKey *string `json:"-"`
 }
 
+// TargetsRetrieveDraftConflictsParams are the inputs for TargetsService.RetrieveDraftConflicts.
+type TargetsRetrieveDraftConflictsParams struct {
+	// Path Inspect this conflict path only.
+	Path *string `json:"-"`
+	// AfterPath Continue after next_path. Requires expected_head_revision.
+	AfterPath *string `json:"-"`
+	// ContentOffset Decoded byte offset for each side. Select one path and follow each side until next_offset is null.
+	ContentOffset *int64 `json:"-"`
+	// ExpectedHeadRevision Exact Draft head from the preceding response. Required when continuing a page or byte offset.
+	ExpectedHeadRevision *string `json:"-"`
+}
+
 // List a project's Targets.
 //
 // GET /projects/{project_id}/targets
@@ -268,50 +280,6 @@ func (s *TargetsService) UpdateDraft(ctx context.Context, targetID string, body 
 	return &out, nil
 }
 
-// RetrieveCustomizations — inspect preserved custom code for a Target Draft.
-//
-// Returns preserved changes, conflicts, reused resolutions, and check results for the Draft. Includes the input and package identifiers needed to compare attempts. Does not include file contents.
-//
-// GET /targets/{target_id}/customizations
-func (s *TargetsService) RetrieveCustomizations(ctx context.Context, targetID string, opts ...RequestOption) (*TargetCustomizationsResponse, error) {
-	req := request{
-		Method:     "GET",
-		Path:       fmt.Sprintf("/targets/%s/customizations", url.PathEscape(targetID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "targets.retrieveCustomizations",
-		Idempotent: true,
-	}
-	var out TargetCustomizationsResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// ResetCustomizations — resolve or reset custom code on the rolling Draft.
-//
-// Keeps the current or generated side of selected conflicts, or resets all customizations. Reruns integration and checks on the same Draft. Supply the expected head revision to prevent a stale choice from changing a newer Draft.
-//
-// A `502` response means regeneration failed after the reset commit.
-//
-// POST /targets/{target_id}/customizations/reset
-func (s *TargetsService) ResetCustomizations(ctx context.Context, targetID string, body ResetTargetCustomizations, opts ...RequestOption) (*TargetCustomizationsResponse, error) {
-	req := request{
-		Method:    "POST",
-		Path:      fmt.Sprintf("/targets/%s/customizations/reset", url.PathEscape(targetID)),
-		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
-		Security:  []map[string][]string{{"apiKey": {}}},
-		SchemaKey: "targets.resetCustomizations",
-	}
-	var out TargetCustomizationsResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
 // AdoptRelease — adopt a verified existing package as Current.
 //
 // Checks the repository tag, package metadata, and registry artifact, then records the package as an Imported Current release. Opens the first Typeship Draft at the next major version; review it to establish the baseline for preserving existing code.
@@ -384,6 +352,127 @@ func (s *TargetsService) RepublishRelease(ctx context.Context, targetReleaseID s
 		IdempotencyHeader: "Idempotency-Key",
 	}
 	var out TargetReleaseResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// RetrieveDraftCustomizations — inspect customizations on a Draft.
+//
+// Returns the changed file paths from the latest Draft inspection. Read conflicts for all three file versions, and read the Draft for package-check readiness.
+//
+// GET /targets/{target_id}/draft/customizations
+func (s *TargetsService) RetrieveDraftCustomizations(ctx context.Context, targetID string, opts ...RequestOption) (*DraftCustomizationsResponse, error) {
+	req := request{
+		Method:     "GET",
+		Path:       fmt.Sprintf("/targets/%s/draft/customizations", url.PathEscape(targetID)),
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:   []map[string][]string{{"apiKey": {}}},
+		SchemaKey:  "targets.retrieveDraftCustomizations",
+		Idempotent: true,
+	}
+	var out DraftCustomizationsResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// RetrieveDraftConflicts — inspect conflicts on a Draft.
+//
+// Returns every conflict with its base, repository, and incoming file bytes and modes in one response. An absent file is null. incoming_source distinguishes generated changes, default-branch changes, and recovered saved Draft code. Saved decisions require a separate Generate before conflicts clear.
+//
+// GET /targets/{target_id}/draft/conflicts
+func (s *TargetsService) RetrieveDraftConflicts(ctx context.Context, targetID string, params *TargetsRetrieveDraftConflictsParams, opts ...RequestOption) (*DraftConflictsResponse, error) {
+	query := map[string]any{}
+	if params != nil {
+		if params.Path != nil {
+			query["path"] = *params.Path
+		}
+		if params.AfterPath != nil {
+			query["after_path"] = *params.AfterPath
+		}
+		if params.ContentOffset != nil {
+			query["content_offset"] = *params.ContentOffset
+		}
+		if params.ExpectedHeadRevision != nil {
+			query["expected_head_revision"] = *params.ExpectedHeadRevision
+		}
+	}
+	req := request{
+		Method:     "GET",
+		Path:       fmt.Sprintf("/targets/%s/draft/conflicts", url.PathEscape(targetID)),
+		Query:      query,
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:   []map[string][]string{{"apiKey": {}}},
+		SchemaKey:  "targets.retrieveDraftConflicts",
+		Idempotent: true,
+	}
+	var out DraftConflictsResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ResolveDraftConflicts — resolve selected Draft conflicts.
+//
+// Save deliberate decisions for the exact inspected Draft. Keep the repository or incoming side, or submit final file content, including binary bytes. Decisions save atomically. Use dry_run to preview them, then generate the Target separately to apply saved decisions and run its checks.
+//
+// POST /targets/{target_id}/draft/conflicts/resolve
+func (s *TargetsService) ResolveDraftConflicts(ctx context.Context, targetID string, body ResolveDraftConflicts, opts ...RequestOption) (*DraftCodeUpdateResponse, error) {
+	req := request{
+		Method:    "POST",
+		Path:      fmt.Sprintf("/targets/%s/draft/conflicts/resolve", url.PathEscape(targetID)),
+		Body:      body,
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:  []map[string][]string{{"apiKey": {}}},
+		SchemaKey: "targets.resolveDraftConflicts",
+	}
+	var out DraftCodeUpdateResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// DiscardDraftCustomizations — discard selected Draft customizations.
+//
+// Replace explicitly listed non-conflicting paths with generated files in one Draft commit. Listing a customer-only file deletes it. Use dry_run to inspect writes and deletions first. Resolve conflicts through the separate conflicts action. Generate afterward to refresh the Draft and its checks.
+//
+// POST /targets/{target_id}/draft/customizations/discard
+func (s *TargetsService) DiscardDraftCustomizations(ctx context.Context, targetID string, body DiscardDraftCustomizations, opts ...RequestOption) (*DraftCodeUpdateResponse, error) {
+	req := request{
+		Method:    "POST",
+		Path:      fmt.Sprintf("/targets/%s/draft/customizations/discard", url.PathEscape(targetID)),
+		Body:      body,
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:  []map[string][]string{{"apiKey": {}}},
+		SchemaKey: "targets.discardDraftCustomizations",
+	}
+	var out DraftCodeUpdateResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// RecoverDraftHistory — review and recover rewritten repository history.
+//
+// Preview a rewritten default branch and the Draft code to preserve. Approve the exact inspected revisions with dry_run false, then Generate separately. Recovery preserves the previous Draft branch, opens a new Draft from the current default branch, and requires explicit decisions for overlapping code. A rewritten Draft alone recovers automatically during Generate.
+//
+// POST /targets/{target_id}/draft/history/recover
+func (s *TargetsService) RecoverDraftHistory(ctx context.Context, targetID string, body RecoverDraftHistoryParams, opts ...RequestOption) (*DraftHistoryRecoveryResponse, error) {
+	req := request{
+		Method:    "POST",
+		Path:      fmt.Sprintf("/targets/%s/draft/history/recover", url.PathEscape(targetID)),
+		Body:      body,
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:  []map[string][]string{{"apiKey": {}}},
+		SchemaKey: "targets.recoverDraftHistory",
+	}
+	var out DraftHistoryRecoveryResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}
