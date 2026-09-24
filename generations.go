@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"time"
 )
 
 // GenerationsService accesses the generations endpoints.
@@ -62,4 +63,22 @@ func (s *GenerationsService) RetrieveFile(ctx context.Context, generationID stri
 		return "", err
 	}
 	return out, nil
+}
+
+// Wait polls until generated files are saved or the Generation fails. Cancel ctx to stop waiting.
+func (s *GenerationsService) Wait(ctx context.Context, generationID string, opts ...RequestOption) (*GenerationResponse, error) {
+	for {
+		result, err := s.Retrieve(ctx, generationID, opts...)
+		if err != nil {
+			return nil, err
+		}
+		if result.Status != "queued" && result.Status != "running" {
+			return result, nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(time.Second):
+		}
+	}
 }

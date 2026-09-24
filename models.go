@@ -3352,7 +3352,7 @@ type TargetUpdateRequest struct {
 	State          *State          `json:"state,omitempty"`
 	Edition        *string         `json:"edition,omitempty"`
 	ReleaseChannel *ReleaseChannel `json:"release_channel,omitempty"`
-	// ProposedVersion Send only this field to select an exact SemVer, or null for automatic selection. Use the Draft endpoint for an optional If-Match precondition.
+	// ProposedVersion Send only this field to select an exact SemVer, or null for automatic selection. The Target and Draft endpoints both support an optional If-Match precondition.
 	ProposedVersion *Nullable[string] `json:"proposed_version,omitempty"`
 	Checks          *TargetChecks     `json:"checks,omitempty"`
 	// Config Replaces the complete stored override object. Send null or an empty object to resume Project inheritance. Effective values merge over Project.config; GraphQL settings belong to the Definition.

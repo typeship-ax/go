@@ -92,6 +92,14 @@ type PaymentRequiredError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *PaymentRequiredError) Unwrap() error { return &e.APIError }
 
+// PreconditionFailedError is returned for 412 responses. The resource changed since the ETag supplied in If-Match. No write was applied.
+type PreconditionFailedError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *PreconditionFailedError) Unwrap() error { return &e.APIError }
+
 // BadGatewayError is returned for 502 responses. Dependent work failed while completing the request.
 type BadGatewayError struct {
 	APIError
@@ -99,14 +107,6 @@ type BadGatewayError struct {
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *BadGatewayError) Unwrap() error { return &e.APIError }
-
-// PreconditionFailedError is returned for 412 responses. The Draft's version selection changed since the ETag in If-Match.
-type PreconditionFailedError struct {
-	APIError
-}
-
-// Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *PreconditionFailedError) Unwrap() error { return &e.APIError }
 
 // apiError maps a status onto the documented error type for an operation.
 func apiError(status int, body []byte, requestID string, errs map[string]func(int, []byte, string) error) error {
@@ -166,10 +166,10 @@ func newPaymentRequiredError(status int, body []byte, requestID string) error {
 	return &PaymentRequiredError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
-func newBadGatewayError(status int, body []byte, requestID string) error {
-	return &BadGatewayError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
-}
-
 func newPreconditionFailedError(status int, body []byte, requestID string) error {
 	return &PreconditionFailedError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+}
+
+func newBadGatewayError(status int, body []byte, requestID string) error {
+	return &BadGatewayError{APIError: APIError{Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }

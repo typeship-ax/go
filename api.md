@@ -28,7 +28,7 @@ Safety: **write** · Authentication: **optional**
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
-| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
+| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
 
 Body: `GenerateRequest` (required)
 
@@ -122,7 +122,7 @@ Safety: **write** · Authentication: **required**
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
-| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
+| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
 
 Body: `CreateProjectRequest` (required)
 
@@ -191,22 +191,24 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 
 </details>
 
-### `client.Projects.Delete(ctx, projectID)`
+### `client.Projects.Delete(ctx, projectID, params)`
 
 Delete a project
 
 `DELETE /projects/{project_id}`
 
 A `502` response means the Project was not deleted because its release pull requests could not be retired. Retry deletion to finish retiring the remaining reviews. Repeating a completed deletion returns `404`.
+See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 
 Safety: **destructive** · Authentication: **required**
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `projectID` | path | `string` | yes | — |
+| `params.IfMatch` | header | `*string` | no | ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes. |
 
 Returns: `(*DeletedProject, error)`
-Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*PreconditionFailedError` (412), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
 
 <details>
 <summary>Wire arguments (CLI and MCP)</summary>
@@ -219,27 +221,30 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 
 </details>
 
-### `client.Projects.Update(ctx, projectID, body)`
+### `client.Projects.Update(ctx, projectID, body, params)`
 
 Update a project
 
 `PATCH /projects/{project_id}`
 
 Omitted fields keep their current values. A supplied config replaces the entire stored object; null or an empty object clears it.
-Updates have no revision precondition. Concurrent updates preserve omitted fields, and the last saved update to a supplied field wins.
+Omitting If-Match applies the update to the current resource; with If-Match, a stale ETag returns 412 precondition_failed without saving.
 
+A `409 target_busy` means a Target is publishing. Retrieve the Project, wait for publication to finish, reconcile your update, and retry.
 A `502` response means the Project was saved, but an obsolete release pull request could not be retired. Retrieve the Project and retry the same update to finish retiring reviews if that update is still desired.
+See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 
 Safety: **write** · Authentication: **required**
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `projectID` | path | `string` | yes | — |
+| `params.IfMatch` | header | `*string` | no | ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes. |
 
 Body: `UpdateProjectRequest` (required)
 
 Returns: `(*Project, error)`
-Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredError` (402), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredError` (402), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*PreconditionFailedError` (412), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
 
 <details>
 <summary>Wire arguments (CLI and MCP)</summary>
@@ -294,7 +299,7 @@ Safety: **write** · Authentication: **required**
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `projectID` | path | `string` | yes | — |
-| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
+| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
 
 Returns: `(*DiagnosticReport, error)`
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500)
@@ -325,7 +330,7 @@ Safety: **write** · Authentication: **required**
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `projectID` | path | `string` | yes | — |
-| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
+| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
 
 Body: `DiagnosticRemediationRequest` (required)
 
@@ -418,7 +423,7 @@ Safety: **write** · Authentication: **required**
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `projectID` | path | `string` | yes | — |
-| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
+| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
 
 Body: `GenerateProjectRequest`
 
@@ -473,22 +478,23 @@ Update and resolve a Definition
 
 Resolves the source documents before saving the update and records a new Definition Revision when the source changes.
 Omitted fields remain unchanged; supplied objects and arrays replace the whole field.
-No revision parameter or If-Match header is required. If the Definition or its Project
-configuration changes during validation, returns 409 definition_changed without saving
-the rejected update. Retrieve the current Definition and Project, reconcile your changes,
+If the Definition or its Project configuration changes during validation, returns 409 definition_changed without saving the rejected update. Retrieve the current Definition and Project, reconcile your changes,
 and submit a new request with a new Idempotency-Key if using one.
+
+See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 
 Safety: **write** · Authentication: **required**
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `definitionID` | path | `string` | yes | — |
-| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
+| `params.IfMatch` | header | `*string` | no | ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes. |
+| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
 
 Body: `DefinitionUpdateRequest` (required)
 
 Returns: `(*Definition, error)`
-Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500)
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*PreconditionFailedError` (412), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500)
 
 <details>
 <summary>Wire arguments (CLI and MCP)</summary>
@@ -548,7 +554,7 @@ Safety: **write** · Authentication: **required**
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `projectID` | path | `string` | yes | — |
-| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
+| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
 
 Body: `TargetFieldsParams` (required)
 
@@ -611,22 +617,25 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 
 </details>
 
-### `client.Targets.Delete(ctx, targetID)`
+### `client.Targets.Delete(ctx, targetID, params)`
 
 Delete an unused Target
 
 `DELETE /targets/{target_id}`
 
-Deletes a Target with no Generation history, release history, or active Draft. Disable a Target instead if it has any of these.
+Deletes a Target with no Generation history, release history, or active Draft. A `409 resource_has_dependencies` means one of those resources still depends on it. Retrieve the Target, disable it instead, or resolve the dependency before retrying.
+
+See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 
 Safety: **destructive** · Authentication: **required**
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `targetID` | path | `string` | yes | — |
+| `params.IfMatch` | header | `*string` | no | ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes. |
 
 Returns: `(*DeletedTarget, error)`
-Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*RateLimitedError` (429), `*InternalServerError` (500)
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*PreconditionFailedError` (412), `*RateLimitedError` (429), `*InternalServerError` (500)
 
 <details>
 <summary>Wire arguments (CLI and MCP)</summary>
@@ -639,28 +648,31 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 
 </details>
 
-### `client.Targets.Update(ctx, targetID, body)`
+### `client.Targets.Update(ctx, targetID, body, params)`
 
 Update a Target, its Deliveries, or its next reviewed version
 
 `PATCH /targets/{target_id}`
 
 Omitted fields keep their current values. Supplied config, checks, and deliveries replace their complete stored values.
-Updates have no revision precondition. Concurrent updates preserve omitted fields, and the last saved update to a supplied field wins.
-Send proposed_version by itself; use the Draft endpoint for a version selection with an optional revision precondition.
+Omitting If-Match applies the update to the current resource; with If-Match, a stale ETag returns 412 precondition_failed without saving.
+Send proposed_version by itself; use the Draft endpoint to select a version directly.
 
+A `409 target_busy` means the Target is publishing; wait for it to finish. A `409 delivery_conflict` means another Target owns the requested repository tree; retrieve both Targets, choose a free destination, and retry.
 A `502` response means the update was saved, but retiring an obsolete review or regenerating a version selection failed. Retrieve the Target and follow the error's retryable and suggested_action fields. Repeating an unfinished version selection resumes generation; repeating a completed selection starts no new work.
+See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 
 Safety: **write** · Authentication: **required**
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `targetID` | path | `string` | yes | — |
+| `params.IfMatch` | header | `*string` | no | ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes. |
 
 Body: `TargetUpdateRequest` (required)
 
 Returns: `(*TargetResponse, error)`
-Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredError` (402), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredError` (402), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*PreconditionFailedError` (412), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
 
 <details>
 <summary>Wire arguments (CLI and MCP)</summary>
@@ -741,13 +753,15 @@ Checks your version choice against the required version bump, then regenerates t
 Send the Draft's `ETag` in `If-Match` to reject an intervening change with 412 precondition_failed before saving or regenerating. Omitting `If-Match` applies the selection to the current Draft. Version is required; null restores automatic selection.
 
 A `502` response means the selected version was saved, but regeneration failed. Follow the error's retryable and suggested_action fields. Repeating an unfinished selection resumes generation; repeating a completed selection starts no new work. If using If-Match, retrieve the Draft and confirm the saved selection before retrying with its current ETag.
+A `409 target_busy` means the Target is publishing; wait and retry. A `409 version_occupied` means the version is already released; retrieve the Draft and releases, choose a new version, and retry.
+See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 
 Safety: **write** · Authentication: **required**
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `targetID` | path | `string` | yes | — |
-| `params.IfMatch` | header | `*string` | no | ETag from a preceding response. The update applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to update the current version. |
+| `params.IfMatch` | header | `*string` | no | ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes. |
 
 Body: `TargetDraftUpdateParams` (required)
 
@@ -779,7 +793,7 @@ Safety: **write** · Authentication: **required**
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `targetID` | path | `string` | yes | — |
-| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
+| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
 
 Body: `TargetAdoption` (required)
 
@@ -840,7 +854,7 @@ Safety: **write** · Authentication: **required**
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `targetReleaseID` | path | `string` | yes | — |
-| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
+| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
 
 Returns: `(*TargetReleaseResponse, error)`
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
@@ -1345,7 +1359,35 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 </details>
 
-### `client.APIKeys.Revoke(ctx, apiKeyID)`
+### `client.APIKeys.Retrieve(ctx, apiKeyID)`
+
+Retrieve an API key
+
+`GET /api-keys/{api_key_id}`
+
+Returns the key summary and its ETag for conditional revocation.
+
+Safety: **read** · Authentication: **required**
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `apiKeyID` | path | `string` | yes | — |
+
+Returns: `(*APIKeyResponse, error)`
+Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
+
+<details>
+<summary>Wire arguments (CLI and MCP)</summary>
+
+```json
+{
+  "api_key_id": "apikey_2nY8mR6pQ4vK9cH3"
+}
+```
+
+</details>
+
+### `client.APIKeys.Revoke(ctx, apiKeyID, params)`
 
 Revoke an API key
 
@@ -1354,15 +1396,17 @@ Revoke an API key
 Revokes a key. Repeating the request returns the same result.
 
 With OAuth, members can revoke their own keys; organization admins can revoke any key. Organization API keys can revoke any key in their account.
+See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 
 Safety: **destructive** · Authentication: **required**
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
 | `apiKeyID` | path | `string` | yes | — |
+| `params.IfMatch` | header | `*string` | no | ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes. |
 
 Returns: `(*APIKeyResponse, error)`
-Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*PreconditionFailedError` (412), `*RateLimitedError` (429), `*InternalServerError` (500)
 
 <details>
 <summary>Wire arguments (CLI and MCP)</summary>

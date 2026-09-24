@@ -15,7 +15,9 @@ type DefinitionsService struct {
 
 // DefinitionsUpdateParams are the inputs for DefinitionsService.Update.
 type DefinitionsUpdateParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	// IfMatch ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes.
+	IfMatch *string `json:"-"`
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
 	IdempotencyKey *string `json:"-"`
 }
 
@@ -42,15 +44,18 @@ func (s *DefinitionsService) Retrieve(ctx context.Context, definitionID string, 
 //
 // Resolves the source documents before saving the update and records a new Definition Revision when the source changes.
 // Omitted fields remain unchanged; supplied objects and arrays replace the whole field.
-// No revision parameter or If-Match header is required. If the Definition or its Project
-// configuration changes during validation, returns 409 definition_changed without saving
-// the rejected update. Retrieve the current Definition and Project, reconcile your changes,
+// If the Definition or its Project configuration changes during validation, returns 409 definition_changed without saving the rejected update. Retrieve the current Definition and Project, reconcile your changes,
 // and submit a new request with a new Idempotency-Key if using one.
+//
+// See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 //
 // PATCH /definitions/{definition_id}
 func (s *DefinitionsService) Update(ctx context.Context, definitionID string, body DefinitionUpdateRequest, params *DefinitionsUpdateParams, opts ...RequestOption) (*Definition, error) {
 	headers := map[string]string{}
 	if params != nil {
+		if params.IfMatch != nil {
+			headers["If-Match"] = fmt.Sprint(*params.IfMatch)
+		}
 		if params.IdempotencyKey != nil {
 			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
 		}
@@ -60,7 +65,7 @@ func (s *DefinitionsService) Update(ctx context.Context, definitionID string, bo
 		Path:              fmt.Sprintf("/definitions/%s", url.PathEscape(definitionID)),
 		Headers:           headers,
 		Body:              body,
-		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "412": newPreconditionFailedError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:          []map[string][]string{{"apiKey": {}}},
 		SchemaKey:         "definitions.update",
 		IdempotencyHeader: "Idempotency-Key",

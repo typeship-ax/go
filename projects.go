@@ -23,19 +23,31 @@ type ProjectsListParams struct {
 
 // ProjectsCreateParams are the inputs for ProjectsService.Create.
 type ProjectsCreateParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
 	IdempotencyKey *string `json:"-"`
+}
+
+// ProjectsDeleteParams are the inputs for ProjectsService.Delete.
+type ProjectsDeleteParams struct {
+	// IfMatch ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes.
+	IfMatch *string `json:"-"`
+}
+
+// ProjectsUpdateParams are the inputs for ProjectsService.Update.
+type ProjectsUpdateParams struct {
+	// IfMatch ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes.
+	IfMatch *string `json:"-"`
 }
 
 // ProjectsRefreshDiagnosticsParams are the inputs for ProjectsService.RefreshDiagnostics.
 type ProjectsRefreshDiagnosticsParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
 	IdempotencyKey *string `json:"-"`
 }
 
 // ProjectsRemediateDiagnosticsParams are the inputs for ProjectsService.RemediateDiagnostics.
 type ProjectsRemediateDiagnosticsParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
 	IdempotencyKey *string `json:"-"`
 }
 
@@ -51,7 +63,7 @@ type ProjectsListGenerationsParams struct {
 
 // ProjectsGenerateParams are the inputs for ProjectsService.Generate.
 type ProjectsGenerateParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
 	IdempotencyKey *string `json:"-"`
 }
 
@@ -150,13 +162,21 @@ func (s *ProjectsService) Retrieve(ctx context.Context, projectID string, opts .
 // Delete a project.
 //
 // A `502` response means the Project was not deleted because its release pull requests could not be retired. Retry deletion to finish retiring the remaining reviews. Repeating a completed deletion returns `404`.
+// See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 //
 // DELETE /projects/{project_id}
-func (s *ProjectsService) Delete(ctx context.Context, projectID string, opts ...RequestOption) (*DeletedProject, error) {
+func (s *ProjectsService) Delete(ctx context.Context, projectID string, params *ProjectsDeleteParams, opts ...RequestOption) (*DeletedProject, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IfMatch != nil {
+			headers["If-Match"] = fmt.Sprint(*params.IfMatch)
+		}
+	}
 	req := request{
 		Method:     "DELETE",
 		Path:       fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
+		Headers:    headers,
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "412": newPreconditionFailedError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "projects.delete",
 		Idempotent: true,
@@ -171,17 +191,26 @@ func (s *ProjectsService) Delete(ctx context.Context, projectID string, opts ...
 // Update a project.
 //
 // Omitted fields keep their current values. A supplied config replaces the entire stored object; null or an empty object clears it.
-// Updates have no revision precondition. Concurrent updates preserve omitted fields, and the last saved update to a supplied field wins.
+// Omitting If-Match applies the update to the current resource; with If-Match, a stale ETag returns 412 precondition_failed without saving.
 //
+// A `409 target_busy` means a Target is publishing. Retrieve the Project, wait for publication to finish, reconcile your update, and retry.
 // A `502` response means the Project was saved, but an obsolete release pull request could not be retired. Retrieve the Project and retry the same update to finish retiring reviews if that update is still desired.
+// See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 //
 // PATCH /projects/{project_id}
-func (s *ProjectsService) Update(ctx context.Context, projectID string, body UpdateProjectRequest, opts ...RequestOption) (*Project, error) {
+func (s *ProjectsService) Update(ctx context.Context, projectID string, body UpdateProjectRequest, params *ProjectsUpdateParams, opts ...RequestOption) (*Project, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IfMatch != nil {
+			headers["If-Match"] = fmt.Sprint(*params.IfMatch)
+		}
+	}
 	req := request{
 		Method:    "PATCH",
 		Path:      fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
+		Headers:   headers,
 		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "412": newPreconditionFailedError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
 		Security:  []map[string][]string{{"apiKey": {}}},
 		SchemaKey: "projects.update",
 	}
