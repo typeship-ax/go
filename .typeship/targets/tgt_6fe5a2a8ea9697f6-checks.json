@@ -20,6 +20,10 @@
     {
       "name": "public_entrypoint",
       "command": "go test ./..."
+    },
+    {
+      "name": "generated_surface",
+      "command": "node \".typeship/targets/tgt_6fe5a2a8ea9697f6-surface.mjs\""
     }
   ]
 }
