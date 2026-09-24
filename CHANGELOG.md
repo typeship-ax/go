@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.22.0 (2026-09-24)
+
+### Added
+- `generate.downloadPackage()`: GET `/generate/download`
+
+### Changed
+- `generate.run()`
+  - `return-type-changed`: response.download added: GenerationDownload \(optional\)
+  - `documentation-changed`: summary or description changed
+
 ## 0.21.1 (2026-09-24)
 
 ### Changed

@@ -2,7 +2,7 @@
 
 Go SDK for typeship. [API reference](./api.md)
 
-Generated from the OpenAPI spec by [typeship](https://typeship.dev). Change the spec or generation settings, then regenerate; generated files are not hand-edited.
+Generated from the OpenAPI spec by [typeship](https://typeship.dev).
 
 - **Zero dependencies** — `go.mod` has no requires; the client uses only the standard library
 - **Typed errors** — every documented error response is a type you can match with `errors.As`
@@ -26,7 +26,7 @@ To run the quickstart against this local module, save it as `cmd/example/main.go
 Generation does not publish a Go module. Set `go.mod` to a repository path you control, publish the module and tag its release, then use that module path and version with `go get`:
 
 ```sh
-go get github.com/typeship-ax/go@v0.21.1
+go get github.com/typeship-ax/go@v0.22.0
 ```
 
 ## Quickstart
