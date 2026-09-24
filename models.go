@@ -4211,6 +4211,52 @@ const (
 	DraftHistoryRecoveryResponseStatusNotNeeded DraftHistoryRecoveryResponseStatus = "not_needed"
 )
 
+// DeliveryResponse is an API model. Repository fields are present for a repository Delivery; url is present for a hosted_mcp Delivery.
+type DeliveryResponse struct {
+	ID             DeliveryID                   `json:"id"`
+	Object         string                       `json:"object"`
+	TargetID       TargetID                     `json:"target_id"`
+	Kind           DeliveryResponseKind         `json:"kind"`
+	State          State                        `json:"state"`
+	Repository     *RepositoryReferenceResponse `json:"repository,omitempty"`
+	Directory      *string                      `json:"directory,omitempty"`
+	PackageName    *string                      `json:"package_name,omitempty"`
+	ModulePath     *string                      `json:"module_path,omitempty"`
+	PublishOnMerge *bool                        `json:"publish_on_merge,omitempty"`
+	URL            *string                      `json:"url,omitempty"`
+	CreatedAt      string                       `json:"created_at"`
+	UpdatedAt      string                       `json:"updated_at"`
+	RequestID      RequestID                    `json:"request_id"`
+}
+
+// DeliveryResponseKind is one of "repository", "hosted_mcp".
+type DeliveryResponseKind string
+
+const (
+	DeliveryResponseKindRepository DeliveryResponseKind = "repository"
+	DeliveryResponseKindHostedMCP  DeliveryResponseKind = "hosted_mcp"
+)
+
+// PublicationResponse is an API model.
+type PublicationResponse struct {
+	ID              PublicationID          `json:"id"`
+	Object          string                 `json:"object"`
+	TargetReleaseID TargetReleaseID        `json:"target_release_id"`
+	Destination     PublicationDestination `json:"destination"`
+	State           PublicationState       `json:"state"`
+	Attempt         int64                  `json:"attempt"`
+	RunURL          *string                `json:"run_url"`
+	RegistryURL     *string                `json:"registry_url"`
+	ArtifactDigest  *string                `json:"artifact_digest"`
+	// Errors Recorded failures. Empty when this resource has no recorded failure.
+	Errors     []DomainError `json:"errors"`
+	StartedAt  *string       `json:"started_at"`
+	FinishedAt *string       `json:"finished_at"`
+	UpdatedAt  string        `json:"updated_at"`
+	CreatedAt  string        `json:"created_at"`
+	RequestID  RequestID     `json:"request_id"`
+}
+
 // GenerationResponse is an API model.
 type GenerationResponse struct {
 	ID     GenerationID `json:"id"`
@@ -4278,8 +4324,8 @@ type DefinitionRevision struct {
 
 // DefinitionDocument is an API model.
 type DefinitionDocument struct {
-	ID   DefinitionDocumentID   `json:"id"`
-	Role DefinitionDocumentRole `json:"role"`
+	ID   DefinitionDocumentID `json:"id"`
+	Role Role                 `json:"role"`
 	// Coordinate Repository-relative path or same-origin URL captured in this revision.
 	Coordinate string `json:"coordinate"`
 	Sha256     string `json:"sha256"`
@@ -4289,12 +4335,12 @@ type DefinitionDocument struct {
 // DefinitionDocumentID is a generated API type.
 type DefinitionDocumentID string
 
-// DefinitionDocumentRole is one of "entrypoint", "reference".
-type DefinitionDocumentRole string
+// Role is one of "entrypoint", "reference".
+type Role string
 
 const (
-	DefinitionDocumentRoleEntrypoint DefinitionDocumentRole = "entrypoint"
-	DefinitionDocumentRoleReference  DefinitionDocumentRole = "reference"
+	RoleEntrypoint Role = "entrypoint"
+	RoleReference  Role = "reference"
 )
 
 // DefinitionRevisionSource is one of URLDefinitionRevisionSource, RepositoryDefinitionRevisionSource.
@@ -4405,6 +4451,20 @@ type DefinitionRevisionResponse struct {
 	Source    *DefinitionRevisionSource `json:"source"`
 	CreatedAt string                    `json:"created_at"`
 	RequestID RequestID                 `json:"request_id"`
+}
+
+// DefinitionDocumentResponse is an API model.
+type DefinitionDocumentResponse struct {
+	ID                   DefinitionDocumentID `json:"id"`
+	Object               string               `json:"object"`
+	DefinitionRevisionID DefinitionRevisionID `json:"definition_revision_id"`
+	Role                 Role                 `json:"role"`
+	// Coordinate Repository-relative path or same-origin URL captured in this revision.
+	Coordinate string    `json:"coordinate"`
+	Sha256     string    `json:"sha256"`
+	SizeBytes  int64     `json:"size_bytes"`
+	CreatedAt  string    `json:"created_at"`
+	RequestID  RequestID `json:"request_id"`
 }
 
 // Account is an API model. The organization an API key belongs to. Members share its projects, keys, and plan; sign-in identity is not part of the API.

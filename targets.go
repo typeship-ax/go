@@ -519,3 +519,45 @@ func (s *TargetsService) RecoverDraftHistory(ctx context.Context, targetID strin
 	}
 	return &out, nil
 }
+
+// RetrieveDelivery — retrieve a Delivery.
+//
+// Returns the configured repository or hosted MCP Delivery for a Target. A Delivery in another organization returns 404 not_found.
+//
+// GET /deliveries/{delivery_id}
+func (s *TargetsService) RetrieveDelivery(ctx context.Context, deliveryID string, opts ...RequestOption) (*DeliveryResponse, error) {
+	req := request{
+		Method:     "GET",
+		Path:       fmt.Sprintf("/deliveries/%s", url.PathEscape(deliveryID)),
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:   []map[string][]string{{"apiKey": {}}},
+		SchemaKey:  "targets.retrieveDelivery",
+		Idempotent: true,
+	}
+	var out DeliveryResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// RetrievePublication — retrieve a Publication.
+//
+// Returns the current registry publication state for a Target Release. A Publication in another organization returns 404 not_found.
+//
+// GET /publications/{publication_id}
+func (s *TargetsService) RetrievePublication(ctx context.Context, publicationID string, opts ...RequestOption) (*PublicationResponse, error) {
+	req := request{
+		Method:     "GET",
+		Path:       fmt.Sprintf("/publications/%s", url.PathEscape(publicationID)),
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:   []map[string][]string{{"apiKey": {}}},
+		SchemaKey:  "targets.retrievePublication",
+		Idempotent: true,
+	}
+	var out PublicationResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}

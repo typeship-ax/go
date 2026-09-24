@@ -123,3 +123,24 @@ func (s *DefinitionRevisionsService) RetrieveDocumentContent(ctx context.Context
 	}
 	return out, nil
 }
+
+// RetrieveDocument — retrieve a Definition Document.
+//
+// Returns metadata for one source document captured in a Definition Revision. Retrieve its content through the revision's document content endpoint. A document in another organization returns 404 not_found.
+//
+// GET /definition-documents/{definition_document_id}
+func (s *DefinitionRevisionsService) RetrieveDocument(ctx context.Context, definitionDocumentID string, opts ...RequestOption) (*DefinitionDocumentResponse, error) {
+	req := request{
+		Method:     "GET",
+		Path:       fmt.Sprintf("/definition-documents/%s", url.PathEscape(definitionDocumentID)),
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:   []map[string][]string{{"apiKey": {}}},
+		SchemaKey:  "definitionRevisions.retrieveDocument",
+		Idempotent: true,
+	}
+	var out DefinitionDocumentResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
