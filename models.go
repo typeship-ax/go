@@ -604,7 +604,7 @@ type GenerationMeta struct {
 	// VersionCorrect Whether the generated package version satisfies the cumulative change. Null when there is no prior version or analysis is unavailable.
 	VersionCorrect *bool `json:"version_correct,omitempty"`
 	// ReleaseReadiness The destination pull request's combined readiness decision for the exact bot-generated head. Compatibility and version correctness remain separate fields above.
-	ReleaseReadiness *GenerationMetaReleaseReadiness `json:"release_readiness,omitempty"`
+	ReleaseReadiness *ReleaseReadiness `json:"release_readiness,omitempty"`
 	// ReleaseReadinessNote The release-readiness decision in one line, as the commit status describes it.
 	ReleaseReadinessNote *string `json:"release_readiness_note,omitempty"`
 	// PreviousVersion The package version the destination had before this regeneration.
@@ -667,14 +667,14 @@ const (
 	APICompatibilityUnknown    APICompatibility = "unknown"
 )
 
-// GenerationMetaReleaseReadiness is one of "success", "failure", "pending", "error". The destination pull request's combined readiness decision for the exact bot-generated head. Compatibility and version correctness remain separate fields above.
-type GenerationMetaReleaseReadiness string
+// ReleaseReadiness is one of "success", "failure", "pending", "error".
+type ReleaseReadiness string
 
 const (
-	GenerationMetaReleaseReadinessSuccess GenerationMetaReleaseReadiness = "success"
-	GenerationMetaReleaseReadinessFailure GenerationMetaReleaseReadiness = "failure"
-	GenerationMetaReleaseReadinessPending GenerationMetaReleaseReadiness = "pending"
-	GenerationMetaReleaseReadinessError   GenerationMetaReleaseReadiness = "error"
+	ReleaseReadinessSuccess ReleaseReadiness = "success"
+	ReleaseReadinessFailure ReleaseReadiness = "failure"
+	ReleaseReadinessPending ReleaseReadiness = "pending"
+	ReleaseReadinessError   ReleaseReadiness = "error"
 )
 
 // GenerationMetaIntegrationState is one of "conflicted", "checking", "checks_failed", "ready", "accepted", "outdated".
@@ -3611,7 +3611,7 @@ type TargetDraftResponse struct {
 	CurrentVersion string                     `json:"current_version"`
 	Version        string                     `json:"version"`
 	Selection      TargetDraftSelection       `json:"selection"`
-	Readiness      map[string]any             `json:"readiness"`
+	Readiness      TargetDraftReadiness       `json:"readiness"`
 	Changes        TargetDraftResponseChanges `json:"changes"`
 	HeadRevision   string                     `json:"head_revision"`
 	PullRequestURL string                     `json:"pull_request_url"`
@@ -3692,6 +3692,35 @@ type TargetDraftSelectionVariant2 struct {
 	Source  ProposedVersionSource `json:"source"`
 	Actor   string                `json:"actor"`
 }
+
+// TargetDraftReadiness is an API model. Readiness decision for the Draft's head_revision. Null readiness on the Draft means no candidate exists.
+type TargetDraftReadiness struct {
+	// State success means required checks passed; failure means the Draft needs correction or review; error means assessment could not finish; pending means checks have not finished.
+	State ReleaseReadiness `json:"state"`
+	// Description Human-readable explanation of the current decision. Do not parse it for control flow.
+	Description string `json:"description"`
+	// APICompatibility API surface comparison against Current. unknown means analysis is unavailable.
+	APICompatibility APICompatibility `json:"api_compatibility"`
+	// PackageCompatibility Package and supported SDK source comparison against Current. unknown means analysis is incomplete or unavailable.
+	PackageCompatibility APICompatibility `json:"package_compatibility"`
+	// VersionCorrect Whether the version satisfies the assessed change. Null when no verdict is available.
+	VersionCorrect bool `json:"version_correct"`
+	// RequiredBump Minimum assessed version bump. Null when no bump has been determined.
+	RequiredBump TargetDraftReadinessRequiredBump `json:"required_bump"`
+	// PreviousVersion Version used for the comparison. Null when no comparison version is available.
+	PreviousVersion string `json:"previous_version"`
+	// TitleError Draft title error that must be corrected before release. Null when none is recorded.
+	TitleError string `json:"title_error"`
+}
+
+// TargetDraftReadinessRequiredBump is one of "major", "minor", "patch". Minimum assessed version bump. Null when no bump has been determined.
+type TargetDraftReadinessRequiredBump string
+
+const (
+	TargetDraftReadinessRequiredBumpMajor TargetDraftReadinessRequiredBump = "major"
+	TargetDraftReadinessRequiredBumpMinor TargetDraftReadinessRequiredBump = "minor"
+	TargetDraftReadinessRequiredBumpPatch TargetDraftReadinessRequiredBump = "patch"
+)
 
 // TargetDraftResponseChanges is an API model.
 type TargetDraftResponseChanges struct {
