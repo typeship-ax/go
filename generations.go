@@ -21,7 +21,7 @@ type GenerationsRetrieveFileParams struct {
 
 // Retrieve a generation.
 //
-// Returns the Generation result. Successful results include files, or a file index when the package is too large to inline.
+// Returns the current Generation status. `queued` and `running` mean generation is still in progress. `succeeded` means generated files are saved, not that repository delivery or a Draft is complete. Successful results include files, or a file index when the package is too large to inline.
 //
 // GET /generations/{generation_id}
 func (s *GenerationsService) Retrieve(ctx context.Context, generationID string, opts ...RequestOption) (*GenerationResponse, error) {

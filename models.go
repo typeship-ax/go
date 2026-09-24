@@ -2610,10 +2610,12 @@ type GenerationSummary struct {
 // GenerationID is a generated API type.
 type GenerationID string
 
-// GenerationStatus is one of "succeeded", "failed".
+// GenerationStatus is one of "queued", "running", "succeeded", "failed". A Generation moves from queued to running, then succeeds when its files are saved or fails. Delivery and Draft status are separate.
 type GenerationStatus string
 
 const (
+	GenerationStatusQueued    GenerationStatus = "queued"
+	GenerationStatusRunning   GenerationStatus = "running"
 	GenerationStatusSucceeded GenerationStatus = "succeeded"
 	GenerationStatusFailed    GenerationStatus = "failed"
 )
@@ -2859,80 +2861,10 @@ type GenerateProjectRequest struct {
 	TargetID *TargetID `json:"target_id,omitempty"`
 }
 
-// GenerationBatch is an API model. Metadata for each Target generation attempted by a Project run. Retrieve one Generation separately for generated files.
+// GenerationBatch is an API model. One Generation per selected Target. Retrieve each Generation for current status and generated files.
 type GenerationBatch struct {
-	Data      []GenerationBatchDataItem `json:"data"`
-	RequestID RequestID                 `json:"request_id"`
-}
-
-// GenerationBatchDataItem is one of GenerationSummary, GenerationFailure.
-// Go has no sum types, so it holds the JSON as received and decodes on
-// request: try the As* accessors, or switch on Discriminator() when the
-// spec names one.
-type GenerationBatchDataItem struct {
-	union json.RawMessage
-}
-
-// MarshalJSON writes the value as it was set or received.
-func (u GenerationBatchDataItem) MarshalJSON() ([]byte, error) {
-	if u.union == nil {
-		return []byte("null"), nil
-	}
-	return u.union, nil
-}
-
-// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *GenerationBatchDataItem) UnmarshalJSON(data []byte) error {
-	u.union = append(u.union[:0], data...)
-	return nil
-}
-
-// Raw returns the JSON exactly as received.
-func (u GenerationBatchDataItem) Raw() json.RawMessage {
-	return u.union
-}
-
-// AsGenerationSummary decodes the value as GenerationSummary.
-func (u GenerationBatchDataItem) AsGenerationSummary() (GenerationSummary, error) {
-	var v GenerationSummary
-	err := json.Unmarshal(u.union, &v)
-	return v, err
-}
-
-// FromGenerationSummary sets the value to a GenerationSummary.
-func (u *GenerationBatchDataItem) FromGenerationSummary(v GenerationSummary) error {
-	encoded, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	u.union = encoded
-	return nil
-}
-
-// AsGenerationFailure decodes the value as GenerationFailure.
-func (u GenerationBatchDataItem) AsGenerationFailure() (GenerationFailure, error) {
-	var v GenerationFailure
-	err := json.Unmarshal(u.union, &v)
-	return v, err
-}
-
-// FromGenerationFailure sets the value to a GenerationFailure.
-func (u *GenerationBatchDataItem) FromGenerationFailure(v GenerationFailure) error {
-	encoded, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	u.union = encoded
-	return nil
-}
-
-// GenerationFailure is an API model. A selected target that did not generate in a multi-target run.
-type GenerationFailure struct {
-	TargetID  TargetID      `json:"target_id"`
-	Generator GeneratorKind `json:"generator"`
-	Status    string        `json:"status"`
-	// Errors Recorded failures. Empty when this resource has no recorded failure.
-	Errors []DomainError `json:"errors"`
+	Data      []GenerationSummary `json:"data"`
+	RequestID RequestID           `json:"request_id"`
 }
 
 // Definition is an API model.
@@ -4273,7 +4205,7 @@ type GenerationResponse struct {
 	// Generator Resolved generator implementation; provenance rather than resource identity.
 	Generator  GeneratorKind        `json:"generator"`
 	Provenance GenerationProvenance `json:"provenance"`
-	// Meta Null only for a failed or legacy generation that produced no metadata.
+	// Meta Null while queued or running, or when a failed or legacy generation produced no metadata.
 	Meta     *GenerationMeta `json:"meta"`
 	Warnings []string        `json:"warnings"`
 	// Files Present on retrieve and create; omitted in lists.
