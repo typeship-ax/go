@@ -23,8 +23,20 @@ type TargetsListParams struct {
 
 // TargetsCreateParams are the inputs for TargetsService.Create.
 type TargetsCreateParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
 	IdempotencyKey *string `json:"-"`
+}
+
+// TargetsDeleteParams are the inputs for TargetsService.Delete.
+type TargetsDeleteParams struct {
+	// IfMatch ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes.
+	IfMatch *string `json:"-"`
+}
+
+// TargetsUpdateParams are the inputs for TargetsService.Update.
+type TargetsUpdateParams struct {
+	// IfMatch ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes.
+	IfMatch *string `json:"-"`
 }
 
 // TargetsListReleasesParams are the inputs for TargetsService.ListReleases.
@@ -37,19 +49,19 @@ type TargetsListReleasesParams struct {
 
 // TargetsUpdateDraftParams are the inputs for TargetsService.UpdateDraft.
 type TargetsUpdateDraftParams struct {
-	// IfMatch ETag from a preceding response. The update applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to update the current version.
+	// IfMatch ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes.
 	IfMatch *string `json:"-"`
 }
 
 // TargetsAdoptReleaseParams are the inputs for TargetsService.AdoptRelease.
 type TargetsAdoptReleaseParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
 	IdempotencyKey *string `json:"-"`
 }
 
 // TargetsRepublishReleaseParams are the inputs for TargetsService.RepublishRelease.
 type TargetsRepublishReleaseParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
 	IdempotencyKey *string `json:"-"`
 }
 
@@ -163,14 +175,23 @@ func (s *TargetsService) Retrieve(ctx context.Context, targetID string, opts ...
 
 // Delete an unused Target.
 //
-// Deletes a Target with no Generation history, release history, or active Draft. Disable a Target instead if it has any of these.
+// Deletes a Target with no Generation history, release history, or active Draft. A `409 resource_has_dependencies` means one of those resources still depends on it. Retrieve the Target, disable it instead, or resolve the dependency before retrying.
+//
+// See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 //
 // DELETE /targets/{target_id}
-func (s *TargetsService) Delete(ctx context.Context, targetID string, opts ...RequestOption) (*DeletedTarget, error) {
+func (s *TargetsService) Delete(ctx context.Context, targetID string, params *TargetsDeleteParams, opts ...RequestOption) (*DeletedTarget, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IfMatch != nil {
+			headers["If-Match"] = fmt.Sprint(*params.IfMatch)
+		}
+	}
 	req := request{
 		Method:     "DELETE",
 		Path:       fmt.Sprintf("/targets/%s", url.PathEscape(targetID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError},
+		Headers:    headers,
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "412": newPreconditionFailedError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "targets.delete",
 		Idempotent: true,
@@ -185,18 +206,27 @@ func (s *TargetsService) Delete(ctx context.Context, targetID string, opts ...Re
 // Update a Target, its Deliveries, or its next reviewed version.
 //
 // Omitted fields keep their current values. Supplied config, checks, and deliveries replace their complete stored values.
-// Updates have no revision precondition. Concurrent updates preserve omitted fields, and the last saved update to a supplied field wins.
-// Send proposed_version by itself; use the Draft endpoint for a version selection with an optional revision precondition.
+// Omitting If-Match applies the update to the current resource; with If-Match, a stale ETag returns 412 precondition_failed without saving.
+// Send proposed_version by itself; use the Draft endpoint to select a version directly.
 //
+// A `409 target_busy` means the Target is publishing; wait for it to finish. A `409 delivery_conflict` means another Target owns the requested repository tree; retrieve both Targets, choose a free destination, and retry.
 // A `502` response means the update was saved, but retiring an obsolete review or regenerating a version selection failed. Retrieve the Target and follow the error's retryable and suggested_action fields. Repeating an unfinished version selection resumes generation; repeating a completed selection starts no new work.
+// See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 //
 // PATCH /targets/{target_id}
-func (s *TargetsService) Update(ctx context.Context, targetID string, body TargetUpdateRequest, opts ...RequestOption) (*TargetResponse, error) {
+func (s *TargetsService) Update(ctx context.Context, targetID string, body TargetUpdateRequest, params *TargetsUpdateParams, opts ...RequestOption) (*TargetResponse, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IfMatch != nil {
+			headers["If-Match"] = fmt.Sprint(*params.IfMatch)
+		}
+	}
 	req := request{
 		Method:    "PATCH",
 		Path:      fmt.Sprintf("/targets/%s", url.PathEscape(targetID)),
+		Headers:   headers,
 		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "412": newPreconditionFailedError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
 		Security:  []map[string][]string{{"apiKey": {}}},
 		SchemaKey: "targets.update",
 	}
@@ -275,6 +305,8 @@ func (s *TargetsService) RetrieveDraft(ctx context.Context, targetID string, opt
 // Send the Draft's `ETag` in `If-Match` to reject an intervening change with 412 precondition_failed before saving or regenerating. Omitting `If-Match` applies the selection to the current Draft. Version is required; null restores automatic selection.
 //
 // A `502` response means the selected version was saved, but regeneration failed. Follow the error's retryable and suggested_action fields. Repeating an unfinished selection resumes generation; repeating a completed selection starts no new work. If using If-Match, retrieve the Draft and confirm the saved selection before retrying with its current ETag.
+// A `409 target_busy` means the Target is publishing; wait and retry. A `409 version_occupied` means the version is already released; retrieve the Draft and releases, choose a new version, and retry.
+// See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 //
 // PATCH /targets/{target_id}/draft
 func (s *TargetsService) UpdateDraft(ctx context.Context, targetID string, body TargetDraftUpdateParams, params *TargetsUpdateDraftParams, opts ...RequestOption) (*TargetDraftResponse, error) {
@@ -514,6 +546,48 @@ func (s *TargetsService) RecoverDraftHistory(ctx context.Context, targetID strin
 		SchemaKey: "targets.recoverDraftHistory",
 	}
 	var out DraftHistoryRecoveryResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// RetrieveDelivery — retrieve a Delivery.
+//
+// Returns the configured repository or hosted MCP Delivery for a Target. A Delivery in another organization returns 404 not_found.
+//
+// GET /deliveries/{delivery_id}
+func (s *TargetsService) RetrieveDelivery(ctx context.Context, deliveryID string, opts ...RequestOption) (*DeliveryResponse, error) {
+	req := request{
+		Method:     "GET",
+		Path:       fmt.Sprintf("/deliveries/%s", url.PathEscape(deliveryID)),
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:   []map[string][]string{{"apiKey": {}}},
+		SchemaKey:  "targets.retrieveDelivery",
+		Idempotent: true,
+	}
+	var out DeliveryResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// RetrievePublication — retrieve a Publication.
+//
+// Returns the current registry publication state for a Target Release. A Publication in another organization returns 404 not_found.
+//
+// GET /publications/{publication_id}
+func (s *TargetsService) RetrievePublication(ctx context.Context, publicationID string, opts ...RequestOption) (*PublicationResponse, error) {
+	req := request{
+		Method:     "GET",
+		Path:       fmt.Sprintf("/publications/%s", url.PathEscape(publicationID)),
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:   []map[string][]string{{"apiKey": {}}},
+		SchemaKey:  "targets.retrievePublication",
+		Idempotent: true,
+	}
+	var out PublicationResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}

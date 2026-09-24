@@ -21,6 +21,12 @@ type APIKeysListParams struct {
 	Cursor *string `json:"-"`
 }
 
+// APIKeysRevokeParams are the inputs for APIKeysService.Revoke.
+type APIKeysRevokeParams struct {
+	// IfMatch ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes.
+	IfMatch *string `json:"-"`
+}
+
 // List API keys.
 //
 // Lists key metadata and the last four characters of each key. Full keys are not returned. Create keys in the Console.
@@ -63,18 +69,47 @@ func (s *APIKeysService) List(ctx context.Context, params *APIKeysListParams, op
 	})
 }
 
+// Retrieve an API key.
+//
+// Returns the key summary and its ETag for conditional revocation.
+//
+// GET /api-keys/{api_key_id}
+func (s *APIKeysService) Retrieve(ctx context.Context, apiKeyID string, opts ...RequestOption) (*APIKeyResponse, error) {
+	req := request{
+		Method:     "GET",
+		Path:       fmt.Sprintf("/api-keys/%s", url.PathEscape(apiKeyID)),
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:   []map[string][]string{{"apiKey": {}}},
+		SchemaKey:  "apiKeys.retrieve",
+		Idempotent: true,
+	}
+	var out APIKeyResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // Revoke an API key.
 //
 // Revokes a key. Repeating the request returns the same result.
 //
 // With OAuth, members can revoke their own keys; organization admins can revoke any key. Organization API keys can revoke any key in their account.
+// See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 //
 // DELETE /api-keys/{api_key_id}
-func (s *APIKeysService) Revoke(ctx context.Context, apiKeyID string, opts ...RequestOption) (*APIKeyResponse, error) {
+func (s *APIKeysService) Revoke(ctx context.Context, apiKeyID string, params *APIKeysRevokeParams, opts ...RequestOption) (*APIKeyResponse, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IfMatch != nil {
+			headers["If-Match"] = fmt.Sprint(*params.IfMatch)
+		}
+	}
 	req := request{
 		Method:     "DELETE",
 		Path:       fmt.Sprintf("/api-keys/%s", url.PathEscape(apiKeyID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
+		Headers:    headers,
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "412": newPreconditionFailedError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "apiKeys.revoke",
 		Idempotent: true,
