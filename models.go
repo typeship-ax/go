@@ -762,7 +762,7 @@ type ProjectList struct {
 	// HasMore Whether another page is available after this one.
 	HasMore bool `json:"has_more"`
 	// NextCursor Pass this value as cursor to retrieve the next page; null on the last page.
-	NextCursor string    `json:"next_cursor"`
+	NextCursor *string   `json:"next_cursor"`
 	RequestID  RequestID `json:"request_id"`
 }
 
@@ -1893,8 +1893,8 @@ type Project struct {
 	// RelayEnabled Whether the webhook relay is on, letting the generated CLI's webhooks listen command mint relay sessions. Requires the cli target and Pro; turning the target off turns this off.
 	RelayEnabled bool `json:"relay_enabled"`
 	// Config Shared defaults inherited by every Target. A Target's config overrides these defaults; GraphQL settings remain Definition-owned.
-	Config    ProjectConfigResponse `json:"config"`
-	CreatedAt string                `json:"created_at"`
+	Config    *ProjectConfigResponse `json:"config"`
+	CreatedAt string                 `json:"created_at"`
 	// UpdatedAt When the project configuration last changed.
 	UpdatedAt string    `json:"updated_at"`
 	RequestID RequestID `json:"request_id"`
@@ -2444,7 +2444,7 @@ type DiagnosticSuppressionSignal struct {
 type DiagnosticDelta struct {
 	Added                        []DiagnosticReference `json:"added"`
 	Resolved                     []DiagnosticReference `json:"resolved"`
-	BaselineDefinitionRevisionID DefinitionRevisionID  `json:"baseline_definition_revision_id"`
+	BaselineDefinitionRevisionID *DefinitionRevisionID `json:"baseline_definition_revision_id"`
 }
 
 // DiagnosticRemediationRequest is an API model.
@@ -2478,7 +2478,7 @@ type RepositoryIntegrationHealth struct {
 	Status         Status                                    `json:"status"`
 	Repositories   []RepositoryHealth                        `json:"repositories"`
 	RequiredChecks RepositoryIntegrationHealthRequiredChecks `json:"required_checks"`
-	LastEvent      RepositoryEventHealth                     `json:"last_event"`
+	LastEvent      *RepositoryEventHealth                    `json:"last_event"`
 	RequestID      RequestID                                 `json:"request_id"`
 }
 
@@ -2557,7 +2557,7 @@ type RepositoryEventHealth struct {
 	ID        string                      `json:"id"`
 	Event     string                      `json:"event"`
 	Status    RepositoryEventHealthStatus `json:"status"`
-	Error     string                      `json:"error"`
+	Error     *string                     `json:"error"`
 	CreatedAt string                      `json:"created_at"`
 }
 
@@ -2582,26 +2582,26 @@ type GenerationList struct {
 	// HasMore Whether another page is available after this one.
 	HasMore bool `json:"has_more"`
 	// NextCursor Pass this value as cursor to retrieve the next page; null on the last page.
-	NextCursor string    `json:"next_cursor"`
+	NextCursor *string   `json:"next_cursor"`
 	RequestID  RequestID `json:"request_id"`
 }
 
 // GenerationSummary is an API model. Generation metadata returned by collection endpoints. Generated file contents and file indexes are available only from retrieve and create operations.
 type GenerationSummary struct {
-	ID                   GenerationID         `json:"id"`
-	Object               string               `json:"object"`
-	ProjectID            ProjectID            `json:"project_id"`
-	DefinitionRevisionID DefinitionRevisionID `json:"definition_revision_id"`
-	Status               GenerationStatus     `json:"status"`
-	Trigger              GenerationTrigger    `json:"trigger"`
+	ID                   GenerationID          `json:"id"`
+	Object               string                `json:"object"`
+	ProjectID            ProjectID             `json:"project_id"`
+	DefinitionRevisionID *DefinitionRevisionID `json:"definition_revision_id"`
+	Status               GenerationStatus      `json:"status"`
+	Trigger              GenerationTrigger     `json:"trigger"`
 	// TargetID Persisted Target identity. Null only for one-shot generation.
-	TargetID TargetID `json:"target_id"`
+	TargetID *TargetID `json:"target_id"`
 	// Generator Resolved generator implementation; provenance rather than resource identity.
 	Generator  GeneratorKind        `json:"generator"`
 	Provenance GenerationProvenance `json:"provenance"`
 	// Meta Null only for a failed or legacy generation that produced no metadata.
-	Meta     GenerationMeta `json:"meta"`
-	Warnings []string       `json:"warnings"`
+	Meta     *GenerationMeta `json:"meta"`
+	Warnings []string        `json:"warnings"`
 	// Errors Recorded failures. Empty when this resource has no recorded failure.
 	Errors    []DomainError `json:"errors"`
 	CreatedAt string        `json:"created_at"`
@@ -2633,8 +2633,8 @@ type GenerationProvenance struct {
 	// GeneratorEdition Pinned generator contract edition.
 	GeneratorEdition string `json:"generator_edition"`
 	// ResolvedConfig Recorded configuration for this Generation in the public Config format, including inherited Project defaults and Target overrides. Later edits do not change it. Source credentials are never included. Null when no configuration was recorded.
-	ResolvedConfig ConfigResponse `json:"resolved_config"`
-	PackageVersion string         `json:"package_version"`
+	ResolvedConfig *ConfigResponse `json:"resolved_config"`
+	PackageVersion *string         `json:"package_version"`
 }
 
 // ConfigResponse is an API model. Everything Typeship needs beyond the Definition, in one object: generation customization (globals, retries, pagination, readme) and how the generated tooling behaves (cli, mcp, package, docs_url). Plain configuration. Typeship never requires vendor extensions inside the Definition itself. One-shot generation also accepts GraphQL settings here; stored projects keep those settings on their Definition.
@@ -2941,11 +2941,11 @@ type Definition struct {
 	Object           string                    `json:"object"`
 	ProjectID        ProjectID                 `json:"project_id"`
 	Source           DefinitionSource          `json:"source"`
-	Format           Format                    `json:"format"`
+	Format           *Format                   `json:"format"`
 	Patches          []DefinitionPatchResponse `json:"patches"`
-	Graphql          GraphqlSettingsResponse   `json:"graphql"`
+	Graphql          *GraphqlSettingsResponse  `json:"graphql"`
 	DiagnosticPolicy DiagnosticPolicyResponse  `json:"diagnostic_policy"`
-	LatestRevisionID DefinitionRevisionID      `json:"latest_revision_id"`
+	LatestRevisionID *DefinitionRevisionID     `json:"latest_revision_id"`
 	CreatedAt        string                    `json:"created_at"`
 	UpdatedAt        string                    `json:"updated_at"`
 	RequestID        RequestID                 `json:"request_id"`
@@ -3074,7 +3074,7 @@ type TargetList struct {
 	Object     ListObject `json:"object"`
 	Data       []Target   `json:"data"`
 	HasMore    bool       `json:"has_more"`
-	NextCursor string     `json:"next_cursor"`
+	NextCursor *string    `json:"next_cursor"`
 	RequestID  RequestID  `json:"request_id"`
 }
 
@@ -3087,21 +3087,21 @@ type Target struct {
 	Name         string        `json:"name"`
 	Generator    GeneratorKind `json:"generator"`
 	// Dependency Present only on a go-cli Target, naming the sibling Go SDK Target the CLI is generated against. Every other generator reports null.
-	Dependency     TargetDependency    `json:"dependency"`
+	Dependency     *TargetDependency   `json:"dependency"`
 	State          State               `json:"state"`
 	Edition        string              `json:"edition"`
 	ReleaseChannel ReleaseChannel      `json:"release_channel"`
 	VersionPolicy  TargetVersionPolicy `json:"version_policy"`
 	// CurrentVersion Read-only version of the Target's Current release, or null before its first release. Registry publication status is separate; inspect the Target Release for publication results.
-	CurrentVersion        string                `json:"current_version"`
-	ProposedVersion       string                `json:"proposed_version"`
-	ProposedVersionSource ProposedVersionSource `json:"proposed_version_source"`
-	ProposedVersionActor  string                `json:"proposed_version_actor"`
+	CurrentVersion        *string                `json:"current_version"`
+	ProposedVersion       *string                `json:"proposed_version"`
+	ProposedVersionSource *ProposedVersionSource `json:"proposed_version_source"`
+	ProposedVersionActor  *string                `json:"proposed_version_actor"`
 	// ReleaseRevision Optimistic concurrency revision for Draft selections.
 	ReleaseRevision int64                `json:"release_revision"`
 	Checks          TargetChecksResponse `json:"checks"`
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are Definition-owned and never appear here.
-	Config TargetConfigResponse `json:"config"`
+	Config *TargetConfigResponse `json:"config"`
 	// Deliveries At most one repository and one hosted MCP Delivery.
 	Deliveries []Delivery `json:"deliveries"`
 	CreatedAt  string     `json:"created_at"`
@@ -3315,9 +3315,9 @@ type RepositoryDelivery struct {
 	Kind           string                      `json:"kind"`
 	State          State                       `json:"state"`
 	Repository     RepositoryReferenceResponse `json:"repository"`
-	Directory      string                      `json:"directory"`
-	PackageName    string                      `json:"package_name"`
-	ModulePath     string                      `json:"module_path"`
+	Directory      *string                     `json:"directory"`
+	PackageName    *string                     `json:"package_name"`
+	ModulePath     *string                     `json:"module_path"`
 	PublishOnMerge bool                        `json:"publish_on_merge"`
 	CreatedAt      string                      `json:"created_at"`
 	UpdatedAt      string                      `json:"updated_at"`
@@ -3333,7 +3333,7 @@ type HostedMCPDelivery struct {
 	TargetID  TargetID   `json:"target_id"`
 	Kind      string     `json:"kind"`
 	State     State      `json:"state"`
-	URL       string     `json:"url"`
+	URL       *string    `json:"url"`
 	CreatedAt string     `json:"created_at"`
 	UpdatedAt string     `json:"updated_at"`
 }
@@ -3384,21 +3384,21 @@ type TargetResponse struct {
 	Name         string        `json:"name"`
 	Generator    GeneratorKind `json:"generator"`
 	// Dependency Present only on a go-cli Target, naming the sibling Go SDK Target the CLI is generated against. Every other generator reports null.
-	Dependency     TargetDependency            `json:"dependency"`
+	Dependency     *TargetDependency           `json:"dependency"`
 	State          State                       `json:"state"`
 	Edition        string                      `json:"edition"`
 	ReleaseChannel ReleaseChannel              `json:"release_channel"`
 	VersionPolicy  TargetResponseVersionPolicy `json:"version_policy"`
 	// CurrentVersion Read-only version of the Target's Current release, or null before its first release. Registry publication status is separate; inspect the Target Release for publication results.
-	CurrentVersion        string                `json:"current_version"`
-	ProposedVersion       string                `json:"proposed_version"`
-	ProposedVersionSource ProposedVersionSource `json:"proposed_version_source"`
-	ProposedVersionActor  string                `json:"proposed_version_actor"`
+	CurrentVersion        *string                `json:"current_version"`
+	ProposedVersion       *string                `json:"proposed_version"`
+	ProposedVersionSource *ProposedVersionSource `json:"proposed_version_source"`
+	ProposedVersionActor  *string                `json:"proposed_version_actor"`
 	// ReleaseRevision Optimistic concurrency revision for Draft selections.
 	ReleaseRevision int64                `json:"release_revision"`
 	Checks          TargetChecksResponse `json:"checks"`
 	// Config Target-specific overrides merged over Project.config. GraphQL settings are Definition-owned and never appear here.
-	Config TargetConfigResponse `json:"config"`
+	Config *TargetConfigResponse `json:"config"`
 	// Deliveries At most one repository and one hosted MCP Delivery.
 	Deliveries []Delivery `json:"deliveries"`
 	CreatedAt  string     `json:"created_at"`
@@ -3461,7 +3461,7 @@ type TargetReleaseList struct {
 	Object     ListObject      `json:"object"`
 	Data       []TargetRelease `json:"data"`
 	HasMore    bool            `json:"has_more"`
-	NextCursor string          `json:"next_cursor"`
+	NextCursor *string         `json:"next_cursor"`
 	RequestID  RequestID       `json:"request_id"`
 }
 
@@ -3471,25 +3471,25 @@ type TargetRelease struct {
 	Object   string          `json:"object"`
 	TargetID TargetID        `json:"target_id"`
 	// GenerationID Null only for a verified release imported during package adoption.
-	GenerationID GenerationID        `json:"generation_id"`
+	GenerationID *GenerationID       `json:"generation_id"`
 	Origin       TargetReleaseOrigin `json:"origin"`
 	// Version Immutable package version released from this Target.
 	Version string         `json:"version"`
 	Channel ReleaseChannel `json:"channel"`
 	// Provider Delivery provider that accepted the release.
-	Provider             string                      `json:"provider"`
-	Repository           RepositoryReferenceResponse `json:"repository"`
-	DefinitionRevisionID DefinitionRevisionID        `json:"definition_revision_id"`
+	Provider             string                       `json:"provider"`
+	Repository           *RepositoryReferenceResponse `json:"repository"`
+	DefinitionRevisionID *DefinitionRevisionID        `json:"definition_revision_id"`
 	// DeliveryRevision Immutable provider-native revision that was merged or published.
 	DeliveryRevision string `json:"delivery_revision"`
 	// SourceDigest Digest of the exact accepted source tree used for publication.
-	SourceDigest     string                        `json:"source_digest"`
-	Checks           []PackageCheck                `json:"checks"`
-	AcceptedRisks    []AcceptedCompatibilityRisk   `json:"accepted_risks"`
-	ImportProvenance TargetReleaseImportProvenance `json:"import_provenance"`
-	Publications     []Publication                 `json:"publications"`
-	CreatedAt        string                        `json:"created_at"`
-	RequestID        *RequestID                    `json:"request_id,omitempty"`
+	SourceDigest     *string                        `json:"source_digest"`
+	Checks           []PackageCheck                 `json:"checks"`
+	AcceptedRisks    []AcceptedCompatibilityRisk    `json:"accepted_risks"`
+	ImportProvenance *TargetReleaseImportProvenance `json:"import_provenance"`
+	Publications     []Publication                  `json:"publications"`
+	CreatedAt        string                         `json:"created_at"`
+	RequestID        *RequestID                     `json:"request_id,omitempty"`
 }
 
 // TargetReleaseID is a generated API type.
@@ -3511,8 +3511,8 @@ type PackageCheck struct {
 	State      PackageCheckState  `json:"state"`
 	Reason     string             `json:"reason"`
 	Revision   string             `json:"revision"`
-	URL        string             `json:"url"`
-	ObservedAt string             `json:"observed_at"`
+	URL        *string            `json:"url"`
+	ObservedAt *string            `json:"observed_at"`
 }
 
 // PackageCheckSource is one of "typeship", "customer", "repository", "compatibility".
@@ -3554,10 +3554,10 @@ const (
 
 // TargetReleaseImportProvenance is an API model.
 type TargetReleaseImportProvenance struct {
-	Tag            string `json:"tag"`
-	RegistryURL    string `json:"registry_url"`
-	ArtifactDigest string `json:"artifact_digest"`
-	ImportedAt     string `json:"imported_at"`
+	Tag            *string `json:"tag"`
+	RegistryURL    *string `json:"registry_url"`
+	ArtifactDigest *string `json:"artifact_digest"`
+	ImportedAt     *string `json:"imported_at"`
 }
 
 // Publication is an API model.
@@ -3568,13 +3568,13 @@ type Publication struct {
 	Destination     PublicationDestination `json:"destination"`
 	State           PublicationState       `json:"state"`
 	Attempt         int64                  `json:"attempt"`
-	RunURL          string                 `json:"run_url"`
-	RegistryURL     string                 `json:"registry_url"`
-	ArtifactDigest  string                 `json:"artifact_digest"`
+	RunURL          *string                `json:"run_url"`
+	RegistryURL     *string                `json:"registry_url"`
+	ArtifactDigest  *string                `json:"artifact_digest"`
 	// Errors Recorded failures. Empty when this resource has no recorded failure.
 	Errors     []DomainError `json:"errors"`
-	StartedAt  string        `json:"started_at"`
-	FinishedAt string        `json:"finished_at"`
+	StartedAt  *string       `json:"started_at"`
+	FinishedAt *string       `json:"finished_at"`
 	UpdatedAt  string        `json:"updated_at"`
 }
 
@@ -3605,18 +3605,18 @@ const (
 
 // TargetDraftResponse is an API model.
 type TargetDraftResponse struct {
-	Object         string                     `json:"object"`
-	TargetID       TargetID                   `json:"target_id"`
-	Revision       int64                      `json:"revision"`
-	CurrentVersion string                     `json:"current_version"`
-	Version        string                     `json:"version"`
-	Selection      TargetDraftSelection       `json:"selection"`
-	Readiness      TargetDraftReadiness       `json:"readiness"`
-	Changes        TargetDraftResponseChanges `json:"changes"`
-	HeadRevision   string                     `json:"head_revision"`
-	PullRequestURL string                     `json:"pull_request_url"`
-	RequestID      RequestID                  `json:"request_id"`
-	Checks         []PackageCheck             `json:"checks"`
+	Object         string                      `json:"object"`
+	TargetID       TargetID                    `json:"target_id"`
+	Revision       int64                       `json:"revision"`
+	CurrentVersion *string                     `json:"current_version"`
+	Version        *string                     `json:"version"`
+	Selection      TargetDraftSelection        `json:"selection"`
+	Readiness      *TargetDraftReadiness       `json:"readiness"`
+	Changes        *TargetDraftResponseChanges `json:"changes"`
+	HeadRevision   *string                     `json:"head_revision"`
+	PullRequestURL *string                     `json:"pull_request_url"`
+	RequestID      RequestID                   `json:"request_id"`
+	Checks         []PackageCheck              `json:"checks"`
 }
 
 // TargetDraftSelection is one of TargetDraftSelectionVariant1, TargetDraftSelectionVariant2.
@@ -3687,10 +3687,10 @@ type TargetDraftSelectionVariant1 struct {
 
 // TargetDraftSelectionVariant2 is an API model.
 type TargetDraftSelectionVariant2 struct {
-	Mode    string                `json:"mode"`
-	Version string                `json:"version"`
-	Source  ProposedVersionSource `json:"source"`
-	Actor   string                `json:"actor"`
+	Mode    string                 `json:"mode"`
+	Version string                 `json:"version"`
+	Source  *ProposedVersionSource `json:"source"`
+	Actor   *string                `json:"actor"`
 }
 
 // TargetDraftReadiness is an API model. Readiness decision for the Draft's head_revision. Null readiness on the Draft means no candidate exists.
@@ -3704,13 +3704,13 @@ type TargetDraftReadiness struct {
 	// PackageCompatibility Package and supported SDK source comparison against Current. unknown means analysis is incomplete or unavailable.
 	PackageCompatibility APICompatibility `json:"package_compatibility"`
 	// VersionCorrect Whether the version satisfies the assessed change. Null when no verdict is available.
-	VersionCorrect bool `json:"version_correct"`
+	VersionCorrect *bool `json:"version_correct"`
 	// RequiredBump Minimum assessed version bump. Null when no bump has been determined.
-	RequiredBump TargetDraftReadinessRequiredBump `json:"required_bump"`
+	RequiredBump *TargetDraftReadinessRequiredBump `json:"required_bump"`
 	// PreviousVersion Version used for the comparison. Null when no comparison version is available.
-	PreviousVersion string `json:"previous_version"`
+	PreviousVersion *string `json:"previous_version"`
 	// TitleError Draft title error that must be corrected before release. Null when none is recorded.
-	TitleError string `json:"title_error"`
+	TitleError *string `json:"title_error"`
 }
 
 // TargetDraftReadinessRequiredBump is one of "major", "minor", "patch". Minimum assessed version bump. Null when no bump has been determined.
@@ -3752,33 +3752,33 @@ type TargetReleaseResponse struct {
 	Object   string          `json:"object"`
 	TargetID TargetID        `json:"target_id"`
 	// GenerationID Null only for a verified release imported during package adoption.
-	GenerationID GenerationID        `json:"generation_id"`
+	GenerationID *GenerationID       `json:"generation_id"`
 	Origin       TargetReleaseOrigin `json:"origin"`
 	// Version Immutable package version released from this Target.
 	Version string         `json:"version"`
 	Channel ReleaseChannel `json:"channel"`
 	// Provider Delivery provider that accepted the release.
-	Provider             string                      `json:"provider"`
-	Repository           RepositoryReferenceResponse `json:"repository"`
-	DefinitionRevisionID DefinitionRevisionID        `json:"definition_revision_id"`
+	Provider             string                       `json:"provider"`
+	Repository           *RepositoryReferenceResponse `json:"repository"`
+	DefinitionRevisionID *DefinitionRevisionID        `json:"definition_revision_id"`
 	// DeliveryRevision Immutable provider-native revision that was merged or published.
 	DeliveryRevision string `json:"delivery_revision"`
 	// SourceDigest Digest of the exact accepted source tree used for publication.
-	SourceDigest     string                                `json:"source_digest"`
-	Checks           []PackageCheck                        `json:"checks"`
-	AcceptedRisks    []AcceptedCompatibilityRisk           `json:"accepted_risks"`
-	ImportProvenance TargetReleaseResponseImportProvenance `json:"import_provenance"`
-	Publications     []Publication                         `json:"publications"`
-	CreatedAt        string                                `json:"created_at"`
-	RequestID        RequestID                             `json:"request_id"`
+	SourceDigest     *string                                `json:"source_digest"`
+	Checks           []PackageCheck                         `json:"checks"`
+	AcceptedRisks    []AcceptedCompatibilityRisk            `json:"accepted_risks"`
+	ImportProvenance *TargetReleaseResponseImportProvenance `json:"import_provenance"`
+	Publications     []Publication                          `json:"publications"`
+	CreatedAt        string                                 `json:"created_at"`
+	RequestID        RequestID                              `json:"request_id"`
 }
 
 // TargetReleaseResponseImportProvenance is an API model.
 type TargetReleaseResponseImportProvenance struct {
-	Tag            string `json:"tag"`
-	RegistryURL    string `json:"registry_url"`
-	ArtifactDigest string `json:"artifact_digest"`
-	ImportedAt     string `json:"imported_at"`
+	Tag            *string `json:"tag"`
+	RegistryURL    *string `json:"registry_url"`
+	ArtifactDigest *string `json:"artifact_digest"`
+	ImportedAt     *string `json:"imported_at"`
 }
 
 // DraftCustomizationsResponse is an API model.
@@ -3787,7 +3787,7 @@ type DraftCustomizationsResponse struct {
 	TargetID TargetID `json:"target_id"`
 	// Status Availability of the saved inspection. Targets without a repository Delivery are not_applicable. Check the Draft separately for readiness.
 	Status       DraftCustomizationsResponseStatus        `json:"status"`
-	HeadRevision string                                   `json:"head_revision"`
+	HeadRevision *string                                  `json:"head_revision"`
 	Changes      []DraftCustomizationsResponseChangesItem `json:"changes"`
 	RequestID    RequestID                                `json:"request_id"`
 }
@@ -3823,14 +3823,14 @@ type DraftConflictsResponse struct {
 	Object   string   `json:"object"`
 	TargetID TargetID `json:"target_id"`
 	// Status pending_generation means every conflict has a saved decision; Generate this Target to apply them. Partial decisions are visible per conflict. Check Draft readiness separately.
-	Status         DraftConflictsResponseStatus         `json:"status"`
-	HeadRevision   string                               `json:"head_revision"`
-	IncomingSource DraftConflictsResponseIncomingSource `json:"incoming_source"`
-	Conflicts      []DraftConflict                      `json:"conflicts"`
-	RequestID      RequestID                            `json:"request_id"`
-	HasMore        bool                                 `json:"has_more"`
-	NextPath       string                               `json:"next_path"`
-	TotalConflicts int64                                `json:"total_conflicts"`
+	Status         DraftConflictsResponseStatus          `json:"status"`
+	HeadRevision   *string                               `json:"head_revision"`
+	IncomingSource *DraftConflictsResponseIncomingSource `json:"incoming_source"`
+	Conflicts      []DraftConflict                       `json:"conflicts"`
+	RequestID      RequestID                             `json:"request_id"`
+	HasMore        bool                                  `json:"has_more"`
+	NextPath       *string                               `json:"next_path"`
+	TotalConflicts int64                                 `json:"total_conflicts"`
 }
 
 // DraftConflictsResponseStatus is one of "not_applicable", "no_draft", "outdated", "unresolved", "pending_generation", "clear". pending_generation means every conflict has a saved decision; Generate this Target to apply them. Partial decisions are visible per conflict. Check Draft readiness separately.
@@ -3859,13 +3859,13 @@ type DraftConflict struct {
 	Path string            `json:"path"`
 	Kind DraftConflictKind `json:"kind"`
 	// Base Common file version before the conflicting changes; null when absent.
-	Base DraftFileVersion `json:"base"`
+	Base *DraftFileVersion `json:"base"`
 	// Repository Preserved repository file; null when absent.
-	Repository DraftFileVersion `json:"repository"`
+	Repository *DraftFileVersion `json:"repository"`
 	// Incoming Incoming generated, default-branch, or saved Draft file; null when absent.
-	Incoming DraftFileVersion `json:"incoming"`
+	Incoming *DraftFileVersion `json:"incoming"`
 	// PendingDecision Decision saved for this exact Draft and conflict. Generate the Target to apply it.
-	PendingDecision DraftConflictPendingDecision `json:"pending_decision"`
+	PendingDecision *DraftConflictPendingDecision `json:"pending_decision"`
 }
 
 // DraftConflictKind is one of "missing_baseline", "file_ownership", "customer_deleted_generator_changed", "generator_deleted_customer_changed", "overlapping_text", "too_large_to_merge", "binary_changed", "file_mode_changed".
@@ -3888,10 +3888,10 @@ type DraftFileVersion struct {
 	ContentBase64 string               `json:"content_base64"`
 	Mode          DraftFileVersionMode `json:"mode"`
 	// SizeBytes Full file size in bytes; null when absent.
-	SizeBytes     int64 `json:"size_bytes"`
-	ContentOffset int64 `json:"content_offset"`
+	SizeBytes     *int64 `json:"size_bytes"`
+	ContentOffset int64  `json:"content_offset"`
 	// NextOffset Continue at this decoded byte offset until null.
-	NextOffset int64 `json:"next_offset"`
+	NextOffset *int64 `json:"next_offset"`
 }
 
 // DraftFileVersionMode is one of "100644", "100755", "120000".
@@ -4046,7 +4046,7 @@ type DraftCodeUpdateResponse struct {
 	Status   DraftCodeUpdateResponseStatus      `json:"status"`
 	Files    []DraftCodeUpdateResponseFilesItem `json:"files"`
 	HasMore  bool                               `json:"has_more"`
-	NextPath string                             `json:"next_path"`
+	NextPath *string                            `json:"next_path"`
 	// TotalFiles All selected paths affected by the decision, including paths beyond the first response page.
 	TotalFiles int64 `json:"total_files"`
 }
@@ -4064,13 +4064,13 @@ type DraftCodeUpdateResponseFilesItem struct {
 	Path   string                                 `json:"path"`
 	Action DraftCodeUpdateResponseFilesItemAction `json:"action"`
 	// ContentBase64 Up to 16 KiB of exact file bytes. null indicates deletion. Follow next_offset in a dry-run preview to read the rest.
-	ContentBase64 string               `json:"content_base64"`
-	Mode          DraftFileVersionMode `json:"mode"`
+	ContentBase64 *string               `json:"content_base64"`
+	Mode          *DraftFileVersionMode `json:"mode"`
 	// SizeBytes Full file size in bytes; null when absent.
-	SizeBytes     int64 `json:"size_bytes"`
-	ContentOffset int64 `json:"content_offset"`
+	SizeBytes     *int64 `json:"size_bytes"`
+	ContentOffset int64  `json:"content_offset"`
 	// NextOffset Continue at this decoded byte offset until null.
-	NextOffset int64 `json:"next_offset"`
+	NextOffset *int64 `json:"next_offset"`
 }
 
 // DraftCodeUpdateResponseFilesItemAction is one of "keep", "write", "delete".
@@ -4136,9 +4136,9 @@ type DraftHistoryRecoveryResponse struct {
 	// Status Approval saves a recovery plan. Generate separately to open the recovered Draft and run its checks.
 	Status          DraftHistoryRecoveryResponseStatus `json:"status"`
 	DefaultRevision string                             `json:"default_revision"`
-	DraftRevision   string                             `json:"draft_revision"`
+	DraftRevision   *string                            `json:"draft_revision"`
 	// PreservedBranch Existing Draft branch that remains available when Generate opens the recovered Draft.
-	PreservedBranch string `json:"preserved_branch"`
+	PreservedBranch *string `json:"preserved_branch"`
 	// Changes New default-branch files that differ from the last accepted combined package. Pages contain at most 50 distinct paths across changes and draft_changes; each file side contains at most 16 KiB of decoded content. Follow next_path or request a path and content_offset, with both inspected revisions.
 	Changes []DraftHistoryRecoveryResponseChangesItem `json:"changes"`
 	// DraftChanges Differences between the rewritten default tree and the current Draft that Generate must reconcile.
@@ -4146,7 +4146,7 @@ type DraftHistoryRecoveryResponse struct {
 	TotalChanges      int64                                          `json:"total_changes"`
 	TotalDraftChanges int64                                          `json:"total_draft_changes"`
 	HasMore           bool                                           `json:"has_more"`
-	NextPath          string                                         `json:"next_path"`
+	NextPath          *string                                        `json:"next_path"`
 }
 
 // DraftHistoryRecoveryResponseStatus is one of "not_needed", "preview", "pending_generation". Approval saves a recovery plan. Generate separately to open the recovered Draft and run its checks.
@@ -4160,17 +4160,17 @@ const (
 
 // DraftHistoryRecoveryResponseChangesItem is an API model.
 type DraftHistoryRecoveryResponseChangesItem struct {
-	Path       string           `json:"path"`
-	Kind       Kind             `json:"kind"`
-	Repository DraftFileVersion `json:"repository"`
-	Accepted   DraftFileVersion `json:"accepted"`
+	Path       string            `json:"path"`
+	Kind       Kind              `json:"kind"`
+	Repository *DraftFileVersion `json:"repository"`
+	Accepted   *DraftFileVersion `json:"accepted"`
 }
 
 // DraftHistoryRecoveryResponseDraftChangesItem is an API model.
 type DraftHistoryRecoveryResponseDraftChangesItem struct {
-	Path       string           `json:"path"`
-	Repository DraftFileVersion `json:"repository"`
-	Draft      DraftFileVersion `json:"draft"`
+	Path       string            `json:"path"`
+	Repository *DraftFileVersion `json:"repository"`
+	Draft      *DraftFileVersion `json:"draft"`
 }
 
 // GenerationResponse is an API model.
@@ -4178,20 +4178,20 @@ type GenerationResponse struct {
 	ID     GenerationID `json:"id"`
 	Object string       `json:"object"`
 	// FilesOmitted Present and true when the generated target was too large to inline; files_index lists paths, fetched one at a time via GET /generations/{generation_id}/file.
-	FilesOmitted         *bool                `json:"files_omitted,omitempty"`
-	FilesIndex           []FileStub           `json:"files_index,omitempty"`
-	ProjectID            ProjectID            `json:"project_id"`
-	DefinitionRevisionID DefinitionRevisionID `json:"definition_revision_id"`
-	Status               GenerationStatus     `json:"status"`
-	Trigger              GenerationTrigger    `json:"trigger"`
+	FilesOmitted         *bool                 `json:"files_omitted,omitempty"`
+	FilesIndex           []FileStub            `json:"files_index,omitempty"`
+	ProjectID            ProjectID             `json:"project_id"`
+	DefinitionRevisionID *DefinitionRevisionID `json:"definition_revision_id"`
+	Status               GenerationStatus      `json:"status"`
+	Trigger              GenerationTrigger     `json:"trigger"`
 	// TargetID Persisted Target identity. Null only for one-shot generation.
-	TargetID TargetID `json:"target_id"`
+	TargetID *TargetID `json:"target_id"`
 	// Generator Resolved generator implementation; provenance rather than resource identity.
 	Generator  GeneratorKind        `json:"generator"`
 	Provenance GenerationProvenance `json:"provenance"`
 	// Meta Null only for a failed or legacy generation that produced no metadata.
-	Meta     GenerationMeta `json:"meta"`
-	Warnings []string       `json:"warnings"`
+	Meta     *GenerationMeta `json:"meta"`
+	Warnings []string        `json:"warnings"`
 	// Files Present on retrieve and create; omitted in lists.
 	Files []GeneratedFile `json:"files,omitempty"`
 	// Errors Recorded failures. Empty when this resource has no recorded failure.
@@ -4214,7 +4214,7 @@ type DefinitionRevisionList struct {
 	// HasMore Whether another page is available after this one.
 	HasMore bool `json:"has_more"`
 	// NextCursor Pass this value as cursor to retrieve the next page; null on the last page.
-	NextCursor string    `json:"next_cursor"`
+	NextCursor *string   `json:"next_cursor"`
 	RequestID  RequestID `json:"request_id"`
 }
 
@@ -4233,9 +4233,9 @@ type DefinitionRevision struct {
 	// SizeBytes Total bytes across all source documents.
 	SizeBytes int64 `json:"size_bytes"`
 	// Source Origin recorded when this immutable revision was created.
-	Source    DefinitionRevisionSource `json:"source"`
-	CreatedAt string                   `json:"created_at"`
-	RequestID *RequestID               `json:"request_id,omitempty"`
+	Source    *DefinitionRevisionSource `json:"source"`
+	CreatedAt string                    `json:"created_at"`
+	RequestID *RequestID                `json:"request_id,omitempty"`
 }
 
 // DefinitionDocument is an API model.
@@ -4364,9 +4364,9 @@ type DefinitionRevisionResponse struct {
 	// SizeBytes Total bytes across all source documents.
 	SizeBytes int64 `json:"size_bytes"`
 	// Source Origin recorded when this immutable revision was created.
-	Source    DefinitionRevisionSource `json:"source"`
-	CreatedAt string                   `json:"created_at"`
-	RequestID RequestID                `json:"request_id"`
+	Source    *DefinitionRevisionSource `json:"source"`
+	CreatedAt string                    `json:"created_at"`
+	RequestID RequestID                 `json:"request_id"`
 }
 
 // Account is an API model. The organization an API key belongs to. Members share its projects, keys, and plan; sign-in identity is not part of the API.
@@ -4396,7 +4396,7 @@ type APIKeyList struct {
 	// HasMore Whether another page is available after this one.
 	HasMore bool `json:"has_more"`
 	// NextCursor Pass this value as cursor to retrieve the next page; null on the last page.
-	NextCursor string    `json:"next_cursor"`
+	NextCursor *string   `json:"next_cursor"`
 	RequestID  RequestID `json:"request_id"`
 }
 
@@ -4408,7 +4408,7 @@ type APIKey struct {
 	// Last4 Last four characters of the secret; the secret itself is never stored.
 	Last4      string     `json:"last4"`
 	Revoked    bool       `json:"revoked"`
-	LastUsedAt string     `json:"last_used_at"`
+	LastUsedAt *string    `json:"last_used_at"`
 	CreatedAt  string     `json:"created_at"`
 	RequestID  *RequestID `json:"request_id,omitempty"`
 }
@@ -4421,7 +4421,7 @@ type APIKeyResponse struct {
 	// Last4 Last four characters of the secret; the secret itself is never stored.
 	Last4      string    `json:"last4"`
 	Revoked    bool      `json:"revoked"`
-	LastUsedAt string    `json:"last_used_at"`
+	LastUsedAt *string   `json:"last_used_at"`
 	CreatedAt  string    `json:"created_at"`
 	RequestID  RequestID `json:"request_id"`
 }
