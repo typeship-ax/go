@@ -149,7 +149,7 @@ func (s *ProjectsService) Retrieve(ctx context.Context, projectID string, opts .
 
 // Delete a project.
 //
-// A `502` response means the Project was not deleted because its release pull requests could not be retired.
+// A `502` response means the Project was not deleted because its release pull requests could not be retired. Retry deletion to finish retiring the remaining reviews. Repeating a completed deletion returns `404`.
 //
 // DELETE /projects/{project_id}
 func (s *ProjectsService) Delete(ctx context.Context, projectID string, opts ...RequestOption) (*DeletedProject, error) {
@@ -173,7 +173,7 @@ func (s *ProjectsService) Delete(ctx context.Context, projectID string, opts ...
 // Omitted fields keep their current values. A supplied config replaces the entire stored object; null or an empty object clears it.
 // Updates have no revision precondition. Concurrent updates preserve omitted fields, and the last saved update to a supplied field wins.
 //
-// A `502` response means the Project was saved, but an obsolete release pull request could not be retired.
+// A `502` response means the Project was saved, but an obsolete release pull request could not be retired. Retrieve the Project and retry the same update to finish retiring reviews if that update is still desired.
 //
 // PATCH /projects/{project_id}
 func (s *ProjectsService) Update(ctx context.Context, projectID string, body UpdateProjectRequest, opts ...RequestOption) (*Project, error) {

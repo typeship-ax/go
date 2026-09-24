@@ -174,7 +174,7 @@ func (s *TargetsService) Delete(ctx context.Context, targetID string, opts ...Re
 // Updates have no revision precondition. Concurrent updates preserve omitted fields, and the last saved update to a supplied field wins.
 // Send proposed_version by itself; use the Draft endpoint for a version selection with an optional revision precondition.
 //
-// A `502` response means the selected version was saved, but regeneration failed.
+// A `502` response means the update was saved, but retiring an obsolete review or regenerating a version selection failed. Retrieve the Target and follow the error's retryable and suggested_action fields. Repeating an unfinished version selection resumes generation; repeating a completed selection starts no new work.
 //
 // PATCH /targets/{target_id}
 func (s *TargetsService) Update(ctx context.Context, targetID string, body TargetUpdateRequest, opts ...RequestOption) (*TargetResponse, error) {
@@ -261,7 +261,7 @@ func (s *TargetsService) RetrieveDraft(ctx context.Context, targetID string, opt
 // Send the last read revision as expected_revision to reject an intervening change with 409 stale_release_revision before saving or regenerating.
 // The precondition is optional; omitting it applies the selection to the current Draft. Version is required; null restores automatic selection.
 //
-// A `502` response means the selected version was saved, but regeneration failed.
+// A `502` response means the selected version was saved, but regeneration failed. Follow the error's retryable and suggested_action fields. Repeating an unfinished selection resumes generation; repeating a completed selection starts no new work. If using expected_revision, retrieve the Draft and confirm the saved selection before retrying with its current revision.
 //
 // PATCH /targets/{target_id}/draft
 func (s *TargetsService) UpdateDraft(ctx context.Context, targetID string, body TargetDraftUpdateParams, opts ...RequestOption) (*TargetDraftResponse, error) {
