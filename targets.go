@@ -311,11 +311,11 @@ func (s *TargetsService) AdoptRelease(ctx context.Context, targetID string, body
 
 // RetrieveRelease — retrieve an immutable Target release.
 //
-// GET /target_releases/{target_release_id}
+// GET /target-releases/{target_release_id}
 func (s *TargetsService) RetrieveRelease(ctx context.Context, targetReleaseID string, opts ...RequestOption) (*TargetReleaseResponse, error) {
 	req := request{
 		Method:     "GET",
-		Path:       fmt.Sprintf("/target_releases/%s", url.PathEscape(targetReleaseID)),
+		Path:       fmt.Sprintf("/target-releases/%s", url.PathEscape(targetReleaseID)),
 		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
 		SchemaKey:  "targets.retrieveRelease",
@@ -334,7 +334,7 @@ func (s *TargetsService) RetrieveRelease(ctx context.Context, targetReleaseID st
 //
 // A `502` response means the repository publication workflow could not be dispatched.
 //
-// POST /target_releases/{target_release_id}/republish
+// POST /target-releases/{target_release_id}/republish
 func (s *TargetsService) RepublishRelease(ctx context.Context, targetReleaseID string, params *TargetsRepublishReleaseParams, opts ...RequestOption) (*TargetReleaseResponse, error) {
 	headers := map[string]string{}
 	if params != nil {
@@ -344,7 +344,7 @@ func (s *TargetsService) RepublishRelease(ctx context.Context, targetReleaseID s
 	}
 	req := request{
 		Method:            "POST",
-		Path:              fmt.Sprintf("/target_releases/%s/republish", url.PathEscape(targetReleaseID)),
+		Path:              fmt.Sprintf("/target-releases/%s/republish", url.PathEscape(targetReleaseID)),
 		Headers:           headers,
 		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
 		Security:          []map[string][]string{{"apiKey": {}}},

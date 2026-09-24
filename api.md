@@ -804,7 +804,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 Retrieve an immutable Target release
 
-`GET /target_releases/{target_release_id}`
+`GET /target-releases/{target_release_id}`
 
 Safety: **read** · Authentication: **required**
 
@@ -830,7 +830,7 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 
 Retry publication of an exact Target release
 
-`POST /target_releases/{target_release_id}/republish`
+`POST /target-releases/{target_release_id}/republish`
 
 Retries publication of the specified release through its repository workflow. Uses that release's version and accepted commit, even if a newer Draft or release exists.
 
@@ -1116,7 +1116,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 Retrieve a Definition Revision
 
-`GET /definition_revisions/{definition_revision_id}`
+`GET /definition-revisions/{definition_revision_id}`
 
 Returns metadata for a saved Definition Revision. Retrieve its resolved content or individual source documents separately.
 
@@ -1144,7 +1144,7 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 
 Retrieve a Definition Revision's canonical content
 
-`GET /definition_revisions/{definition_revision_id}/content`
+`GET /definition-revisions/{definition_revision_id}/content`
 
 Returns the saved, resolved content for this revision. Save it locally or compare it with another revision.
 
@@ -1172,7 +1172,7 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 
 Retrieve one source document from a Definition Revision
 
-`GET /definition_revisions/{definition_revision_id}/documents/{document_id}/content`
+`GET /definition-revisions/{definition_revision_id}/documents/{document_id}/content`
 
 Safety: **read** · Authentication: **required**
 
@@ -1226,7 +1226,7 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*RateLimitedError`
 
 List API keys
 
-`GET /api_keys`
+`GET /api-keys`
 
 Lists key metadata and the last four characters of each key. Full keys are not returned. Create keys in the Console.
 
@@ -1253,7 +1253,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 Revoke an API key
 
-`DELETE /api_keys/{api_key_id}`
+`DELETE /api-keys/{api_key_id}`
 
 Revokes a key. Repeating the request returns the same result.
 
