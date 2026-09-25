@@ -2246,7 +2246,7 @@ const (
 	ErrorTypeAPI          ErrorType = "api"
 )
 
-// ErrorCode is one of "input_invalid", "query_param_invalid", "cursor_invalid", "method_not_allowed", "resource_not_found", "idempotency_key_invalid", "idempotency_key_reused", "idempotency_key_in_use", "auth_required", "api_key_invalid", "token_invalid", "organization_required", "insufficient_scope", "role_insufficient", "rate_limit_exceeded", "plan_limit_reached", "spec_invalid", "spec_too_large", "spec_unreachable", "repository_provider_unsupported", "repository_disconnected", "repository_unavailable", "target_busy", "targets_inactive", "no_draft", "draft_merged", "resource_changed", "precondition_failed", "version_invalid", "version_occupied", "version_too_low", "target_already_released", "adoption_unverified", "publication_disabled", "publication_not_retryable", "publication_recovery_unavailable", "publication_failed", "delivery_conflict", "resource_has_dependencies", "customization_conflict", "history_recovery_required", "checks_unavailable", "dependency_missing", "dependency_not_found", "dependency_self", "dependency_cycle", "dependency_cross_project", "dependency_cross_lineage", "dependency_wrong_generator", "dependency_disabled", "dependency_module_path_missing", "dependency_unreleased", "dependency_revision_mismatch", "regeneration_failed", "follow_up_failed", "api_error". Stable programmatic identifier. Do not branch on message.
+// ErrorCode is one of "input_invalid", "query_param_invalid", "cursor_invalid", "method_not_allowed", "resource_not_found", "idempotency_key_invalid", "idempotency_key_reused", "idempotency_key_in_use", "auth_required", "api_key_invalid", "token_invalid", "organization_required", "insufficient_scope", "role_insufficient", "rate_limit_exceeded", "plan_limit_reached", "spec_invalid", "spec_too_large", "spec_unreachable", "repository_provider_unsupported", "repository_disconnected", "repository_unavailable", "target_busy", "targets_inactive", "no_draft", "draft_merged", "resource_changed", "precondition_failed", "version_invalid", "version_occupied", "version_too_low", "target_already_released", "adoption_unverified", "publication_disabled", "publication_not_retryable", "publication_recovery_unavailable", "publication_failed", "delivery_conflict", "delivery_exists", "resource_has_dependencies", "customization_conflict", "history_recovery_required", "checks_unavailable", "dependency_missing", "dependency_not_found", "dependency_self", "dependency_cycle", "dependency_cross_project", "dependency_cross_lineage", "dependency_wrong_generator", "dependency_disabled", "dependency_module_path_missing", "dependency_unreleased", "dependency_revision_mismatch", "regeneration_failed", "follow_up_failed", "api_error". Stable programmatic identifier. Do not branch on message.
 type ErrorCode string
 
 const (
@@ -2288,6 +2288,7 @@ const (
 	ErrorCodePublicationRecoveryUnavailable ErrorCode = "publication_recovery_unavailable"
 	ErrorCodePublicationFailed              ErrorCode = "publication_failed"
 	ErrorCodeDeliveryConflict               ErrorCode = "delivery_conflict"
+	ErrorCodeDeliveryExists                 ErrorCode = "delivery_exists"
 	ErrorCodeResourceHasDependencies        ErrorCode = "resource_has_dependencies"
 	ErrorCodeCustomizationConflict          ErrorCode = "customization_conflict"
 	ErrorCodeHistoryRecoveryRequired        ErrorCode = "history_recovery_required"
@@ -3295,8 +3296,6 @@ type TargetUpdateRequest struct {
 	Checks         *TargetChecks   `json:"checks,omitempty"`
 	// Config Replaces the complete stored override object. Send null or an empty object to resume Project inheritance. Effective values merge over Project.config; GraphQL settings belong to the Spec.
 	Config *Nullable[TargetConfigParams] `json:"config,omitempty"`
-	// Deliveries Replaces the Delivery set; include each kind you want to keep. Retained kinds preserve their ID, creation time, and hosted URL. Each supplied Delivery replaces its configuration, so omitted optional settings reset to their defaults. Omit deliveries to keep the existing set, or send [] to remove all Deliveries. Removing and later recreating a kind allocates a new ID and, for hosted_mcp, a new URL.
-	Deliveries []DeliveryInput `json:"deliveries,omitempty"`
 }
 
 // UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
@@ -3989,6 +3988,91 @@ type DeliveryList struct {
 	RequestID  RequestID  `json:"request_id"`
 }
 
+// DeliveryCreateRequest is one of RepositoryDeliveryCreateRequest, HostedMCPDeliveryCreateRequest.
+// Go has no sum types, so it holds the JSON as received and decodes on
+// request: try the As* accessors, or switch on Discriminator() when the
+// spec names one.
+type DeliveryCreateRequest struct {
+	union json.RawMessage
+}
+
+// MarshalJSON writes the value as it was set or received.
+func (u DeliveryCreateRequest) MarshalJSON() ([]byte, error) {
+	if u.union == nil {
+		return []byte("null"), nil
+	}
+	return u.union, nil
+}
+
+// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
+func (u *DeliveryCreateRequest) UnmarshalJSON(data []byte) error {
+	u.union = append(u.union[:0], data...)
+	return nil
+}
+
+// Raw returns the JSON exactly as received.
+func (u DeliveryCreateRequest) Raw() json.RawMessage {
+	return u.union
+}
+
+// Discriminator returns the "type" field, which names the variant.
+func (u DeliveryCreateRequest) Discriminator() (string, error) {
+	var probe struct {
+		Kind string `json:"type"`
+	}
+	if err := json.Unmarshal(u.union, &probe); err != nil {
+		return "", err
+	}
+	return probe.Kind, nil
+}
+
+// AsRepositoryDeliveryCreateRequest decodes the value as RepositoryDeliveryCreateRequest.
+func (u DeliveryCreateRequest) AsRepositoryDeliveryCreateRequest() (RepositoryDeliveryCreateRequest, error) {
+	var v RepositoryDeliveryCreateRequest
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromRepositoryDeliveryCreateRequest sets the value to a RepositoryDeliveryCreateRequest.
+func (u *DeliveryCreateRequest) FromRepositoryDeliveryCreateRequest(v RepositoryDeliveryCreateRequest) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AsHostedMCPDeliveryCreateRequest decodes the value as HostedMCPDeliveryCreateRequest.
+func (u DeliveryCreateRequest) AsHostedMCPDeliveryCreateRequest() (HostedMCPDeliveryCreateRequest, error) {
+	var v HostedMCPDeliveryCreateRequest
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromHostedMCPDeliveryCreateRequest sets the value to a HostedMCPDeliveryCreateRequest.
+func (u *DeliveryCreateRequest) FromHostedMCPDeliveryCreateRequest(v HostedMCPDeliveryCreateRequest) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// RepositoryDeliveryCreateRequest is an API model.
+type RepositoryDeliveryCreateRequest struct {
+	TargetID   TargetID                        `json:"target_id"`
+	Type       string                          `json:"type"`
+	Repository RepositoryDeliverySettingsInput `json:"repository"`
+}
+
+// HostedMCPDeliveryCreateRequest is an API model.
+type HostedMCPDeliveryCreateRequest struct {
+	TargetID TargetID `json:"target_id"`
+	Type     string   `json:"type"`
+}
+
 // DeliveryResponse is an API model. repository is present for a repository Delivery, with issues, required_checks, and last_event; hosted_mcp is present for a hosted_mcp Delivery.
 type DeliveryResponse struct {
 	ID             DeliveryID                  `json:"id"`
@@ -4013,6 +4097,20 @@ const (
 	DeliveryResponseTypeRepository DeliveryResponseType = "repository"
 	DeliveryResponseTypeHostedMCP  DeliveryResponseType = "hosted_mcp"
 )
+
+// DeletedDelivery is an API model.
+type DeletedDelivery struct {
+	ID        DeliveryID `json:"id"`
+	Object    string     `json:"object"`
+	Deleted   bool       `json:"deleted"`
+	RequestID RequestID  `json:"request_id"`
+}
+
+// DeliveryUpdateRequest is an API model.
+type DeliveryUpdateRequest struct {
+	// Repository Replaces the complete repository settings, so omitted optional settings reset to their defaults. Only repository Deliveries have settings to update.
+	Repository RepositoryDeliverySettingsInput `json:"repository"`
+}
 
 // PublicationList is an API model.
 type PublicationList struct {

@@ -621,12 +621,12 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ### `client.Targets.Update(ctx, targetID, body, params)`
 
-Update a Target or its Deliveries
+Update a Target
 
 `PATCH /targets/{target_id}`
 
-Omitted fields keep their current values. Supplied config, checks, and deliveries replace their complete stored values.
-With Project auto_generate enabled, changing Target config, checks, or Deliveries queues that Target's Generation. A queued or running Target reuses that Generation.
+Omitted fields keep their current values. Supplied config and checks replace their complete stored values. Change Deliveries with createDelivery, updateDelivery, and deleteDelivery.
+With Project auto_generate enabled, changing Target config or checks queues that Target's Generation. A queued or running Target reuses that Generation.
 Omitting If-Match applies the update to the current resource; with If-Match, a stale ETag returns 412 precondition_failed without saving.
 Select the next version through PATCH /drafts/{draft_id} on the Target's draft_id.
 
@@ -1009,6 +1009,49 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 </details>
 
+### `client.Deliveries.Create(ctx, body, params)`
+
+Create a Delivery
+
+`POST /deliveries`
+
+Adds a repository or hosted MCP Delivery to a Target. A Target has at most one Delivery of each type; a `409 delivery_exists` means it already has one, so update that Delivery instead.
+With Project auto_generate enabled, adding a Delivery queues the Target's Generation. A queued or running Target reuses that Generation.
+
+A `409 delivery_conflict` means another Target owns the requested repository directory. A `409 target_busy` means the Target is publishing; wait for it to finish.
+A `502 follow_up_failed` means the Delivery was saved, but retiring an obsolete review or regenerating the Target failed. Get the Delivery and follow the error's retryable and suggested_action fields.
+
+Safety: **write** · Authentication: **required**
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
+
+Body: `DeliveryCreateRequest` (required)
+
+Returns: `(*DeliveryResponse, error)`
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
+
+<details>
+<summary>Wire arguments (CLI and MCP)</summary>
+
+```json
+{
+  "body": {
+    "target_id": "tgt_5m8q2v7k1p9d4h6c",
+    "type": "repository",
+    "repository": {
+      "provider": "github",
+      "identifier": "parcel-example/parcel-client",
+      "package_name": "parcel-client",
+      "publish_on_merge": false
+    }
+  }
+}
+```
+
+</details>
+
 ### `client.Deliveries.Get(ctx, deliveryID)`
 
 Get a Delivery
@@ -1032,6 +1075,81 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 ```json
 {
   "delivery_id": "dlv_4q8m2v7k1p9d5h6c"
+}
+```
+
+</details>
+
+### `client.Deliveries.Delete(ctx, deliveryID, params)`
+
+Delete a Delivery
+
+`DELETE /deliveries/{delivery_id}`
+
+Removes a Delivery from its Target. Removing a repository Delivery retires the Target's open release pull request; removing a hosted MCP Delivery stops serving its URL. Recreating the type later allocates a new ID and, for hosted MCP, a new URL.
+
+A `409 target_busy` means the Target is publishing; wait for it to finish. A `502 follow_up_failed` means the Delivery was removed, but retiring an obsolete review or regenerating the Target failed.
+See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
+
+Safety: **destructive** · Authentication: **required**
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `deliveryID` | path | `string` | yes | — |
+| `params.IfMatch` | header | `*string` | no | ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes. |
+
+Returns: `(*DeletedDelivery, error)`
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*PreconditionFailedError` (412), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
+
+<details>
+<summary>Wire arguments (CLI and MCP)</summary>
+
+```json
+{
+  "delivery_id": "dlv_4q8m2v7k1p9d5h6c"
+}
+```
+
+</details>
+
+### `client.Deliveries.Update(ctx, deliveryID, body, params)`
+
+Update a Delivery
+
+`PATCH /deliveries/{delivery_id}`
+
+Replaces a repository Delivery's settings. Omitted optional settings reset to their defaults. Hosted MCP Deliveries have no settings to update.
+With Project auto_generate enabled, changing a Delivery queues the Target's Generation. A queued or running Target reuses that Generation.
+Omitting If-Match applies the update to the current Delivery; with If-Match, a stale ETag returns 412 precondition_failed without saving.
+
+A `409 delivery_conflict` means another Target owns the requested repository directory. A `409 target_busy` means the Target is publishing; wait for it to finish.
+A `502 follow_up_failed` means the Delivery was saved, but retiring an obsolete review or regenerating the Target failed. Get the Delivery and follow the error's retryable and suggested_action fields.
+See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
+
+Safety: **write** · Authentication: **required**
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `deliveryID` | path | `string` | yes | — |
+| `params.IfMatch` | header | `*string` | no | ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes. |
+
+Body: `DeliveryUpdateRequest` (required)
+
+Returns: `(*DeliveryResponse, error)`
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*PreconditionFailedError` (412), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
+
+<details>
+<summary>Wire arguments (CLI and MCP)</summary>
+
+```json
+{
+  "delivery_id": "dlv_4q8m2v7k1p9d5h6c",
+  "repository": {
+    "provider": "github",
+    "identifier": "parcel-example/parcel-client",
+    "package_name": "parcel-client",
+    "publish_on_merge": true
+  }
 }
 ```
 
