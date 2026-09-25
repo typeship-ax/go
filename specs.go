@@ -85,7 +85,7 @@ func (s *SpecsService) Update(ctx context.Context, specID string, body SpecUpdat
 
 // Refresh a Spec from its configured source.
 //
-// Fetches the configured source now and creates a new Spec Revision only when its content changes. Diagnostics then reads that revision. If automatic generation is enabled, refresh queues generation for active Targets even when the source is unchanged.
+// Fetches the configured source now and creates a new Spec Revision only when its content changes. Diagnostics then reads that revision. If automatic generation is enabled, refresh queues generation for active Targets even when the source is unchanged. A `502 follow_up_failed` means the new Spec Revision was recorded but generation could not be queued.
 //
 // POST /specs/{spec_id}/refresh
 func (s *SpecsService) Refresh(ctx context.Context, specID string, params *SpecsRefreshParams, opts ...RequestOption) (*Spec, error) {

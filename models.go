@@ -115,7 +115,7 @@ type GoSDKDescriptor struct {
 	ModulePath string `json:"module_path"`
 	// Version Exact SDK module version the CLI requires: v-prefixed SemVer such as v1.2.3, or an immutable Go pseudo-version naming a commit such as v0.0.0-20240824120000-abcdef123456. Ranges, branches, and "latest" are rejected.
 	Version string `json:"version"`
-	// SpecDigest SHA-256 hex digest of the Spec the SDK was generated from. Must match the resolved Spec, or the request fails with spec_error.
+	// SpecDigest SHA-256 hex digest of the Spec the SDK was generated from. Must match the resolved Spec, or the request fails with spec_invalid.
 	SpecDigest string `json:"spec_digest"`
 	// PackageName Go package identifier of the SDK, when the module path's last element does not imply it. Optional.
 	PackageName *string `json:"package_name,omitempty"`
@@ -2233,40 +2233,52 @@ type DomainError struct {
 	DocsURL string `json:"docs_url"`
 }
 
-// ErrorType is one of "request_error", "authentication_error", "authorization_error", "plan_error", "source_error", "rate_limit_error", "api_error". Stable category for deciding how to handle the error.
+// ErrorType is one of "request", "auth", "idempotency", "rate_limit", "organization", "source", "api". Who can resolve the error. request: change the request. auth: fix the credential or its grant. idempotency: change or wait on the Idempotency-Key. rate_limit: wait before retrying. organization: the organization's plan must change. source: a system you own failed, such as the Spec URL, repository, or package registry. api: Typeship failed.
 type ErrorType string
 
 const (
-	ErrorTypeRequestError        ErrorType = "request_error"
-	ErrorTypeAuthenticationError ErrorType = "authentication_error"
-	ErrorTypeAuthorizationError  ErrorType = "authorization_error"
-	ErrorTypePlanError           ErrorType = "plan_error"
-	ErrorTypeSourceError         ErrorType = "source_error"
-	ErrorTypeRateLimitError      ErrorType = "rate_limit_error"
-	ErrorTypeAPIError            ErrorType = "api_error"
+	ErrorTypeRequest      ErrorType = "request"
+	ErrorTypeAuth         ErrorType = "auth"
+	ErrorTypeIdempotency  ErrorType = "idempotency"
+	ErrorTypeRateLimit    ErrorType = "rate_limit"
+	ErrorTypeOrganization ErrorType = "organization"
+	ErrorTypeSource       ErrorType = "source"
+	ErrorTypeAPI          ErrorType = "api"
 )
 
-// ErrorCode is one of "invalid_request", "idempotency_key_reused", "unauthorized", "organization_required", "insufficient_scope", "forbidden", "not_found", "method_not_allowed", "spec_error", "fetch_error", "repository_provider_unsupported", "target_busy", "no_draft", "draft_merged", "resource_changed", "invalid_version", "precondition_failed", "version_occupied", "version_too_low", "target_already_released", "adoption_unverified", "publication_disabled", "publication_not_retryable", "publication_recovery_unavailable", "publication_dispatch_failed", "repository_disconnected", "regeneration_failed", "delivery_conflict", "resource_has_dependencies", "plan_limit_reached", "payload_too_large", "rate_limited", "internal_error", "dependency_missing", "dependency_not_found", "dependency_self", "dependency_cycle", "dependency_cross_project", "dependency_cross_lineage", "dependency_wrong_generator", "dependency_disabled", "dependency_module_path_missing", "dependency_unreleased", "dependency_revision_mismatch", "publication_failed", "customization_conflict", "history_recovery_required", "checks_unavailable". Stable programmatic identifier. Do not branch on message.
+// ErrorCode is one of "input_invalid", "query_param_invalid", "cursor_invalid", "method_not_allowed", "resource_not_found", "idempotency_key_invalid", "idempotency_key_reused", "idempotency_key_in_use", "auth_required", "api_key_invalid", "token_invalid", "organization_required", "insufficient_scope", "role_insufficient", "rate_limit_exceeded", "plan_limit_reached", "spec_invalid", "spec_too_large", "spec_unreachable", "repository_provider_unsupported", "repository_disconnected", "repository_unavailable", "target_busy", "targets_inactive", "no_draft", "draft_merged", "resource_changed", "precondition_failed", "version_invalid", "version_occupied", "version_too_low", "target_already_released", "adoption_unverified", "publication_disabled", "publication_not_retryable", "publication_recovery_unavailable", "publication_failed", "delivery_conflict", "resource_has_dependencies", "customization_conflict", "history_recovery_required", "checks_unavailable", "dependency_missing", "dependency_not_found", "dependency_self", "dependency_cycle", "dependency_cross_project", "dependency_cross_lineage", "dependency_wrong_generator", "dependency_disabled", "dependency_module_path_missing", "dependency_unreleased", "dependency_revision_mismatch", "regeneration_failed", "follow_up_failed", "api_error". Stable programmatic identifier. Do not branch on message.
 type ErrorCode string
 
 const (
-	ErrorCodeInvalidRequest                 ErrorCode = "invalid_request"
+	ErrorCodeInputInvalid                   ErrorCode = "input_invalid"
+	ErrorCodeQueryParamInvalid              ErrorCode = "query_param_invalid"
+	ErrorCodeCursorInvalid                  ErrorCode = "cursor_invalid"
+	ErrorCodeMethodNotAllowed               ErrorCode = "method_not_allowed"
+	ErrorCodeResourceNotFound               ErrorCode = "resource_not_found"
+	ErrorCodeIdempotencyKeyInvalid          ErrorCode = "idempotency_key_invalid"
 	ErrorCodeIdempotencyKeyReused           ErrorCode = "idempotency_key_reused"
-	ErrorCodeUnauthorized                   ErrorCode = "unauthorized"
+	ErrorCodeIdempotencyKeyInUse            ErrorCode = "idempotency_key_in_use"
+	ErrorCodeAuthRequired                   ErrorCode = "auth_required"
+	ErrorCodeAPIKeyInvalid                  ErrorCode = "api_key_invalid"
+	ErrorCodeTokenInvalid                   ErrorCode = "token_invalid"
 	ErrorCodeOrganizationRequired           ErrorCode = "organization_required"
 	ErrorCodeInsufficientScope              ErrorCode = "insufficient_scope"
-	ErrorCodeForbidden                      ErrorCode = "forbidden"
-	ErrorCodeNotFound                       ErrorCode = "not_found"
-	ErrorCodeMethodNotAllowed               ErrorCode = "method_not_allowed"
-	ErrorCodeSpecError                      ErrorCode = "spec_error"
-	ErrorCodeFetchError                     ErrorCode = "fetch_error"
+	ErrorCodeRoleInsufficient               ErrorCode = "role_insufficient"
+	ErrorCodeRateLimitExceeded              ErrorCode = "rate_limit_exceeded"
+	ErrorCodePlanLimitReached               ErrorCode = "plan_limit_reached"
+	ErrorCodeSpecInvalid                    ErrorCode = "spec_invalid"
+	ErrorCodeSpecTooLarge                   ErrorCode = "spec_too_large"
+	ErrorCodeSpecUnreachable                ErrorCode = "spec_unreachable"
 	ErrorCodeRepositoryProviderUnsupported  ErrorCode = "repository_provider_unsupported"
+	ErrorCodeRepositoryDisconnected         ErrorCode = "repository_disconnected"
+	ErrorCodeRepositoryUnavailable          ErrorCode = "repository_unavailable"
 	ErrorCodeTargetBusy                     ErrorCode = "target_busy"
+	ErrorCodeTargetsInactive                ErrorCode = "targets_inactive"
 	ErrorCodeNoDraft                        ErrorCode = "no_draft"
 	ErrorCodeDraftMerged                    ErrorCode = "draft_merged"
 	ErrorCodeResourceChanged                ErrorCode = "resource_changed"
-	ErrorCodeInvalidVersion                 ErrorCode = "invalid_version"
 	ErrorCodePreconditionFailed             ErrorCode = "precondition_failed"
+	ErrorCodeVersionInvalid                 ErrorCode = "version_invalid"
 	ErrorCodeVersionOccupied                ErrorCode = "version_occupied"
 	ErrorCodeVersionTooLow                  ErrorCode = "version_too_low"
 	ErrorCodeTargetAlreadyReleased          ErrorCode = "target_already_released"
@@ -2274,15 +2286,12 @@ const (
 	ErrorCodePublicationDisabled            ErrorCode = "publication_disabled"
 	ErrorCodePublicationNotRetryable        ErrorCode = "publication_not_retryable"
 	ErrorCodePublicationRecoveryUnavailable ErrorCode = "publication_recovery_unavailable"
-	ErrorCodePublicationDispatchFailed      ErrorCode = "publication_dispatch_failed"
-	ErrorCodeRepositoryDisconnected         ErrorCode = "repository_disconnected"
-	ErrorCodeRegenerationFailed             ErrorCode = "regeneration_failed"
+	ErrorCodePublicationFailed              ErrorCode = "publication_failed"
 	ErrorCodeDeliveryConflict               ErrorCode = "delivery_conflict"
 	ErrorCodeResourceHasDependencies        ErrorCode = "resource_has_dependencies"
-	ErrorCodePlanLimitReached               ErrorCode = "plan_limit_reached"
-	ErrorCodePayloadTooLarge                ErrorCode = "payload_too_large"
-	ErrorCodeRateLimited                    ErrorCode = "rate_limited"
-	ErrorCodeInternalError                  ErrorCode = "internal_error"
+	ErrorCodeCustomizationConflict          ErrorCode = "customization_conflict"
+	ErrorCodeHistoryRecoveryRequired        ErrorCode = "history_recovery_required"
+	ErrorCodeChecksUnavailable              ErrorCode = "checks_unavailable"
 	ErrorCodeDependencyMissing              ErrorCode = "dependency_missing"
 	ErrorCodeDependencyNotFound             ErrorCode = "dependency_not_found"
 	ErrorCodeDependencySelf                 ErrorCode = "dependency_self"
@@ -2294,10 +2303,9 @@ const (
 	ErrorCodeDependencyModulePathMissing    ErrorCode = "dependency_module_path_missing"
 	ErrorCodeDependencyUnreleased           ErrorCode = "dependency_unreleased"
 	ErrorCodeDependencyRevisionMismatch     ErrorCode = "dependency_revision_mismatch"
-	ErrorCodePublicationFailed              ErrorCode = "publication_failed"
-	ErrorCodeCustomizationConflict          ErrorCode = "customization_conflict"
-	ErrorCodeHistoryRecoveryRequired        ErrorCode = "history_recovery_required"
-	ErrorCodeChecksUnavailable              ErrorCode = "checks_unavailable"
+	ErrorCodeRegenerationFailed             ErrorCode = "regeneration_failed"
+	ErrorCodeFollowUpFailed                 ErrorCode = "follow_up_failed"
+	ErrorCodeAPIError                       ErrorCode = "api_error"
 )
 
 // FailurePhase is one of "spec", "generation", "delivery", "publication". The stage that failed. A delivery failure does not change a completed Generation's status.
