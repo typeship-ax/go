@@ -3334,8 +3334,9 @@ type ReleaseResponse struct {
 	GenerationID *GenerationID         `json:"generation_id"`
 	Origin       ReleaseResponseOrigin `json:"origin"`
 	// Version Immutable package version released from this Target.
-	Version        string                       `json:"version"`
-	Channel        ReleaseChannel               `json:"channel"`
+	Version string `json:"version"`
+	// ReleaseChannel The Target's release_channel when this version was released.
+	ReleaseChannel ReleaseChannel               `json:"release_channel"`
 	Repository     *RepositoryReferenceResponse `json:"repository"`
 	SpecRevisionID *SpecRevisionID              `json:"spec_revision_id"`
 	// CommitSha Git commit containing the accepted package. Compare it with the Delivery repository history or checked-out commit.
@@ -3344,9 +3345,12 @@ type ReleaseResponse struct {
 	Approvals []CompatibilityApproval `json:"approvals"`
 	// ImportProvenance For an adopted Release, compare the tag and registry URL with the published package and its artifact digest. Null for a Release created by Typeship.
 	ImportProvenance *ReleaseResponseImportProvenance `json:"import_provenance"`
-	Publications     []Publication                    `json:"publications"`
-	CreatedAt        string                           `json:"created_at"`
-	RequestID        RequestID                        `json:"request_id"`
+	// Publications One entry per destination Typeship has attempted to publish. Empty when publishing is off for the Target's repository Delivery.
+	Publications []Publication `json:"publications"`
+	CreatedAt    string        `json:"created_at"`
+	// UpdatedAt When a Publication of this release last changed. The version, commit, and checks never change after the release is created.
+	UpdatedAt string    `json:"updated_at"`
+	RequestID RequestID `json:"request_id"`
 }
 
 // ReleaseID is a generated API type.
@@ -3429,15 +3433,17 @@ type ReleaseResponseImportProvenance struct {
 
 // Publication is an API model.
 type Publication struct {
-	ID             PublicationID          `json:"id"`
-	Object         string                 `json:"object"`
-	ReleaseID      ReleaseID              `json:"release_id"`
-	Destination    PublicationDestination `json:"destination"`
-	Status         PublicationStatus      `json:"status"`
-	Attempt        int64                  `json:"attempt"`
-	RunURL         *string                `json:"run_url"`
-	RegistryURL    *string                `json:"registry_url"`
-	ArtifactDigest *string                `json:"artifact_digest"`
+	ID        PublicationID `json:"id"`
+	Object    string        `json:"object"`
+	ReleaseID ReleaseID     `json:"release_id"`
+	// Type Where the release is published. github is the repository's GitHub Release; the others are package registries.
+	Type PublicationType `json:"type"`
+	// Status queued: the repository workflow has not started this destination; get the Publication or its Release again. running: the workflow is publishing; get it again. completed: the package is published at registry_url. failed: read errors, correct the cause, then call retryRelease on release_id. Lifecycle events are publication.running, publication.completed, and publication.failed.
+	Status         GenerationStatus `json:"status"`
+	Attempt        int64            `json:"attempt"`
+	RunURL         *string          `json:"run_url"`
+	RegistryURL    *string          `json:"registry_url"`
+	ArtifactDigest *string          `json:"artifact_digest"`
 	// Errors Recorded failures. Empty when this resource has no recorded failure.
 	Errors     []DomainError `json:"errors"`
 	StartedAt  *string       `json:"started_at"`
@@ -3451,26 +3457,15 @@ type Publication struct {
 // PublicationID is a generated API type.
 type PublicationID string
 
-// PublicationDestination is one of "github", "npm", "pypi", "go", "mcp".
-type PublicationDestination string
+// PublicationType is one of "github", "npm", "pypi", "go", "mcp". Where the release is published. github is the repository's GitHub Release; the others are package registries.
+type PublicationType string
 
 const (
-	PublicationDestinationGithub PublicationDestination = "github"
-	PublicationDestinationNpm    PublicationDestination = "npm"
-	PublicationDestinationPypi   PublicationDestination = "pypi"
-	PublicationDestinationGo     PublicationDestination = "go"
-	PublicationDestinationMCP    PublicationDestination = "mcp"
-)
-
-// PublicationStatus is one of "pending", "publishing", "published", "failed", "disabled".
-type PublicationStatus string
-
-const (
-	PublicationStatusPending    PublicationStatus = "pending"
-	PublicationStatusPublishing PublicationStatus = "publishing"
-	PublicationStatusPublished  PublicationStatus = "published"
-	PublicationStatusFailed     PublicationStatus = "failed"
-	PublicationStatusDisabled   PublicationStatus = "disabled"
+	PublicationTypeGithub PublicationType = "github"
+	PublicationTypeNpm    PublicationType = "npm"
+	PublicationTypePypi   PublicationType = "pypi"
+	PublicationTypeGo     PublicationType = "go"
+	PublicationTypeMCP    PublicationType = "mcp"
 )
 
 // DraftStatus is one of "none", "working", "action_required", "ready", "merged". none: the open Draft has no pending change; generate the Target to start one. working: Typeship is generating, carrying repository edits forward, applying decisions, or checking the Draft; retrieve it again. action_required: use the typed reason to find the customer's next action. ready: required checks passed on head_sha; merge the pull request. merged: the pull request merged and the Draft is final; retrieve the Target for the draft_id of its next Draft.
@@ -3954,8 +3949,9 @@ type Release struct {
 	GenerationID *GenerationID         `json:"generation_id"`
 	Origin       ReleaseResponseOrigin `json:"origin"`
 	// Version Immutable package version released from this Target.
-	Version        string                       `json:"version"`
-	Channel        ReleaseChannel               `json:"channel"`
+	Version string `json:"version"`
+	// ReleaseChannel The Target's release_channel when this version was released.
+	ReleaseChannel ReleaseChannel               `json:"release_channel"`
 	Repository     *RepositoryReferenceResponse `json:"repository"`
 	SpecRevisionID *SpecRevisionID              `json:"spec_revision_id"`
 	// CommitSha Git commit containing the accepted package. Compare it with the Delivery repository history or checked-out commit.
@@ -3964,9 +3960,12 @@ type Release struct {
 	Approvals []CompatibilityApproval `json:"approvals"`
 	// ImportProvenance For an adopted Release, compare the tag and registry URL with the published package and its artifact digest. Null for a Release created by Typeship.
 	ImportProvenance *ReleaseImportProvenance `json:"import_provenance"`
-	Publications     []Publication            `json:"publications"`
-	CreatedAt        string                   `json:"created_at"`
-	RequestID        *RequestID               `json:"request_id,omitempty"`
+	// Publications One entry per destination Typeship has attempted to publish. Empty when publishing is off for the Target's repository Delivery.
+	Publications []Publication `json:"publications"`
+	CreatedAt    string        `json:"created_at"`
+	// UpdatedAt When a Publication of this release last changed. The version, commit, and checks never change after the release is created.
+	UpdatedAt string     `json:"updated_at"`
+	RequestID *RequestID `json:"request_id,omitempty"`
 }
 
 // ReleaseImportProvenance is an API model. For an adopted Release, compare the tag and registry URL with the published package and its artifact digest. Null for a Release created by Typeship.
@@ -4026,15 +4025,17 @@ type PublicationList struct {
 
 // PublicationResponse is an API model.
 type PublicationResponse struct {
-	ID             PublicationID          `json:"id"`
-	Object         string                 `json:"object"`
-	ReleaseID      ReleaseID              `json:"release_id"`
-	Destination    PublicationDestination `json:"destination"`
-	Status         PublicationStatus      `json:"status"`
-	Attempt        int64                  `json:"attempt"`
-	RunURL         *string                `json:"run_url"`
-	RegistryURL    *string                `json:"registry_url"`
-	ArtifactDigest *string                `json:"artifact_digest"`
+	ID        PublicationID `json:"id"`
+	Object    string        `json:"object"`
+	ReleaseID ReleaseID     `json:"release_id"`
+	// Type Where the release is published. github is the repository's GitHub Release; the others are package registries.
+	Type PublicationType `json:"type"`
+	// Status queued: the repository workflow has not started this destination; get the Publication or its Release again. running: the workflow is publishing; get it again. completed: the package is published at registry_url. failed: read errors, correct the cause, then call retryRelease on release_id. Lifecycle events are publication.running, publication.completed, and publication.failed.
+	Status         GenerationStatus `json:"status"`
+	Attempt        int64            `json:"attempt"`
+	RunURL         *string          `json:"run_url"`
+	RegistryURL    *string          `json:"registry_url"`
+	ArtifactDigest *string          `json:"artifact_digest"`
 	// Errors Recorded failures. Empty when this resource has no recorded failure.
 	Errors     []DomainError `json:"errors"`
 	StartedAt  *string       `json:"started_at"`

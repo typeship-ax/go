@@ -21,6 +21,8 @@ type PublicationsListParams struct {
 	Cursor *string `json:"-"`
 	// ReleaseID Only publications of this release.
 	ReleaseID *ReleaseID `json:"-"`
+	// Status Only publications with this status.
+	Status *GenerationStatus `json:"-"`
 }
 
 // List publications.
@@ -46,6 +48,9 @@ func (s *PublicationsService) List(ctx context.Context, params *PublicationsList
 		if params.ReleaseID != nil {
 			query["release_id"] = *params.ReleaseID
 		}
+		if params.Status != nil {
+			query["status"] = *params.Status
+		}
 	}
 	req := request{
 		Method:     "GET",
@@ -66,7 +71,7 @@ func (s *PublicationsService) List(ctx context.Context, params *PublicationsList
 	})
 }
 
-// Get publishing status.
+// Get a publication.
 //
 // Returns the registry publishing status for a release. A status in another organization returns 404 resource_not_found.
 //
