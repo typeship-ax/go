@@ -13,9 +13,9 @@ import (
 )
 
 // Version is this package's version, also sent as the User-Agent.
-const Version = "0.23.0"
+const Version = "0.24.0"
 
-const userAgent = "typeship/0.23.0"
+const userAgent = "typeship/0.24.0"
 
 // Option configures a Client at construction.
 type Option func(*core)
@@ -149,14 +149,19 @@ func firstCredential(values ...*authValue) *authValue {
 
 // Client is the entry point for typeship.
 type Client struct {
-	Generate            *GenerateService
-	Projects            *ProjectsService
-	Definitions         *DefinitionsService
-	Targets             *TargetsService
-	Generations         *GenerationsService
-	DefinitionRevisions *DefinitionRevisionsService
-	Account             *AccountService
-	APIKeys             *APIKeysService
+	Generate      *GenerateService
+	Projects      *ProjectsService
+	Specs         *SpecsService
+	SpecRevisions *SpecRevisionsService
+	Targets       *TargetsService
+	Drafts        *DraftsService
+	Releases      *ReleasesService
+	Deliveries    *DeliveriesService
+	Publications  *PublicationsService
+	Generations   *GenerationsService
+	Files         *FilesService
+	Organization  *OrganizationService
+	APIKeys       *APIKeysService
 
 	core *core
 }
@@ -199,11 +204,16 @@ func New(opts ...Option) (*Client, error) {
 	client := &Client{core: c}
 	client.Generate = &GenerateService{core: c}
 	client.Projects = &ProjectsService{core: c}
-	client.Definitions = &DefinitionsService{core: c}
+	client.Specs = &SpecsService{core: c}
+	client.SpecRevisions = &SpecRevisionsService{core: c}
 	client.Targets = &TargetsService{core: c}
+	client.Drafts = &DraftsService{core: c}
+	client.Releases = &ReleasesService{core: c}
+	client.Deliveries = &DeliveriesService{core: c}
+	client.Publications = &PublicationsService{core: c}
 	client.Generations = &GenerationsService{core: c}
-	client.DefinitionRevisions = &DefinitionRevisionsService{core: c}
-	client.Account = &AccountService{core: c}
+	client.Files = &FilesService{core: c}
+	client.Organization = &OrganizationService{core: c}
 	client.APIKeys = &APIKeysService{core: c}
 	return client, nil
 }

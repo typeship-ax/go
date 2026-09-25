@@ -25,6 +25,10 @@ func (v Violation) String() string { return v.Path + " " + v.Message }
 // spec's schema. Returned only when the client was built with
 // WithValidation; match it with errors.As.
 type ValidationError struct {
+	Code      string
+	Status    int
+	RequestID string
+	Body      []byte
 	// Direction is "request" or "response".
 	Direction  string
 	Violations []Violation
@@ -42,7 +46,7 @@ func (e *ValidationError) Error() string {
 	if len(e.Violations) > 3 {
 		extra = fmt.Sprintf(" (+%d more)", len(e.Violations)-3)
 	}
-	return e.Direction + " body failed schema validation: " + strings.Join(shown, "; ") + extra
+	return e.Direction + " body failed schema validation: " + strings.Join(shown, "; ") + extra + ". Correct the request or update the spec."
 }
 
 func jsonTypeOf(value any) string {
@@ -280,7 +284,7 @@ func (c *core) validateBody(direction, method, path string, payload []byte, sche
 	if len(violations) == 0 {
 		return nil
 	}
-	err := &ValidationError{Direction: direction, Violations: violations}
+	err := &ValidationError{Code: "validation_error", Direction: direction, Violations: violations}
 	if c.validate == ValidateWarn {
 		c.emitDebug(DebugEvent{Method: method, Path: path, Err: err})
 		return nil

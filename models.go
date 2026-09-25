@@ -6,27 +6,27 @@ import "encoding/json"
 
 // GenerateRequest is an API model.
 type GenerateRequest struct {
-	Definition DefinitionInput `json:"definition"`
+	Spec SpecInput `json:"spec"`
 	// Target One-shot generator descriptor; no persisted Target is created.
 	Target GenerateRequestTarget `json:"target"`
 	// PackageName npm package or Python distribution override. Valid only for the TypeScript and Python SDK targets.
 	PackageName *string `json:"package_name,omitempty"`
-	// ModulePath Go module path override for the generated artifact's own module. Valid only for the Go SDK and Go CLI outputs. Linked projects derive this from the Go destination repository by default.
+	// ModulePath Go module path override for the generated artifact's own module. Valid only for the Go SDK and Go CLI Targets. Projects derive this from the Go destination repository by default.
 	ModulePath *string          `json:"module_path,omitempty"`
 	GoSDK      *GoSDKDescriptor `json:"go_sdk,omitempty"`
 	Config     *Config          `json:"config,omitempty"`
 }
 
-// DefinitionInput is one of URLDefinitionInput, InlineDefinitionInput — A Definition for one-shot generation, provided as exactly one URL or inline entrypoint.
+// SpecInput is one of URLSpecInput, InlineSpecInput — A Spec for one-shot generation, provided as exactly one URL or inline entrypoint.
 // Go has no sum types, so it holds the JSON as received and decodes on
 // request: try the As* accessors, or switch on Discriminator() when the
 // spec names one.
-type DefinitionInput struct {
+type SpecInput struct {
 	union json.RawMessage
 }
 
 // MarshalJSON writes the value as it was set or received.
-func (u DefinitionInput) MarshalJSON() ([]byte, error) {
+func (u SpecInput) MarshalJSON() ([]byte, error) {
 	if u.union == nil {
 		return []byte("null"), nil
 	}
@@ -34,25 +34,25 @@ func (u DefinitionInput) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *DefinitionInput) UnmarshalJSON(data []byte) error {
+func (u *SpecInput) UnmarshalJSON(data []byte) error {
 	u.union = append(u.union[:0], data...)
 	return nil
 }
 
 // Raw returns the JSON exactly as received.
-func (u DefinitionInput) Raw() json.RawMessage {
+func (u SpecInput) Raw() json.RawMessage {
 	return u.union
 }
 
-// AsURLDefinitionInput decodes the value as URLDefinitionInput.
-func (u DefinitionInput) AsURLDefinitionInput() (URLDefinitionInput, error) {
-	var v URLDefinitionInput
+// AsURLSpecInput decodes the value as URLSpecInput.
+func (u SpecInput) AsURLSpecInput() (URLSpecInput, error) {
+	var v URLSpecInput
 	err := json.Unmarshal(u.union, &v)
 	return v, err
 }
 
-// FromURLDefinitionInput sets the value to a URLDefinitionInput.
-func (u *DefinitionInput) FromURLDefinitionInput(v URLDefinitionInput) error {
+// FromURLSpecInput sets the value to a URLSpecInput.
+func (u *SpecInput) FromURLSpecInput(v URLSpecInput) error {
 	encoded, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -61,15 +61,15 @@ func (u *DefinitionInput) FromURLDefinitionInput(v URLDefinitionInput) error {
 	return nil
 }
 
-// AsInlineDefinitionInput decodes the value as InlineDefinitionInput.
-func (u DefinitionInput) AsInlineDefinitionInput() (InlineDefinitionInput, error) {
-	var v InlineDefinitionInput
+// AsInlineSpecInput decodes the value as InlineSpecInput.
+func (u SpecInput) AsInlineSpecInput() (InlineSpecInput, error) {
+	var v InlineSpecInput
 	err := json.Unmarshal(u.union, &v)
 	return v, err
 }
 
-// FromInlineDefinitionInput sets the value to a InlineDefinitionInput.
-func (u *DefinitionInput) FromInlineDefinitionInput(v InlineDefinitionInput) error {
+// FromInlineSpecInput sets the value to a InlineSpecInput.
+func (u *SpecInput) FromInlineSpecInput(v InlineSpecInput) error {
 	encoded, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -78,52 +78,50 @@ func (u *DefinitionInput) FromInlineDefinitionInput(v InlineDefinitionInput) err
 	return nil
 }
 
-// URLDefinitionInput is an API model.
-type URLDefinitionInput struct {
+// URLSpecInput is an API model.
+type URLSpecInput struct {
 	// URL URL of an OpenAPI document, a GraphQL SDL file, or a GraphQL endpoint (introspected automatically). Fetched server-side.
 	URL string `json:"url"`
 	// Headers Request headers for a protected URL. Sent on the document GET and GraphQL introspection POST, never returned or retained by one-shot generation.
 	Headers map[string]string `json:"headers,omitempty"`
 }
 
-// InlineDefinitionInput is an API model.
-type InlineDefinitionInput struct {
-	// Inline Raw Definition text (OpenAPI JSON/YAML or GraphQL SDL). Up to 10MB.
+// InlineSpecInput is an API model.
+type InlineSpecInput struct {
+	// Inline Raw Spec text (OpenAPI JSON/YAML or GraphQL SDL). Up to 10MB.
 	Inline string `json:"inline"`
 }
 
 // GenerateRequestTarget is an API model. One-shot generator descriptor; no persisted Target is created.
 type GenerateRequestTarget struct {
-	Generator GeneratorKind `json:"generator"`
+	Type GeneratorKind `json:"type"`
 }
 
-// GeneratorKind is one of "typescript-sdk", "python-sdk", "go-sdk", "cli", "go-cli", "mcp". Generator implementation selected by a Target. This is configuration, not identity; several Targets may use the same generator. cli is the TypeScript CLI; go-cli is the native Go CLI, a distinct product that imports one exact paired Go SDK module rather than a client of its own.
+// GeneratorKind is one of "cli", "go_cli", "mcp", "typescript_sdk", "python_sdk", "go_sdk". Generator implementation selected by a Target. This is configuration, not identity; several Targets may use the same generator. cli is the TypeScript CLI; go_cli is the native Go CLI, a distinct product that imports one exact paired Go SDK module rather than a client of its own.
 type GeneratorKind string
 
 const (
-	GeneratorKindTypescriptSDK GeneratorKind = "typescript-sdk"
-	GeneratorKindPythonSDK     GeneratorKind = "python-sdk"
-	GeneratorKindGoSDK         GeneratorKind = "go-sdk"
 	GeneratorKindCLI           GeneratorKind = "cli"
-	GeneratorKindGoCLI         GeneratorKind = "go-cli"
+	GeneratorKindGoCLI         GeneratorKind = "go_cli"
 	GeneratorKindMCP           GeneratorKind = "mcp"
+	GeneratorKindTypescriptSDK GeneratorKind = "typescript_sdk"
+	GeneratorKindPythonSDK     GeneratorKind = "python_sdk"
+	GeneratorKindGoSDK         GeneratorKind = "go_sdk"
 )
 
-// GoSDKDescriptor is an API model. The exact paired Go SDK a go-cli generation is built on. Required when target.generator is go-cli and rejected otherwise. The descriptor is closed and immutable, because a CLI that pins a range or a branch pins nothing.
+// GoSDKDescriptor is an API model. The exact paired Go SDK a go_cli generation is built on. Required when target.type is go_cli and rejected otherwise. The descriptor is closed and immutable, because a CLI that pins a range or a branch pins nothing.
 type GoSDKDescriptor struct {
 	// ModulePath Go module path of the SDK the CLI imports, for example github.com/acme/payments-go. Must be a valid Go module path.
 	ModulePath string `json:"module_path"`
 	// Version Exact SDK module version the CLI requires: v-prefixed SemVer such as v1.2.3, or an immutable Go pseudo-version naming a commit such as v0.0.0-20240824120000-abcdef123456. Ranges, branches, and "latest" are rejected.
 	Version string `json:"version"`
-	// DefinitionDigest SHA-256 hex digest of the Definition the SDK was generated from. Must match the resolved Definition, or the request fails with spec_error.
-	DefinitionDigest string `json:"definition_digest"`
-	// Edition The generator edition the SDK was generated with. Only the current edition, 2026-08-24, is accepted.
-	Edition string `json:"edition"`
+	// SpecDigest SHA-256 hex digest of the Spec the SDK was generated from. Must match the resolved Spec, or the request fails with spec_error.
+	SpecDigest string `json:"spec_digest"`
 	// PackageName Go package identifier of the SDK, when the module path's last element does not imply it. Optional.
 	PackageName *string `json:"package_name,omitempty"`
 }
 
-// Config is an API model. Everything Typeship needs beyond the Definition, in one object: generation customization (globals, retries, pagination, readme) and how the generated tooling behaves (cli, mcp, package, docs_url). Plain configuration. Typeship never requires vendor extensions inside the Definition itself. One-shot generation also accepts GraphQL settings here; stored projects keep those settings on their Definition.
+// Config is an API model. Everything Typeship needs beyond the Spec, in one object: generation customization (globals, retries, pagination, readme) and how the generated tooling behaves (cli, mcp, package, docs_url). Plain configuration. Typeship never requires vendor extensions inside the Spec itself. One-shot generation also accepts GraphQL settings here; stored projects keep those settings on their Spec.
 type Config struct {
 	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
 	Globals []string     `json:"globals,omitempty"`
@@ -136,7 +134,7 @@ type Config struct {
 	MCP        *MCPBehavior                     `json:"mcp,omitempty"`
 	Readme     *ReadmeBehavior                  `json:"readme,omitempty"`
 	Package    *PackageBehavior                 `json:"package,omitempty"`
-	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Definition's externalDocs URL.
+	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Spec's externalDocs URL.
 	DocsURL *string `json:"docs_url,omitempty"`
 	// DocsIndexURL Exact llms.txt URL when the documentation site does not publish it at docs_url + /llms.txt.
 	DocsIndexURL *string `json:"docs_index_url,omitempty"`
@@ -231,12 +229,12 @@ type PaginationRule struct {
 	LimitParam      *string `json:"limit_param,omitempty"`
 }
 
-// Style is one of "cursor", "cursorFromLastId", "page", "offset".
+// Style is one of "cursor", "cursor_from_last_id", "page", "offset".
 type Style string
 
 const (
 	StyleCursor           Style = "cursor"
-	StyleCursorFromLastID Style = "cursorFromLastId"
+	StyleCursorFromLastID Style = "cursor_from_last_id"
 	StylePage             Style = "page"
 	StyleOffset           Style = "offset"
 )
@@ -524,10 +522,9 @@ type PackageBehavior struct {
 type GenerationResult struct {
 	Files    []GeneratedFile     `json:"files"`
 	Download *GenerationDownload `json:"download,omitempty"`
-	Warnings []string            `json:"warnings"`
-	Meta     GenerationMeta      `json:"meta"`
-	Limits   *GenerationLimits   `json:"limits,omitempty"`
-	// Claim Anonymous, URL-sourced generations only. A link a signed-in person can open to turn this run into a project in their organization (same Definition, Target, and config). Lasts seven days. Null for inline Definitions; absent on keyed calls.
+	Warnings []GenerationWarning `json:"warnings"`
+	Coverage GenerationCoverage  `json:"coverage"`
+	// Claim Anonymous, URL-sourced generations only. A link a signed-in person can open to turn this run into a project in their organization (same Spec, Target, and config). Lasts seven days. Null for inline Specs; absent on keyed calls.
 	Claim     *GenerationResultClaim `json:"claim,omitempty"`
 	RequestID RequestID              `json:"request_id"`
 }
@@ -559,191 +556,37 @@ type GenerationDownload struct {
 	FileCount int64  `json:"file_count"`
 }
 
-// GenerationMeta is an API model.
-type GenerationMeta struct {
-	Title string `json:"title"`
-	// APIVersion Version declared by the customer's API Definition. It never controls package releases.
-	APIVersion string `json:"api_version"`
-	// Version Package version selected by the Target's release stream for this generation.
-	Version    string  `json:"version"`
-	SpecFormat *Format `json:"spec_format,omitempty"`
-	// OasVersion Detected OpenAPI version, "2.0", "3.0", or "3.1".
-	OasVersion string `json:"oas_version"`
-	// Converted True when the input was Swagger 2.0 and was converted.
-	Converted *bool `json:"converted,omitempty"`
-	// ArtifactName Ecosystem-neutral identity of the generated artifact.
-	ArtifactName string `json:"artifact_name"`
-	ClientName   string `json:"client_name"`
-	// Generators Generator implementations present in this artifact. Persisted Target identity is reported on Generation.
-	Generators []GeneratorKind `json:"generators"`
-	// GoSDK Present for go-cli generations only. Names the exact paired Go SDK module and version the CLI was generated against, as its go.mod requires it.
-	GoSDK                   *GenerationMetaGoSDK `json:"go_sdk,omitempty"`
-	ResourceCount           *int64               `json:"resource_count,omitempty"`
-	OperationCount          *int64               `json:"operation_count,omitempty"`
-	SchemaCount             *int64               `json:"schema_count,omitempty"`
-	PaginatedOperationCount *int64               `json:"paginated_operation_count,omitempty"`
-	// OmittedOperationCount Operations beyond the plan's endpoint allowance, not generated.
-	OmittedOperationCount *int64 `json:"omitted_operation_count,omitempty"`
-	// OmittedOperations METHOD/path identities of operations omitted by the generation cap.
-	OmittedOperations []string `json:"omitted_operations,omitempty"`
-	// PrURL Pull request opened by this regeneration, when one was.
-	PrURL    *string `json:"pr_url,omitempty"`
-	PrNumber *int64  `json:"pr_number,omitempty"`
-	// PrStatus Whether a destination pull request opened, was unnecessary because the generated tree already matched, or could not be opened.
-	PrStatus *GenerationMetaPrStatus `json:"pr_status,omitempty"`
-	// Changelog Markdown changelog entry for this regeneration, from the API surface diff. Absent on a first generation or when nothing changed.
-	Changelog *string `json:"changelog,omitempty"`
-	// BreakingCount Breaking changes in the diff; removed methods and fields, changed types, inputs that became required.
-	BreakingCount *int64 `json:"breaking_count,omitempty"`
-	// Baseline What the diff was measured against. destination uses the accepted repository state; last-generation uses the previous successful Generation; none means no baseline was available.
-	Baseline *GenerationMetaBaseline `json:"baseline,omitempty"`
-	// APICompatibility Objective compatibility of the generated API surface against the merged destination baseline.
-	APICompatibility *APICompatibility `json:"api_compatibility,omitempty"`
-	// PackageCompatibility Objective compatibility of public package entry points and selected targets against the merged destination baseline.
-	PackageCompatibility *APICompatibility `json:"package_compatibility,omitempty"`
-	// VersionCorrect Whether the generated package version satisfies the cumulative change. Null when there is no prior version or analysis is unavailable.
-	VersionCorrect *bool `json:"version_correct,omitempty"`
-	// ReleaseReadiness The destination pull request's combined readiness decision for the exact bot-generated head. Compatibility and version correctness remain separate fields above.
-	ReleaseReadiness *ReleaseReadiness `json:"release_readiness,omitempty"`
-	// ReleaseReadinessNote The release-readiness decision in one line, as the commit status describes it.
-	ReleaseReadinessNote *string `json:"release_readiness_note,omitempty"`
-	// PreviousVersion The package version the destination had before this regeneration.
-	PreviousVersion *string `json:"previous_version,omitempty"`
-	// CustomerChangeCount Files changed by the customer relative to the accepted combined baseline.
-	CustomerChangeCount *int64                          `json:"customer_change_count,omitempty"`
-	IntegrationState    *GenerationMetaIntegrationState `json:"integration_state,omitempty"`
-	// PublishedCompatibility Separate compatibility result against the last published artifact.
-	PublishedCompatibility *GenerationMetaPublishedCompatibility `json:"published_compatibility,omitempty"`
-	// PublishedVersion Version of the last published artifact used by published_compatibility.
-	PublishedVersion *string `json:"published_version,omitempty"`
-	FileCount        *int64  `json:"file_count,omitempty"`
-	TotalLines       *int64  `json:"total_lines,omitempty"`
-	// Diagnostics Deterministic Diagnostic summary for the exact Definition Revision consumed.
-	Diagnostics *GenerationMetaDiagnostics `json:"diagnostics,omitempty"`
+// GenerationWarning is an API model.
+type GenerationWarning struct {
+	// Code Stable machine-readable warning code.
+	Code string `json:"code"`
+	// Message Human-readable explanation.
+	Message string `json:"message"`
+	// Operation METHOD/path of the affected operation, when applicable.
+	Operation *string `json:"operation,omitempty"`
 }
 
-// Format is one of "openapi", "graphql".
-type Format string
-
-const (
-	FormatOpenapi Format = "openapi"
-	FormatGraphql Format = "graphql"
-)
-
-// GenerationMetaGoSDK is an API model. Present for go-cli generations only. Names the exact paired Go SDK module and version the CLI was generated against, as its go.mod requires it.
-type GenerationMetaGoSDK struct {
-	// ModulePath Go module path of the SDK the Go CLI imports and pins.
-	ModulePath string `json:"module_path"`
-	// Version Exact SDK module version the Go CLI requires, v-prefixed SemVer or a Go pseudo-version.
-	Version string `json:"version"`
-	// PackageName Go package identifier of the SDK, when the module path does not imply it.
-	PackageName *string `json:"package_name,omitempty"`
-}
-
-// GenerationMetaPrStatus is one of "opened", "no_changes", "blocked". Whether a destination pull request opened, was unnecessary because the generated tree already matched, or could not be opened.
-type GenerationMetaPrStatus string
-
-const (
-	GenerationMetaPrStatusOpened    GenerationMetaPrStatus = "opened"
-	GenerationMetaPrStatusNoChanges GenerationMetaPrStatus = "no_changes"
-	GenerationMetaPrStatusBlocked   GenerationMetaPrStatus = "blocked"
-)
-
-// GenerationMetaBaseline is one of "destination", "last-generation", "none". What the diff was measured against. destination uses the accepted repository state; last-generation uses the previous successful Generation; none means no baseline was available.
-type GenerationMetaBaseline string
-
-const (
-	GenerationMetaBaselineDestination    GenerationMetaBaseline = "destination"
-	GenerationMetaBaselineLastGeneration GenerationMetaBaseline = "last-generation"
-	GenerationMetaBaselineNone           GenerationMetaBaseline = "none"
-)
-
-// APICompatibility is one of "compatible", "breaking", "unknown".
-type APICompatibility string
-
-const (
-	APICompatibilityCompatible APICompatibility = "compatible"
-	APICompatibilityBreaking   APICompatibility = "breaking"
-	APICompatibilityUnknown    APICompatibility = "unknown"
-)
-
-// ReleaseReadiness is one of "success", "failure", "pending", "error".
-type ReleaseReadiness string
-
-const (
-	ReleaseReadinessSuccess ReleaseReadiness = "success"
-	ReleaseReadinessFailure ReleaseReadiness = "failure"
-	ReleaseReadinessPending ReleaseReadiness = "pending"
-	ReleaseReadinessError   ReleaseReadiness = "error"
-)
-
-// GenerationMetaIntegrationState is one of "conflicted", "checking", "checks_failed", "ready", "accepted", "outdated".
-type GenerationMetaIntegrationState string
-
-const (
-	GenerationMetaIntegrationStateConflicted   GenerationMetaIntegrationState = "conflicted"
-	GenerationMetaIntegrationStateChecking     GenerationMetaIntegrationState = "checking"
-	GenerationMetaIntegrationStateChecksFailed GenerationMetaIntegrationState = "checks_failed"
-	GenerationMetaIntegrationStateReady        GenerationMetaIntegrationState = "ready"
-	GenerationMetaIntegrationStateAccepted     GenerationMetaIntegrationState = "accepted"
-	GenerationMetaIntegrationStateOutdated     GenerationMetaIntegrationState = "outdated"
-)
-
-// GenerationMetaPublishedCompatibility is one of "compatible", "breaking", "unknown", "not_applicable". Separate compatibility result against the last published artifact.
-type GenerationMetaPublishedCompatibility string
-
-const (
-	GenerationMetaPublishedCompatibilityCompatible    GenerationMetaPublishedCompatibility = "compatible"
-	GenerationMetaPublishedCompatibilityBreaking      GenerationMetaPublishedCompatibility = "breaking"
-	GenerationMetaPublishedCompatibilityUnknown       GenerationMetaPublishedCompatibility = "unknown"
-	GenerationMetaPublishedCompatibilityNotApplicable GenerationMetaPublishedCompatibility = "not_applicable"
-)
-
-// GenerationMetaDiagnostics is an API model. Deterministic Diagnostic summary for the exact Definition Revision consumed.
-type GenerationMetaDiagnostics struct {
-	Format  Format            `json:"format"`
-	Summary DiagnosticSummary `json:"summary"`
-}
-
-// DiagnosticSummary is an API model. Counts distinguish decisions from the number of affected schema locations.
-type DiagnosticSummary struct {
-	// Diagnostics Number of grouped rule diagnostics.
-	Diagnostics int64 `json:"diagnostics"`
-	// Occurrences Total affected locations across all diagnostics.
-	Occurrences int64 `json:"occurrences"`
-	// Errors Grouped correctness errors.
-	Errors int64 `json:"errors"`
-	// Warnings Grouped material risks.
-	Warnings int64 `json:"warnings"`
-	// Suggestions Grouped improvements.
-	Suggestions int64 `json:"suggestions"`
-	// AutoFixable Diagnostics with exact reviewable Definition patches.
-	AutoFixable int64 `json:"auto_fixable"`
-}
-
-// GenerationLimits is an API model. Present when the generation was capped: by the free plan, or because the call was anonymous. Absent on uncapped generations.
-type GenerationLimits struct {
-	// MaxOperations How many operations this generation was allowed to include.
-	MaxOperations int64 `json:"max_operations"`
-	// GeneratedOperations How many operations are present in the generated package.
-	GeneratedOperations int64 `json:"generated_operations"`
-	// OmittedOperations How many operations in the Definition were left out.
-	OmittedOperations int64 `json:"omitted_operations"`
-	// TotalOperations How many operations Typeship found in the complete Definition.
-	TotalOperations int64                  `json:"total_operations"`
-	Reason          GenerationLimitsReason `json:"reason"`
-	// SignupURL Anonymous calls only. Where to create an account.
+// GenerationCoverage is an API model.
+type GenerationCoverage struct {
+	Generated int64 `json:"generated"`
+	Omitted   int64 `json:"omitted"`
+	Total     int64 `json:"total"`
+	// OmittedOperations METHOD/path identities of operations omitted from the package.
+	OmittedOperations []string `json:"omitted_operations"`
+	// Reason Present when a plan or anonymous limit omitted operations.
+	Reason *GenerationCoverageReason `json:"reason,omitempty"`
+	// SignupURL Sign-up link for anonymous capped runs.
 	SignupURL *string `json:"signup_url,omitempty"`
-	// UpgradeURL Where the cap is lifted.
-	UpgradeURL string `json:"upgrade_url"`
+	// UpgradeURL Upgrade link for capped signed-in runs.
+	UpgradeURL *string `json:"upgrade_url,omitempty"`
 }
 
-// GenerationLimitsReason is one of "anonymous", "free_plan".
-type GenerationLimitsReason string
+// GenerationCoverageReason is one of "anonymous", "free_plan". Present when a plan or anonymous limit omitted operations.
+type GenerationCoverageReason string
 
 const (
-	GenerationLimitsReasonAnonymous GenerationLimitsReason = "anonymous"
-	GenerationLimitsReasonFreePlan  GenerationLimitsReason = "free_plan"
+	GenerationCoverageReasonAnonymous GenerationCoverageReason = "anonymous"
+	GenerationCoverageReasonFreePlan  GenerationCoverageReason = "free_plan"
 )
 
 // GenerationResultClaim is an API model.
@@ -771,32 +614,30 @@ type ListObject string
 
 // ProjectSummary is an API model. Lean Project identity returned by collection endpoints. Retrieve the Project for shared configuration and list its Targets for the complete canonical child collection.
 type ProjectSummary struct {
-	ID           ProjectID    `json:"id"`
-	Object       string       `json:"object"`
-	Name         string       `json:"name"`
-	DefinitionID DefinitionID `json:"definition_id"`
-	AutoGenerate bool         `json:"auto_generate"`
-	CreatedAt    string       `json:"created_at"`
-	UpdatedAt    string       `json:"updated_at"`
+	ID           ProjectID `json:"id"`
+	Object       string    `json:"object"`
+	Name         string    `json:"name"`
+	SpecID       SpecID    `json:"spec_id"`
+	AutoGenerate bool      `json:"auto_generate"`
+	CreatedAt    string    `json:"created_at"`
+	UpdatedAt    string    `json:"updated_at"`
 }
 
 // ProjectID is a generated API type.
 type ProjectID string
 
-// DefinitionID is a generated API type.
-type DefinitionID string
+// SpecID is a generated API type.
+type SpecID string
 
 // CreateProjectRequest is an API model.
 type CreateProjectRequest struct {
-	Name       string                 `json:"name"`
-	Definition DefinitionFieldsParams `json:"definition"`
+	Name string           `json:"name"`
+	Spec SpecFieldsParams `json:"spec"`
 	// Targets Initial first-class Targets. More than one may use the same generator with different identities or Deliveries.
 	Targets []InitialTargetFieldsParams `json:"targets"`
-	// AutoGenerate Whether Typeship should regenerate automatically when the source changes.
+	// AutoGenerate Whether Typeship should regenerate automatically when the source or saved configuration changes.
 	AutoGenerate *bool `json:"auto_generate,omitempty"`
-	// RelayEnabled Enable webhook relay sessions. Requires the CLI target and Pro.
-	RelayEnabled *bool `json:"relay_enabled,omitempty"`
-	// Config Shared defaults inherited by every Target. GraphQL settings belong in definition.graphql.
+	// Config Shared defaults inherited by every Target. GraphQL settings belong in spec.graphql.
 	Config *Nullable[ProjectConfigParams] `json:"config,omitempty"`
 }
 
@@ -818,18 +659,18 @@ func (v *CreateProjectRequest) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// DefinitionFieldsParams is an API model.
-type DefinitionFieldsParams struct {
-	Source  DefinitionSourceInput   `json:"source"`
-	Patches []DefinitionPatchParams `json:"patches,omitempty"`
+// SpecFieldsParams is an API model.
+type SpecFieldsParams struct {
+	Source  SpecSourceInput   `json:"source"`
+	Patches []SpecPatchParams `json:"patches,omitempty"`
 	// Graphql GraphQL-only endpoint, auth, environment, title, and scalar settings.
 	Graphql          *Nullable[GraphqlSettings] `json:"graphql,omitempty"`
 	DiagnosticPolicy *DiagnosticPolicy          `json:"diagnostic_policy,omitempty"`
 }
 
 // UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
-func (v *DefinitionFieldsParams) UnmarshalJSON(data []byte) error {
-	type plain DefinitionFieldsParams
+func (v *SpecFieldsParams) UnmarshalJSON(data []byte) error {
+	type plain SpecFieldsParams
 	decoded := plain(*v)
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
@@ -841,20 +682,20 @@ func (v *DefinitionFieldsParams) UnmarshalJSON(data []byte) error {
 	if string(fields["graphql"]) == "null" {
 		decoded.Graphql = NullableNull[GraphqlSettings]()
 	}
-	*v = DefinitionFieldsParams(decoded)
+	*v = SpecFieldsParams(decoded)
 	return nil
 }
 
-// DefinitionSourceInput is one of URLDefinitionSourceInput, RepositoryDefinitionSourceInput.
+// SpecSourceInput is one of URLSpecSourceInput, RepositorySpecSourceInput.
 // Go has no sum types, so it holds the JSON as received and decodes on
 // request: try the As* accessors, or switch on Discriminator() when the
 // spec names one.
-type DefinitionSourceInput struct {
+type SpecSourceInput struct {
 	union json.RawMessage
 }
 
 // MarshalJSON writes the value as it was set or received.
-func (u DefinitionSourceInput) MarshalJSON() ([]byte, error) {
+func (u SpecSourceInput) MarshalJSON() ([]byte, error) {
 	if u.union == nil {
 		return []byte("null"), nil
 	}
@@ -862,20 +703,20 @@ func (u DefinitionSourceInput) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *DefinitionSourceInput) UnmarshalJSON(data []byte) error {
+func (u *SpecSourceInput) UnmarshalJSON(data []byte) error {
 	u.union = append(u.union[:0], data...)
 	return nil
 }
 
 // Raw returns the JSON exactly as received.
-func (u DefinitionSourceInput) Raw() json.RawMessage {
+func (u SpecSourceInput) Raw() json.RawMessage {
 	return u.union
 }
 
-// Discriminator returns the "kind" field, which names the variant.
-func (u DefinitionSourceInput) Discriminator() (string, error) {
+// Discriminator returns the "type" field, which names the variant.
+func (u SpecSourceInput) Discriminator() (string, error) {
 	var probe struct {
-		Kind string `json:"kind"`
+		Kind string `json:"type"`
 	}
 	if err := json.Unmarshal(u.union, &probe); err != nil {
 		return "", err
@@ -883,15 +724,15 @@ func (u DefinitionSourceInput) Discriminator() (string, error) {
 	return probe.Kind, nil
 }
 
-// AsURLDefinitionSourceInput decodes the value as URLDefinitionSourceInput.
-func (u DefinitionSourceInput) AsURLDefinitionSourceInput() (URLDefinitionSourceInput, error) {
-	var v URLDefinitionSourceInput
+// AsURLSpecSourceInput decodes the value as URLSpecSourceInput.
+func (u SpecSourceInput) AsURLSpecSourceInput() (URLSpecSourceInput, error) {
+	var v URLSpecSourceInput
 	err := json.Unmarshal(u.union, &v)
 	return v, err
 }
 
-// FromURLDefinitionSourceInput sets the value to a URLDefinitionSourceInput.
-func (u *DefinitionSourceInput) FromURLDefinitionSourceInput(v URLDefinitionSourceInput) error {
+// FromURLSpecSourceInput sets the value to a URLSpecSourceInput.
+func (u *SpecSourceInput) FromURLSpecSourceInput(v URLSpecSourceInput) error {
 	encoded, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -900,15 +741,15 @@ func (u *DefinitionSourceInput) FromURLDefinitionSourceInput(v URLDefinitionSour
 	return nil
 }
 
-// AsRepositoryDefinitionSourceInput decodes the value as RepositoryDefinitionSourceInput.
-func (u DefinitionSourceInput) AsRepositoryDefinitionSourceInput() (RepositoryDefinitionSourceInput, error) {
-	var v RepositoryDefinitionSourceInput
+// AsRepositorySpecSourceInput decodes the value as RepositorySpecSourceInput.
+func (u SpecSourceInput) AsRepositorySpecSourceInput() (RepositorySpecSourceInput, error) {
+	var v RepositorySpecSourceInput
 	err := json.Unmarshal(u.union, &v)
 	return v, err
 }
 
-// FromRepositoryDefinitionSourceInput sets the value to a RepositoryDefinitionSourceInput.
-func (u *DefinitionSourceInput) FromRepositoryDefinitionSourceInput(v RepositoryDefinitionSourceInput) error {
+// FromRepositorySpecSourceInput sets the value to a RepositorySpecSourceInput.
+func (u *SpecSourceInput) FromRepositorySpecSourceInput(v RepositorySpecSourceInput) error {
 	encoded, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -917,33 +758,46 @@ func (u *DefinitionSourceInput) FromRepositoryDefinitionSourceInput(v Repository
 	return nil
 }
 
-// URLDefinitionSourceInput is an API model.
-type URLDefinitionSourceInput struct {
-	Kind string `json:"kind"`
+// URLSpecSourceInput is an API model.
+type URLSpecSourceInput struct {
+	Type string                     `json:"type"`
+	URL  URLSpecSourceSettingsInput `json:"url"`
+}
+
+// URLSpecSourceSettingsInput is an API model.
+type URLSpecSourceSettingsInput struct {
 	// URL URL of an OpenAPI document, GraphQL SDL file, or GraphQL endpoint.
 	URL string `json:"url"`
 	// Headers Request headers for a protected URL. Values are never returned or recorded in revision history. When updating the same URL, omit headers to preserve the stored values or pass null to remove them. Changing the URL without headers clears the old values so a credential is never forwarded to a different source.
 	Headers map[string]string `json:"headers,omitempty"`
 }
 
-// RepositoryDefinitionSourceInput is an API model.
-type RepositoryDefinitionSourceInput struct {
-	Kind       string              `json:"kind"`
-	Repository RepositoryReference `json:"repository"`
-	// Path Repository-relative Definition entrypoint.
+// RepositorySpecSourceInput is an API model.
+type RepositorySpecSourceInput struct {
+	Type       string                            `json:"type"`
+	Repository RepositorySpecSourceSettingsInput `json:"repository"`
+}
+
+// RepositorySpecSourceSettingsInput is an API model.
+type RepositorySpecSourceSettingsInput struct {
+	Provider   RepositoryProvider   `json:"provider"`
+	Identifier RepositoryIdentifier `json:"identifier"`
+	// Path Repository-relative Spec entrypoint.
 	Path string `json:"path"`
 }
 
-// RepositoryReference is an API model.
-type RepositoryReference struct {
-	// Provider GitHub is the only launch provider; the field is stable for future adapters.
-	Provider string `json:"provider"`
-	// Identifier Provider-native repository identity, opaque outside its adapter.
-	Identifier string `json:"identifier"`
-}
+// RepositoryProvider is one of "github". GitHub is the only launch provider; the field is stable for future adapters.
+type RepositoryProvider string
 
-// DefinitionPatchParams is an API model. A fix applied to the resolved Definition before generation. Paths are JSON Pointers into the document. A patch whose target no longer exists is skipped and reported as a warning on the generation, never silently.
-type DefinitionPatchParams struct {
+const (
+	RepositoryProviderGithub RepositoryProvider = "github"
+)
+
+// RepositoryIdentifier is a generated API type.
+type RepositoryIdentifier string
+
+// SpecPatchParams is an API model. A fix applied to the resolved Spec before generation. Paths are JSON Pointers into the document. A patch whose target no longer exists is skipped and reported as a warning on the generation, never silently.
+type SpecPatchParams struct {
 	Op Op `json:"op"`
 	// Path JSON-Pointer-style path. Pattern segments enable bulk fixes: * (any child), ** (any depth), [key=value] (filter), e.g. /paths/**/parameters/[name=account_id]/schema/type. Renaming a schema under /components/schemas also rewrites its $refs.
 	Path string `json:"path"`
@@ -955,8 +809,8 @@ type DefinitionPatchParams struct {
 }
 
 // UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
-func (v *DefinitionPatchParams) UnmarshalJSON(data []byte) error {
-	type plain DefinitionPatchParams
+func (v *SpecPatchParams) UnmarshalJSON(data []byte) error {
+	type plain SpecPatchParams
 	decoded := plain(*v)
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
@@ -971,7 +825,7 @@ func (v *DefinitionPatchParams) UnmarshalJSON(data []byte) error {
 	if string(fields["reason"]) == "null" {
 		decoded.Reason = NullableNull[string]()
 	}
-	*v = DefinitionPatchParams(decoded)
+	*v = SpecPatchParams(decoded)
 	return nil
 }
 
@@ -1014,14 +868,12 @@ type DiagnosticSuppression struct {
 
 // InitialTargetFieldsParams is an API model.
 type InitialTargetFieldsParams struct {
-	Name            string            `json:"name"`
-	Generator       GeneratorKind     `json:"generator"`
-	State           *State            `json:"state,omitempty"`
-	Edition         *string           `json:"edition,omitempty"`
-	ReleaseChannel  *ReleaseChannel   `json:"release_channel,omitempty"`
-	ProposedVersion *Nullable[string] `json:"proposed_version,omitempty"`
-	Checks          *TargetChecks     `json:"checks,omitempty"`
-	// Config Target-specific overrides merged over Project.config. GraphQL settings are rejected here and belong to the Definition.
+	Name           string          `json:"name"`
+	Type           GeneratorKind   `json:"type"`
+	Status         *Status         `json:"status,omitempty"`
+	ReleaseChannel *ReleaseChannel `json:"release_channel,omitempty"`
+	Checks         *TargetChecks   `json:"checks,omitempty"`
+	// Config Target-specific overrides merged over Project.config. GraphQL settings are rejected here and belong to the Spec.
 	Config     *Nullable[TargetConfigParams] `json:"config,omitempty"`
 	Deliveries []DeliveryInput               `json:"deliveries,omitempty"`
 }
@@ -1037,9 +889,6 @@ func (v *InitialTargetFieldsParams) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &fields); err != nil {
 		return err
 	}
-	if string(fields["proposed_version"]) == "null" {
-		decoded.ProposedVersion = NullableNull[string]()
-	}
 	if string(fields["config"]) == "null" {
 		decoded.Config = NullableNull[TargetConfigParams]()
 	}
@@ -1047,12 +896,12 @@ func (v *InitialTargetFieldsParams) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// State is one of "active", "disabled".
-type State string
+// Status is one of "active", "disabled".
+type Status string
 
 const (
-	StateActive   State = "active"
-	StateDisabled State = "disabled"
+	StatusActive   Status = "active"
+	StatusDisabled Status = "disabled"
 )
 
 // ReleaseChannel is one of "stable", "prerelease".
@@ -1063,7 +912,7 @@ const (
 	ReleaseChannelPrerelease ReleaseChannel = "prerelease"
 )
 
-// TargetChecks is an API model. Required checks run against the complete combined package. Generated checks and customer commands share one reproducible workflow; repository_required names existing repository checks. Supplying checks replaces all settings. Omitted generated restores build, package, and public_entrypoint; omitted repository_required and customer restore empty lists. An empty object restores these defaults. An empty array clears the corresponding list.
+// TargetChecks is an API model. Required checks run against the code in the Draft. Generated checks and customer commands share one reproducible workflow; repository_required names existing repository checks. Supplying checks replaces all settings. Omitted generated restores build, package, and public_entrypoint; omitted repository_required and customer restore empty lists. An empty object restores these defaults. An empty array clears the corresponding list.
 type TargetChecks struct {
 	Generated          []Generated                `json:"generated,omitempty"`
 	RepositoryRequired []string                   `json:"repository_required,omitempty"`
@@ -1093,11 +942,11 @@ type TargetConfigParams struct {
 	// Pagination Per-operation pagination control, keyed by operationId or "METHOD /path". Unmatched keys are reported as generation warnings.
 	Pagination map[string]TargetConfigParamsPaginationValue `json:"pagination,omitempty"`
 	Auth       *TargetAuthenticationConfigParams            `json:"auth,omitempty"`
-	CLI        *CLIBehaviorParams                           `json:"cli,omitempty"`
+	CLI        *TargetCLIBehaviorParams                     `json:"cli,omitempty"`
 	MCP        *MCPBehaviorParams                           `json:"mcp,omitempty"`
 	Readme     *ReadmeBehaviorParams                        `json:"readme,omitempty"`
 	Package    *PackageBehaviorParams                       `json:"package,omitempty"`
-	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Definition's externalDocs URL.
+	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Spec's externalDocs URL.
 	DocsURL *Nullable[string] `json:"docs_url,omitempty"`
 	// DocsIndexURL Exact llms.txt URL when the documentation site does not publish it at docs_url + /llms.txt.
 	DocsIndexURL *Nullable[string] `json:"docs_index_url,omitempty"`
@@ -1237,8 +1086,8 @@ func (v *TargetAuthenticationEnvironmentParams) UnmarshalJSON(data []byte) error
 	return nil
 }
 
-// CLIBehaviorParams is an API model. How the generated CLI behaves. Part of Config.
-type CLIBehaviorParams struct {
+// TargetCLIBehaviorParams is an API model. How the generated CLI behaves. Part of Config.
+type TargetCLIBehaviorParams struct {
 	// CommandName Command users run, independent of how the CLI is distributed.
 	CommandName *Nullable[string] `json:"command_name,omitempty"`
 	// UpdateNotice Opt in to a once-a-day registry check that prints an upgrade hint. Off by default; generated code phones nobody unless this is enabled.
@@ -1251,11 +1100,13 @@ type CLIBehaviorParams struct {
 	MCPURL *Nullable[string] `json:"mcp_url,omitempty"`
 	// SkillsRepo GitHub owner/name of the skills package the generated CLI offers to install during init.
 	SkillsRepo *Nullable[string] `json:"skills_repo,omitempty"`
+	// Relay Enable webhook relay sessions for this CLI Target. Requires Pro. Turning it off prevents new sessions.
+	Relay *bool `json:"relay,omitempty"`
 }
 
 // UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
-func (v *CLIBehaviorParams) UnmarshalJSON(data []byte) error {
-	type plain CLIBehaviorParams
+func (v *TargetCLIBehaviorParams) UnmarshalJSON(data []byte) error {
+	type plain TargetCLIBehaviorParams
 	decoded := plain(*v)
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
@@ -1279,7 +1130,7 @@ func (v *CLIBehaviorParams) UnmarshalJSON(data []byte) error {
 	if string(fields["skills_repo"]) == "null" {
 		decoded.SkillsRepo = NullableNull[string]()
 	}
-	*v = CLIBehaviorParams(decoded)
+	*v = TargetCLIBehaviorParams(decoded)
 	return nil
 }
 
@@ -1498,10 +1349,10 @@ func (u DeliveryInput) Raw() json.RawMessage {
 	return u.union
 }
 
-// Discriminator returns the "kind" field, which names the variant.
+// Discriminator returns the "type" field, which names the variant.
 func (u DeliveryInput) Discriminator() (string, error) {
 	var probe struct {
-		Kind string `json:"kind"`
+		Kind string `json:"type"`
 	}
 	if err := json.Unmarshal(u.union, &probe); err != nil {
 		return "", err
@@ -1545,9 +1396,15 @@ func (u *DeliveryInput) FromHostedMCPDeliveryInput(v HostedMCPDeliveryInput) err
 
 // RepositoryDeliveryInput is an API model.
 type RepositoryDeliveryInput struct {
-	Kind       string              `json:"kind"`
-	Repository RepositoryReference `json:"repository"`
-	Directory  *string             `json:"directory,omitempty"`
+	Type       string                          `json:"type"`
+	Repository RepositoryDeliverySettingsInput `json:"repository"`
+}
+
+// RepositoryDeliverySettingsInput is an API model.
+type RepositoryDeliverySettingsInput struct {
+	Provider   RepositoryProvider   `json:"provider"`
+	Identifier RepositoryIdentifier `json:"identifier"`
+	Directory  *string              `json:"directory,omitempty"`
 	// PackageName npm or Python registry identity where applicable.
 	PackageName *string `json:"package_name,omitempty"`
 	// ModulePath Go module identity for the Go SDK or Go CLI Target where applicable.
@@ -1558,10 +1415,10 @@ type RepositoryDeliveryInput struct {
 
 // HostedMCPDeliveryInput is an API model.
 type HostedMCPDeliveryInput struct {
-	Kind string `json:"kind"`
+	Type string `json:"type"`
 }
 
-// ProjectConfigParams is an API model. Shared generated-client and tooling behavior for a stored Project. Every Target inherits these defaults. Target.config is merged over them for one Target; top-level values replace defaults while cli, mcp, auth, readme, and package merge by field. GraphQL-only source settings live on the Project's Definition and are rejected in both stored config scopes.
+// ProjectConfigParams is an API model. Shared generated-client and tooling behavior for a stored Project. Every Target inherits these defaults. Target.config is merged over them for one Target; top-level values replace defaults while cli, mcp, auth, readme, and package merge by field. GraphQL-only source settings live on the Project's Spec and are rejected in both stored config scopes.
 type ProjectConfigParams struct {
 	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
 	Globals []string     `json:"globals,omitempty"`
@@ -1573,7 +1430,7 @@ type ProjectConfigParams struct {
 	MCP        *MCPBehaviorParams                            `json:"mcp,omitempty"`
 	Readme     *ReadmeBehaviorParams                         `json:"readme,omitempty"`
 	Package    *PackageBehaviorParams                        `json:"package,omitempty"`
-	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Definition's externalDocs URL.
+	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Spec's externalDocs URL.
 	DocsURL *Nullable[string] `json:"docs_url,omitempty"`
 	// DocsIndexURL Exact llms.txt URL when the documentation site does not publish it at docs_url + /llms.txt.
 	DocsIndexURL *Nullable[string] `json:"docs_index_url,omitempty"`
@@ -1882,17 +1739,61 @@ func (v *AuthenticationEnvironmentParams) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Project is an API model. Project-owned identity, Definition reference, generation controls, and shared configuration. Targets and Deliveries are available only through their canonical Target endpoints.
+// CLIBehaviorParams is an API model. How the generated CLI behaves. Part of Config.
+type CLIBehaviorParams struct {
+	// CommandName Command users run, independent of how the CLI is distributed.
+	CommandName *Nullable[string] `json:"command_name,omitempty"`
+	// UpdateNotice Opt in to a once-a-day registry check that prints an upgrade hint. Off by default; generated code phones nobody unless this is enabled.
+	UpdateNotice *bool `json:"update_notice,omitempty"`
+	// ChangelogURL Public HTTP(S) URL read by the optional changelog command in generated CLIs. Supports UTF-8 Markdown, plain text, and static HTML; embedded credentials are not allowed. Omit or clear to disable, then regenerate.
+	ChangelogURL *Nullable[string] `json:"changelog_url,omitempty"`
+	// SupportURL Where the generated CLI's feedback command sends users. GitHub issues/new URLs get a prefilled title and environment details.
+	SupportURL *Nullable[string] `json:"support_url,omitempty"`
+	// MCPURL Hosted MCP endpoint installed by the generated CLI instead of launching the package's local stdio server.
+	MCPURL *Nullable[string] `json:"mcp_url,omitempty"`
+	// SkillsRepo GitHub owner/name of the skills package the generated CLI offers to install during init.
+	SkillsRepo *Nullable[string] `json:"skills_repo,omitempty"`
+}
+
+// UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
+func (v *CLIBehaviorParams) UnmarshalJSON(data []byte) error {
+	type plain CLIBehaviorParams
+	decoded := plain(*v)
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if string(fields["command_name"]) == "null" {
+		decoded.CommandName = NullableNull[string]()
+	}
+	if string(fields["changelog_url"]) == "null" {
+		decoded.ChangelogURL = NullableNull[string]()
+	}
+	if string(fields["support_url"]) == "null" {
+		decoded.SupportURL = NullableNull[string]()
+	}
+	if string(fields["mcp_url"]) == "null" {
+		decoded.MCPURL = NullableNull[string]()
+	}
+	if string(fields["skills_repo"]) == "null" {
+		decoded.SkillsRepo = NullableNull[string]()
+	}
+	*v = CLIBehaviorParams(decoded)
+	return nil
+}
+
+// Project is an API model. Project-owned identity, Spec reference, generation controls, and shared configuration. Targets and Deliveries are available only through their canonical Target endpoints.
 type Project struct {
-	ID           ProjectID    `json:"id"`
-	Object       string       `json:"object"`
-	Name         string       `json:"name"`
-	DefinitionID DefinitionID `json:"definition_id"`
-	// AutoGenerate Regenerate when the Definition changes: on every push to the default branch for a repository source, every 30 minutes for a URL source. Off by default: the first generation is always one you asked for. Off means only "generate now" and POST /projects/{project_id}/generations regenerate.
+	ID     ProjectID `json:"id"`
+	Object string    `json:"object"`
+	Name   string    `json:"name"`
+	SpecID SpecID    `json:"spec_id"`
+	// AutoGenerate Regenerate when the Spec or saved configuration changes. Enabled by default for new Projects. Set false to generate only when requested.
 	AutoGenerate bool `json:"auto_generate"`
-	// RelayEnabled Whether the webhook relay is on, letting the generated CLI's webhooks listen command mint relay sessions. Requires the cli target and Pro; turning the target off turns this off.
-	RelayEnabled bool `json:"relay_enabled"`
-	// Config Shared defaults inherited by every Target. A Target's config overrides these defaults; GraphQL settings remain Definition-owned.
+	// Config Shared defaults inherited by every Target. A Target's config overrides these defaults; GraphQL settings remain Spec-owned.
 	Config    *ProjectConfigResponse `json:"config"`
 	CreatedAt string                 `json:"created_at"`
 	// UpdatedAt When the project configuration last changed.
@@ -1900,7 +1801,7 @@ type Project struct {
 	RequestID RequestID `json:"request_id"`
 }
 
-// ProjectConfigResponse is an API model. Shared generated-client and tooling behavior for a stored Project. Every Target inherits these defaults. Target.config is merged over them for one Target; top-level values replace defaults while cli, mcp, auth, readme, and package merge by field. GraphQL-only source settings live on the Project's Definition and are rejected in both stored config scopes.
+// ProjectConfigResponse is an API model. Shared generated-client and tooling behavior for a stored Project. Every Target inherits these defaults. Target.config is merged over them for one Target; top-level values replace defaults while cli, mcp, auth, readme, and package merge by field. GraphQL-only source settings live on the Project's Spec and are rejected in both stored config scopes.
 type ProjectConfigResponse struct {
 	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
 	Globals []string             `json:"globals,omitempty"`
@@ -1912,7 +1813,7 @@ type ProjectConfigResponse struct {
 	MCP        *MCPBehaviorResponse                            `json:"mcp,omitempty"`
 	Readme     *ReadmeBehaviorResponse                         `json:"readme,omitempty"`
 	Package    *PackageBehaviorResponse                        `json:"package,omitempty"`
-	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Definition's externalDocs URL.
+	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Spec's externalDocs URL.
 	DocsURL *string `json:"docs_url,omitempty"`
 	// DocsIndexURL Exact llms.txt URL when the documentation site does not publish it at docs_url + /llms.txt.
 	DocsIndexURL *string `json:"docs_index_url,omitempty"`
@@ -2222,8 +2123,6 @@ type DeletedProject struct {
 type UpdateProjectRequest struct {
 	Name         *string `json:"name,omitempty"`
 	AutoGenerate *bool   `json:"auto_generate,omitempty"`
-	// RelayEnabled Enable webhook relay sessions. Requires the CLI target and Pro.
-	RelayEnabled *bool `json:"relay_enabled,omitempty"`
 	// Config Replaces the Project's shared Target defaults. Send null to clear them.
 	Config *Nullable[ProjectConfigParams] `json:"config,omitempty"`
 }
@@ -2246,500 +2145,72 @@ func (v *UpdateProjectRequest) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// DiagnosticReport is an API model. Deterministic Diagnostics for one immutable Definition Revision after existing patches. No model-generated facts or silent edits.
-type DiagnosticReport struct {
-	Object string `json:"object"`
-	// Format Contract format Typeship analyzed.
-	Format               Format               `json:"format"`
-	ProjectID            ProjectID            `json:"project_id"`
-	DefinitionRevisionID DefinitionRevisionID `json:"definition_revision_id"`
-	// SourceSha256 SHA-256 digest of the immutable raw source revision.
-	SourceSha256 string `json:"source_sha256"`
-	// AnalyzedSha256 SHA-256 digest after applying the Definition's current patches.
-	AnalyzedSha256 string `json:"analyzed_sha256"`
-	// PatchDiagnostics Loud misses or conflicts from the Definition's existing patches.
-	PatchDiagnostics []string          `json:"patch_diagnostics"`
-	Summary          DiagnosticSummary `json:"summary"`
-	// Diagnostics Stable grouped diagnostics, ordered by severity and rule identifier.
-	Diagnostics    []Diagnostic             `json:"diagnostics"`
-	Policy         DiagnosticPolicyResponse `json:"policy"`
-	Evaluation     DiagnosticEvaluation     `json:"evaluation"`
-	QualitySignals DiagnosticQualitySignals `json:"quality_signals"`
-	Delta          DiagnosticDelta          `json:"delta"`
-	RequestID      RequestID                `json:"request_id"`
+// GenerateProjectRequest is an API model.
+type GenerateProjectRequest struct {
+	// TargetID Generate only this active Target. Omit to generate all active Targets in the Project.
+	TargetID *TargetID `json:"target_id,omitempty"`
 }
-
-// DefinitionRevisionID is a generated API type.
-type DefinitionRevisionID string
-
-// Diagnostic is an API model. Every occurrence of one stable Diagnostic rule, grouped into one decision.
-type Diagnostic struct {
-	// ID Stable rule identifier for automation and suppressions.
-	ID string `json:"id"`
-	// Severity Whether the rule reports invalid behavior, material risk, or an improvement.
-	Severity Severity `json:"severity"`
-	// Category Product dimension affected by the diagnostic.
-	Category DiagnosticCategory `json:"category"`
-	// Title Concise statement of the root cause.
-	Title string `json:"title"`
-	// Description What the API author should change.
-	Description string `json:"description"`
-	// Impact Why consumers of generated CLI, MCP, or SDK surfaces care.
-	Impact string `json:"impact"`
-	// Surfaces Public surfaces affected by the root cause.
-	Surfaces []DiagnosticSurface `json:"surfaces"`
-	// EvidenceBasis Whether the finding is provable from the Definition, a conservative review suggestion, or a documented Typeship implementation limitation.
-	EvidenceBasis DiagnosticEvidenceBasis `json:"evidence_basis"`
-	// OwnerDecisionRequired Whether remediation requires intent that the Definition cannot prove.
-	OwnerDecisionRequired bool `json:"owner_decision_required"`
-	// SurfaceImpact Concrete generated CLI, MCP, or SDK naming effect when Typeship can state it.
-	SurfaceImpact *string `json:"surface_impact,omitempty"`
-	// Locations All affected coordinates, kept under one grouped diagnostic.
-	Locations []DiagnosticLocation `json:"locations"`
-	Fix       *DiagnosticFix       `json:"fix,omitempty"`
-	// AuthoringBrief Grounded instructions an agent can use to edit the source. The brief preserves existing behavior and requires owner input when the contract cannot prove the missing product decision.
-	AuthoringBrief string `json:"authoring_brief"`
-}
-
-// Severity is one of "error", "warning", "suggestion".
-type Severity string
-
-const (
-	SeverityError      Severity = "error"
-	SeverityWarning    Severity = "warning"
-	SeveritySuggestion Severity = "suggestion"
-)
-
-// DiagnosticCategory is one of "correctness", "sdk_ergonomics", "agent_usability", "safety". Product dimension affected by the diagnostic.
-type DiagnosticCategory string
-
-const (
-	DiagnosticCategoryCorrectness    DiagnosticCategory = "correctness"
-	DiagnosticCategorySDKErgonomics  DiagnosticCategory = "sdk_ergonomics"
-	DiagnosticCategoryAgentUsability DiagnosticCategory = "agent_usability"
-	DiagnosticCategorySafety         DiagnosticCategory = "safety"
-)
-
-// DiagnosticSurface is one of "api", "sdk", "cli", "mcp".
-type DiagnosticSurface string
-
-const (
-	DiagnosticSurfaceAPI DiagnosticSurface = "api"
-	DiagnosticSurfaceSDK DiagnosticSurface = "sdk"
-	DiagnosticSurfaceCLI DiagnosticSurface = "cli"
-	DiagnosticSurfaceMCP DiagnosticSurface = "mcp"
-)
-
-// DiagnosticEvidenceBasis is one of "contract", "heuristic", "implementation". Whether the finding is provable from the Definition, a conservative review suggestion, or a documented Typeship implementation limitation.
-type DiagnosticEvidenceBasis string
-
-const (
-	DiagnosticEvidenceBasisContract       DiagnosticEvidenceBasis = "contract"
-	DiagnosticEvidenceBasisHeuristic      DiagnosticEvidenceBasis = "heuristic"
-	DiagnosticEvidenceBasisImplementation DiagnosticEvidenceBasis = "implementation"
-)
-
-// DiagnosticLocation is an API model. One exact place where a Diagnostic rule found evidence.
-type DiagnosticLocation struct {
-	// Document Source document coordinate when the Definition contains multiple files.
-	Document *string `json:"document,omitempty"`
-	// Path JSON Pointer for OpenAPI, or schema coordinate for GraphQL.
-	Path string `json:"path"`
-	// Operation Human-readable operation coordinate when the location belongs to an operation.
-	Operation *string `json:"operation,omitempty"`
-	// Evidence Occurrence-specific evidence. This is not a remediation instruction.
-	Evidence *string `json:"evidence,omitempty"`
-}
-
-// DiagnosticFix is an API model. A reviewable remediation that does not invent API behavior.
-type DiagnosticFix struct {
-	// Title Concise action for the API author.
-	Title string `json:"title"`
-	// Kind spec_patch is an exact OpenAPI edit Typeship can derive; source_edit requires author intent or a lossless GraphQL source edit.
-	Kind DiagnosticFixKind `json:"kind"`
-	// Patches Exact patches when kind is spec_patch.
-	Patches []DefinitionPatchResponse `json:"patches,omitempty"`
-	// Instructions Source-level guidance when an exact patch would invent intent.
-	Instructions *string `json:"instructions,omitempty"`
-}
-
-// DiagnosticFixKind is one of "spec_patch", "source_edit". spec_patch is an exact OpenAPI edit Typeship can derive; source_edit requires author intent or a lossless GraphQL source edit.
-type DiagnosticFixKind string
-
-const (
-	DiagnosticFixKindSpecPatch  DiagnosticFixKind = "spec_patch"
-	DiagnosticFixKindSourceEdit DiagnosticFixKind = "source_edit"
-)
-
-// DefinitionPatchResponse is an API model. A fix applied to the resolved Definition before generation. Paths are JSON Pointers into the document. A patch whose target no longer exists is skipped and reported as a warning on the generation, never silently.
-type DefinitionPatchResponse struct {
-	Op Op `json:"op"`
-	// Path JSON-Pointer-style path. Pattern segments enable bulk fixes: * (any child), ** (any depth), [key=value] (filter), e.g. /paths/**/parameters/[name=account_id]/schema/type. Renaming a schema under /components/schemas also rewrites its $refs.
-	Path string `json:"path"`
-	// Value set only; the replacement value.
-	Value any `json:"value,omitempty"`
-	// To rename only; the new key name.
-	To     *string `json:"to,omitempty"`
-	Reason *string `json:"reason,omitempty"`
-}
-
-// DiagnosticPolicyResponse is an API model. Source pull-request enforcement threshold, new-versus-complete baseline, and explicitly reviewed rule or location exceptions.
-type DiagnosticPolicyResponse struct {
-	// FailOn Severity threshold that fails the API change review check.
-	FailOn FailOn `json:"fail_on"`
-	// OnlyNew Enforce only occurrences introduced by the proposed source change.
-	OnlyNew      bool                            `json:"only_new"`
-	Suppressions []DiagnosticSuppressionResponse `json:"suppressions"`
-}
-
-// DiagnosticSuppressionResponse is an API model.
-type DiagnosticSuppressionResponse struct {
-	RuleID string `json:"rule_id"`
-	// Path Exact schema coordinate. Omit only to suppress every occurrence of the rule.
-	Path *string `json:"path,omitempty"`
-	// Reason The reviewed product decision behind this exception.
-	Reason string `json:"reason"`
-}
-
-// DiagnosticEvaluation is an API model.
-type DiagnosticEvaluation struct {
-	State                 DiagnosticEvaluationState `json:"state"`
-	Blocking              []DiagnosticReference     `json:"blocking"`
-	ConsideredOccurrences int64                     `json:"considered_occurrences"`
-	SuppressedOccurrences int64                     `json:"suppressed_occurrences"`
-}
-
-// DiagnosticEvaluationState is one of "pass", "fail".
-type DiagnosticEvaluationState string
-
-const (
-	DiagnosticEvaluationStatePass DiagnosticEvaluationState = "pass"
-	DiagnosticEvaluationStateFail DiagnosticEvaluationState = "fail"
-)
-
-// DiagnosticReference is an API model. Compact rule and location reference; full guidance appears once in diagnostics.
-type DiagnosticReference struct {
-	RuleID    string               `json:"rule_id"`
-	Severity  Severity             `json:"severity"`
-	Title     string               `json:"title"`
-	Locations []DiagnosticLocation `json:"locations"`
-}
-
-// DiagnosticQualitySignals is an API model. Current-revision signals for tuning Diagnostics policy. These counts do not claim that a suppression is a false positive or that runtime behavior has been verified.
-type DiagnosticQualitySignals struct {
-	SuppressedByRule []DiagnosticSuppressionSignal `json:"suppressed_by_rule"`
-	// StaleSuppressions Reviewed exceptions whose rule or exact path no longer matches this revision.
-	StaleSuppressions []DiagnosticSuppressionResponse `json:"stale_suppressions"`
-}
-
-// DiagnosticSuppressionSignal is an API model. Current-revision suppression usage for one stable Diagnostic rule.
-type DiagnosticSuppressionSignal struct {
-	RuleID string `json:"rule_id"`
-	// ActiveOccurrences Current occurrences of this rule that are not suppressed.
-	ActiveOccurrences     int64 `json:"active_occurrences"`
-	SuppressedOccurrences int64 `json:"suppressed_occurrences"`
-}
-
-// DiagnosticDelta is an API model.
-type DiagnosticDelta struct {
-	Added                        []DiagnosticReference `json:"added"`
-	Resolved                     []DiagnosticReference `json:"resolved"`
-	BaselineDefinitionRevisionID *DefinitionRevisionID `json:"baseline_definition_revision_id"`
-}
-
-// DiagnosticRemediationRequest is an API model.
-type DiagnosticRemediationRequest struct {
-	// DiagnosticIDs Stable IDs of current diagnostics whose exact patches should be reviewed and applied.
-	DiagnosticIDs []string `json:"diagnostic_ids"`
-}
-
-// DiagnosticRemediation is an API model.
-type DiagnosticRemediation struct {
-	Object         string                    `json:"object"`
-	Kind           DiagnosticRemediationKind `json:"kind"`
-	PatchesApplied int64                     `json:"patches_applied"`
-	// ReviewURL Source pull request for repository projects; absent for URL overlays.
-	ReviewURL *string   `json:"review_url,omitempty"`
-	RequestID RequestID `json:"request_id"`
-}
-
-// DiagnosticRemediationKind is one of "overlay", "source_review".
-type DiagnosticRemediationKind string
-
-const (
-	DiagnosticRemediationKindOverlay      DiagnosticRemediationKind = "overlay"
-	DiagnosticRemediationKindSourceReview DiagnosticRemediationKind = "source_review"
-)
-
-// RepositoryIntegrationHealth is an API model.
-type RepositoryIntegrationHealth struct {
-	Object         string                                    `json:"object"`
-	ProjectID      ProjectID                                 `json:"project_id"`
-	Status         Status                                    `json:"status"`
-	Repositories   []RepositoryHealth                        `json:"repositories"`
-	RequiredChecks RepositoryIntegrationHealthRequiredChecks `json:"required_checks"`
-	LastEvent      *RepositoryEventHealth                    `json:"last_event"`
-	RequestID      RequestID                                 `json:"request_id"`
-}
-
-// Status is one of "ready", "action_required".
-type Status string
-
-const (
-	StatusReady          Status = "ready"
-	StatusActionRequired Status = "action_required"
-)
-
-// RepositoryHealth is an API model.
-type RepositoryHealth struct {
-	Repository    RepositoryReferenceResponse `json:"repository"`
-	Roles         []RepositoryHealthRole      `json:"roles"`
-	Status        Status                      `json:"status"`
-	DefaultBranch *string                     `json:"default_branch,omitempty"`
-	Capabilities  []string                    `json:"capabilities,omitempty"`
-	// BreakingAcknowledgement Whether a source repository has the optional typeship:breaking-approved policy label. Null when the repository is not a source or labels could not be read.
-	BreakingAcknowledgement *bool                       `json:"breaking_acknowledgement,omitempty"`
-	Definition              *RepositoryHealthDefinition `json:"definition,omitempty"`
-	Issues                  []RepositoryHealthIssue     `json:"issues"`
-}
-
-// RepositoryReferenceResponse is an API model.
-type RepositoryReferenceResponse struct {
-	// Provider GitHub is the only launch provider; the field is stable for future adapters.
-	Provider string `json:"provider"`
-	// Identifier Provider-native repository identity, opaque outside its adapter.
-	Identifier string `json:"identifier"`
-}
-
-// RepositoryHealthRole is one of "source", "destination".
-type RepositoryHealthRole string
-
-const (
-	RepositoryHealthRoleSource      RepositoryHealthRole = "source"
-	RepositoryHealthRoleDestination RepositoryHealthRole = "destination"
-)
-
-// RepositoryHealthDefinition is one of "readable", "missing".
-type RepositoryHealthDefinition string
-
-const (
-	RepositoryHealthDefinitionReadable RepositoryHealthDefinition = "readable"
-	RepositoryHealthDefinitionMissing  RepositoryHealthDefinition = "missing"
-)
-
-// RepositoryHealthIssue is an API model.
-type RepositoryHealthIssue struct {
-	Code    RepositoryHealthIssueCode `json:"code"`
-	Message string                    `json:"message"`
-}
-
-// RepositoryHealthIssueCode is one of "connection_missing", "definition_unreadable", "contents_write_missing", "review_write_missing", "breaking_acknowledgement_missing", "provider_unavailable".
-type RepositoryHealthIssueCode string
-
-const (
-	RepositoryHealthIssueCodeConnectionMissing              RepositoryHealthIssueCode = "connection_missing"
-	RepositoryHealthIssueCodeDefinitionUnreadable           RepositoryHealthIssueCode = "definition_unreadable"
-	RepositoryHealthIssueCodeContentsWriteMissing           RepositoryHealthIssueCode = "contents_write_missing"
-	RepositoryHealthIssueCodeReviewWriteMissing             RepositoryHealthIssueCode = "review_write_missing"
-	RepositoryHealthIssueCodeBreakingAcknowledgementMissing RepositoryHealthIssueCode = "breaking_acknowledgement_missing"
-	RepositoryHealthIssueCodeProviderUnavailable            RepositoryHealthIssueCode = "provider_unavailable"
-)
-
-// RepositoryIntegrationHealthRequiredChecks is an API model.
-type RepositoryIntegrationHealthRequiredChecks struct {
-	Source      []string `json:"source"`
-	Destination []string `json:"destination"`
-}
-
-// RepositoryEventHealth is an API model.
-type RepositoryEventHealth struct {
-	Provider  string                      `json:"provider"`
-	ID        string                      `json:"id"`
-	Event     string                      `json:"event"`
-	Status    RepositoryEventHealthStatus `json:"status"`
-	Error     *string                     `json:"error"`
-	CreatedAt string                      `json:"created_at"`
-}
-
-// RepositoryEventHealthStatus is one of "queued", "processing", "succeeded", "failed", "superseded".
-type RepositoryEventHealthStatus string
-
-const (
-	RepositoryEventHealthStatusQueued     RepositoryEventHealthStatus = "queued"
-	RepositoryEventHealthStatusProcessing RepositoryEventHealthStatus = "processing"
-	RepositoryEventHealthStatusSucceeded  RepositoryEventHealthStatus = "succeeded"
-	RepositoryEventHealthStatusFailed     RepositoryEventHealthStatus = "failed"
-	RepositoryEventHealthStatusSuperseded RepositoryEventHealthStatus = "superseded"
-)
 
 // TargetID is a generated API type.
 type TargetID string
 
-// GenerationList is an API model.
-type GenerationList struct {
-	Object ListObject          `json:"object"`
-	Data   []GenerationSummary `json:"data"`
-	// HasMore Whether another page is available after this one.
-	HasMore bool `json:"has_more"`
-	// NextCursor Pass this value as cursor to retrieve the next page; null on the last page.
-	NextCursor *string   `json:"next_cursor"`
-	RequestID  RequestID `json:"request_id"`
+// GenerationBatch is an API model. One Generation per selected Target. Retrieve each Generation for current status and generated files.
+type GenerationBatch struct {
+	Data      []GenerationSummary `json:"data"`
+	RequestID RequestID           `json:"request_id"`
 }
 
-// GenerationSummary is an API model. Generation metadata returned by collection endpoints. Generated file contents and file indexes are available only from retrieve and create operations.
+// GenerationSummary is an API model. Generation metadata returned by collection endpoints.
 type GenerationSummary struct {
-	ID                   GenerationID          `json:"id"`
-	Object               string                `json:"object"`
-	ProjectID            ProjectID             `json:"project_id"`
-	DefinitionRevisionID *DefinitionRevisionID `json:"definition_revision_id"`
-	Status               GenerationStatus      `json:"status"`
-	Trigger              GenerationTrigger     `json:"trigger"`
-	// TargetID Persisted Target identity. Null only for one-shot generation.
-	TargetID *TargetID `json:"target_id"`
-	// Generator Resolved generator implementation; provenance rather than resource identity.
-	Generator  GeneratorKind        `json:"generator"`
-	Provenance GenerationProvenance `json:"provenance"`
-	// Meta Null only for a failed or legacy generation that produced no metadata.
-	Meta     *GenerationMeta `json:"meta"`
-	Warnings []string        `json:"warnings"`
-	// Errors Recorded failures. Empty when this resource has no recorded failure.
+	ID             GenerationID      `json:"id"`
+	Object         string            `json:"object"`
+	ProjectID      ProjectID         `json:"project_id"`
+	SpecRevisionID *SpecRevisionID   `json:"spec_revision_id"`
+	Status         GenerationStatus  `json:"status"`
+	Trigger        GenerationTrigger `json:"trigger"`
+	TargetID       *TargetID         `json:"target_id"`
+	Type           GeneratorKind     `json:"type"`
+	// Name Package name; null until known.
+	Name *string `json:"name"`
+	// Version Package version; null until known.
+	Version  *string             `json:"version"`
+	Warnings []GenerationWarning `json:"warnings"`
+	// Coverage Operation coverage; null until generation has finished.
+	Coverage *GenerationCoverage `json:"coverage"`
+	// FileCount Generated package files. List them with listGenerationFiles.
+	FileCount int64         `json:"file_count"`
 	Errors    []DomainError `json:"errors"`
-	CreatedAt string        `json:"created_at"`
+	// RuntimeMs Milliseconds from the start of the run until it completed or failed; null while queued or running.
+	RuntimeMs *int64 `json:"runtime_ms"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 // GenerationID is a generated API type.
 type GenerationID string
 
-// GenerationStatus is one of "queued", "running", "succeeded", "failed". A Generation moves from queued to running, then succeeds when its files are saved or fails. Delivery and Draft status are separate.
+// SpecRevisionID is a generated API type.
+type SpecRevisionID string
+
+// GenerationStatus is one of "queued", "running", "completed", "failed". A Generation moves from queued to running, then completes when its files are saved or fails. Delivery and Draft status are separate.
 type GenerationStatus string
 
 const (
 	GenerationStatusQueued    GenerationStatus = "queued"
 	GenerationStatusRunning   GenerationStatus = "running"
-	GenerationStatusSucceeded GenerationStatus = "succeeded"
+	GenerationStatusCompleted GenerationStatus = "completed"
 	GenerationStatusFailed    GenerationStatus = "failed"
 )
 
-// GenerationTrigger is one of "manual", "webhook", "poll", "preview".
+// GenerationTrigger is one of "manual", "spec_changed", "config_changed", "preview".
 type GenerationTrigger string
 
 const (
-	GenerationTriggerManual  GenerationTrigger = "manual"
-	GenerationTriggerWebhook GenerationTrigger = "webhook"
-	GenerationTriggerPoll    GenerationTrigger = "poll"
-	GenerationTriggerPreview GenerationTrigger = "preview"
+	GenerationTriggerManual        GenerationTrigger = "manual"
+	GenerationTriggerSpecChanged   GenerationTrigger = "spec_changed"
+	GenerationTriggerConfigChanged GenerationTrigger = "config_changed"
+	GenerationTriggerPreview       GenerationTrigger = "preview"
 )
-
-// GenerationProvenance is an API model.
-type GenerationProvenance struct {
-	// GeneratorEdition Pinned generator contract edition.
-	GeneratorEdition string `json:"generator_edition"`
-	// ResolvedConfig Recorded configuration for this Generation in the public Config format, including inherited Project defaults and Target overrides. Later edits do not change it. Source credentials are never included. Null when no configuration was recorded.
-	ResolvedConfig *ConfigResponse `json:"resolved_config"`
-	PackageVersion *string         `json:"package_version"`
-}
-
-// ConfigResponse is an API model. Everything Typeship needs beyond the Definition, in one object: generation customization (globals, retries, pagination, readme) and how the generated tooling behaves (cli, mcp, package, docs_url). Plain configuration. Typeship never requires vendor extensions inside the Definition itself. One-shot generation also accepts GraphQL settings here; stored projects keep those settings on their Definition.
-type ConfigResponse struct {
-	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
-	Globals []string             `json:"globals,omitempty"`
-	Retries *RetryTuningResponse `json:"retries,omitempty"`
-	// Pagination Per-operation pagination control, keyed by operationId or "METHOD /path". Unmatched keys are reported as generation warnings.
-	Pagination map[string]ConfigResponsePaginationValue `json:"pagination,omitempty"`
-	Graphql    *GraphqlSettingsResponse                 `json:"graphql,omitempty"`
-	Auth       *AuthenticationConfigResponse            `json:"auth,omitempty"`
-	CLI        *CLIBehaviorResponse                     `json:"cli,omitempty"`
-	MCP        *MCPBehaviorResponse                     `json:"mcp,omitempty"`
-	Readme     *ReadmeBehaviorResponse                  `json:"readme,omitempty"`
-	Package    *PackageBehaviorResponse                 `json:"package,omitempty"`
-	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Definition's externalDocs URL.
-	DocsURL *string `json:"docs_url,omitempty"`
-	// DocsIndexURL Exact llms.txt URL when the documentation site does not publish it at docs_url + /llms.txt.
-	DocsIndexURL *string `json:"docs_index_url,omitempty"`
-}
-
-// ConfigResponsePaginationValue is one of PaginationRuleResponse, bool.
-// Go has no sum types, so it holds the JSON as received and decodes on
-// request: try the As* accessors, or switch on Discriminator() when the
-// spec names one.
-type ConfigResponsePaginationValue struct {
-	union json.RawMessage
-}
-
-// MarshalJSON writes the value as it was set or received.
-func (u ConfigResponsePaginationValue) MarshalJSON() ([]byte, error) {
-	if u.union == nil {
-		return []byte("null"), nil
-	}
-	return u.union, nil
-}
-
-// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *ConfigResponsePaginationValue) UnmarshalJSON(data []byte) error {
-	u.union = append(u.union[:0], data...)
-	return nil
-}
-
-// Raw returns the JSON exactly as received.
-func (u ConfigResponsePaginationValue) Raw() json.RawMessage {
-	return u.union
-}
-
-// AsPaginationRuleResponse decodes the value as PaginationRuleResponse.
-func (u ConfigResponsePaginationValue) AsPaginationRuleResponse() (PaginationRuleResponse, error) {
-	var v PaginationRuleResponse
-	err := json.Unmarshal(u.union, &v)
-	return v, err
-}
-
-// FromPaginationRuleResponse sets the value to a PaginationRuleResponse.
-func (u *ConfigResponsePaginationValue) FromPaginationRuleResponse(v PaginationRuleResponse) error {
-	encoded, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	u.union = encoded
-	return nil
-}
-
-// AsBool decodes the value as bool.
-func (u ConfigResponsePaginationValue) AsBool() (bool, error) {
-	var v bool
-	err := json.Unmarshal(u.union, &v)
-	return v, err
-}
-
-// FromBool sets the value to a bool.
-func (u *ConfigResponsePaginationValue) FromBool(v bool) error {
-	encoded, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	u.union = encoded
-	return nil
-}
-
-// GraphqlSettingsResponse is an API model. What a GraphQL schema cannot say about itself. Ignored for OpenAPI specs.
-type GraphqlSettingsResponse struct {
-	// Endpoint The URL every request is POSTed to; the generated client's default baseUrl. Defaults to the URL the schema was fetched from. Without either, baseUrl is a required client option.
-	Endpoint *string `json:"endpoint,omitempty"`
-	// Environments Named endpoints (sandbox, production). Each becomes a client environment; the first is the default unless endpoint is set.
-	Environments []GraphqlSettingsResponseEnvironmentsItem `json:"environments,omitempty"`
-	// Auth How requests authenticate. bearer sends Authorization: Bearer; basic is for key-pair APIs (public key as username, private key as password); api_key sends a header named by api_key_header; none generates no auth option.
-	Auth *Auth `json:"auth,omitempty"`
-	// APIKeyHeader Header carrying the key when auth is api_key. Required for that mode; Typeship does not invent a vendor-specific header name.
-	APIKeyHeader *string `json:"api_key_header,omitempty"`
-	// Title The API's name; drives the package and client names ("Acme" gives acme and AcmeClient). Defaults to a name derived from the endpoint's host.
-	Title *string `json:"title,omitempty"`
-	// Scalars JSON representation of each custom scalar, keyed by GraphQL scalar name. Unmapped scalars generate as the language's untyped JSON value and produce a warning. Unmatched keys warn.
-	Scalars map[string]Scalars `json:"scalars,omitempty"`
-}
-
-// GraphqlSettingsResponseEnvironmentsItem is an API model.
-type GraphqlSettingsResponseEnvironmentsItem struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
 
 // DomainError is an API model.
 type DomainError struct {
@@ -2754,7 +2225,7 @@ type DomainError struct {
 	In *DomainErrorIn `json:"in,omitempty"`
 	// Message Human-readable explanation. Its wording may change.
 	Message string `json:"message"`
-	// Retryable Whether another attempt can succeed without correcting the inputs. For a recorded failure, start generation or publication again; retrieving the resource or replaying an idempotency key does not start another attempt.
+	// Retryable Whether another attempt can succeed without correcting the inputs. For a recorded failure, start generation or publishing again; retrieving the resource or replaying an idempotency key does not start another attempt.
 	Retryable bool `json:"retryable"`
 	// SuggestedAction Stable, concise recovery instruction suitable for a person or agent.
 	SuggestedAction string `json:"suggested_action"`
@@ -2762,7 +2233,7 @@ type DomainError struct {
 	DocsURL string `json:"docs_url"`
 }
 
-// ErrorType is one of "request_error", "authentication_error", "authorization_error", "plan_error", "source_error", "rate_limit_error", "api_error", "unknown_error". Stable category for deciding how to handle the error.
+// ErrorType is one of "request_error", "authentication_error", "authorization_error", "plan_error", "source_error", "rate_limit_error", "api_error". Stable category for deciding how to handle the error.
 type ErrorType string
 
 const (
@@ -2773,10 +2244,9 @@ const (
 	ErrorTypeSourceError         ErrorType = "source_error"
 	ErrorTypeRateLimitError      ErrorType = "rate_limit_error"
 	ErrorTypeAPIError            ErrorType = "api_error"
-	ErrorTypeUnknownError        ErrorType = "unknown_error"
 )
 
-// ErrorCode is one of "invalid_request", "idempotency_key_reused", "unauthorized", "organization_required", "insufficient_scope", "forbidden", "not_found", "method_not_allowed", "spec_error", "fetch_error", "repository_provider_unsupported", "edition_unavailable", "target_busy", "no_draft", "stale_draft", "no_changes", "invalid_version", "precondition_failed", "definition_changed", "version_occupied", "version_too_low", "release_analysis_stale", "target_already_released", "adoption_unverified", "publication_disabled", "publication_not_retryable", "publication_recovery_unavailable", "publication_dispatch_failed", "repository_disconnected", "regeneration_failed", "delivery_conflict", "resource_has_dependencies", "plan_limit_reached", "payload_too_large", "rate_limited", "internal_error", "dependency_missing", "dependency_not_found", "dependency_self", "dependency_cycle", "dependency_cross_project", "dependency_cross_lineage", "dependency_wrong_generator", "dependency_disabled", "dependency_module_path_missing", "dependency_unreleased", "dependency_revision_mismatch", "dependency_edition_incompatible", "publication_failed", "customization_conflict", "history_recovery_required", "checks_unavailable", "generation_stale", "unclassified_error". Stable programmatic identifier. Do not branch on message.
+// ErrorCode is one of "invalid_request", "idempotency_key_reused", "unauthorized", "organization_required", "insufficient_scope", "forbidden", "not_found", "method_not_allowed", "spec_error", "fetch_error", "repository_provider_unsupported", "target_busy", "no_draft", "draft_merged", "resource_changed", "invalid_version", "precondition_failed", "version_occupied", "version_too_low", "target_already_released", "adoption_unverified", "publication_disabled", "publication_not_retryable", "publication_recovery_unavailable", "publication_dispatch_failed", "repository_disconnected", "regeneration_failed", "delivery_conflict", "resource_has_dependencies", "plan_limit_reached", "payload_too_large", "rate_limited", "internal_error", "dependency_missing", "dependency_not_found", "dependency_self", "dependency_cycle", "dependency_cross_project", "dependency_cross_lineage", "dependency_wrong_generator", "dependency_disabled", "dependency_module_path_missing", "dependency_unreleased", "dependency_revision_mismatch", "publication_failed", "customization_conflict", "history_recovery_required", "checks_unavailable". Stable programmatic identifier. Do not branch on message.
 type ErrorCode string
 
 const (
@@ -2791,17 +2261,14 @@ const (
 	ErrorCodeSpecError                      ErrorCode = "spec_error"
 	ErrorCodeFetchError                     ErrorCode = "fetch_error"
 	ErrorCodeRepositoryProviderUnsupported  ErrorCode = "repository_provider_unsupported"
-	ErrorCodeEditionUnavailable             ErrorCode = "edition_unavailable"
 	ErrorCodeTargetBusy                     ErrorCode = "target_busy"
 	ErrorCodeNoDraft                        ErrorCode = "no_draft"
-	ErrorCodeStaleDraft                     ErrorCode = "stale_draft"
-	ErrorCodeNoChanges                      ErrorCode = "no_changes"
+	ErrorCodeDraftMerged                    ErrorCode = "draft_merged"
+	ErrorCodeResourceChanged                ErrorCode = "resource_changed"
 	ErrorCodeInvalidVersion                 ErrorCode = "invalid_version"
 	ErrorCodePreconditionFailed             ErrorCode = "precondition_failed"
-	ErrorCodeDefinitionChanged              ErrorCode = "definition_changed"
 	ErrorCodeVersionOccupied                ErrorCode = "version_occupied"
 	ErrorCodeVersionTooLow                  ErrorCode = "version_too_low"
-	ErrorCodeReleaseAnalysisStale           ErrorCode = "release_analysis_stale"
 	ErrorCodeTargetAlreadyReleased          ErrorCode = "target_already_released"
 	ErrorCodeAdoptionUnverified             ErrorCode = "adoption_unverified"
 	ErrorCodePublicationDisabled            ErrorCode = "publication_disabled"
@@ -2827,20 +2294,17 @@ const (
 	ErrorCodeDependencyModulePathMissing    ErrorCode = "dependency_module_path_missing"
 	ErrorCodeDependencyUnreleased           ErrorCode = "dependency_unreleased"
 	ErrorCodeDependencyRevisionMismatch     ErrorCode = "dependency_revision_mismatch"
-	ErrorCodeDependencyEditionIncompatible  ErrorCode = "dependency_edition_incompatible"
 	ErrorCodePublicationFailed              ErrorCode = "publication_failed"
 	ErrorCodeCustomizationConflict          ErrorCode = "customization_conflict"
 	ErrorCodeHistoryRecoveryRequired        ErrorCode = "history_recovery_required"
 	ErrorCodeChecksUnavailable              ErrorCode = "checks_unavailable"
-	ErrorCodeGenerationStale                ErrorCode = "generation_stale"
-	ErrorCodeUnclassifiedError              ErrorCode = "unclassified_error"
 )
 
-// FailurePhase is one of "definition", "generation", "delivery", "publication". The stage that failed. A delivery failure does not change a Generation's succeeded status.
+// FailurePhase is one of "spec", "generation", "delivery", "publication". The stage that failed. A delivery failure does not change a completed Generation's status.
 type FailurePhase string
 
 const (
-	FailurePhaseDefinition  FailurePhase = "definition"
+	FailurePhaseSpec        FailurePhase = "spec"
 	FailurePhaseGeneration  FailurePhase = "generation"
 	FailurePhaseDelivery    FailurePhase = "delivery"
 	FailurePhasePublication FailurePhase = "publication"
@@ -2855,44 +2319,32 @@ const (
 	DomainErrorInHeader DomainErrorIn = "header"
 )
 
-// GenerateProjectRequest is an API model.
-type GenerateProjectRequest struct {
-	// TargetID Generate only this active Target. Omit to generate all active Targets in the Project.
-	TargetID *TargetID `json:"target_id,omitempty"`
+// Spec is an API model.
+type Spec struct {
+	ID               SpecID                   `json:"id"`
+	Object           string                   `json:"object"`
+	ProjectID        ProjectID                `json:"project_id"`
+	Source           SpecSource               `json:"source"`
+	Format           *Format                  `json:"format"`
+	Patches          []SpecPatchResponse      `json:"patches"`
+	Graphql          *GraphqlSettingsResponse `json:"graphql"`
+	DiagnosticPolicy DiagnosticPolicyResponse `json:"diagnostic_policy"`
+	RevisionLatestID *SpecRevisionID          `json:"revision_latest_id"`
+	CreatedAt        string                   `json:"created_at"`
+	UpdatedAt        string                   `json:"updated_at"`
+	RequestID        RequestID                `json:"request_id"`
 }
 
-// GenerationBatch is an API model. One Generation per selected Target. Retrieve each Generation for current status and generated files.
-type GenerationBatch struct {
-	Data      []GenerationSummary `json:"data"`
-	RequestID RequestID           `json:"request_id"`
-}
-
-// Definition is an API model.
-type Definition struct {
-	ID               DefinitionID              `json:"id"`
-	Object           string                    `json:"object"`
-	ProjectID        ProjectID                 `json:"project_id"`
-	Source           DefinitionSource          `json:"source"`
-	Format           *Format                   `json:"format"`
-	Patches          []DefinitionPatchResponse `json:"patches"`
-	Graphql          *GraphqlSettingsResponse  `json:"graphql"`
-	DiagnosticPolicy DiagnosticPolicyResponse  `json:"diagnostic_policy"`
-	LatestRevisionID *DefinitionRevisionID     `json:"latest_revision_id"`
-	CreatedAt        string                    `json:"created_at"`
-	UpdatedAt        string                    `json:"updated_at"`
-	RequestID        RequestID                 `json:"request_id"`
-}
-
-// DefinitionSource is one of URLDefinitionSource, RepositoryDefinitionSource — The single source of truth for where a Project's Definition lives.
+// SpecSource is one of URLSpecSource, RepositorySpecSource — The single source of truth for where a Project's Spec lives.
 // Go has no sum types, so it holds the JSON as received and decodes on
 // request: try the As* accessors, or switch on Discriminator() when the
 // spec names one.
-type DefinitionSource struct {
+type SpecSource struct {
 	union json.RawMessage
 }
 
 // MarshalJSON writes the value as it was set or received.
-func (u DefinitionSource) MarshalJSON() ([]byte, error) {
+func (u SpecSource) MarshalJSON() ([]byte, error) {
 	if u.union == nil {
 		return []byte("null"), nil
 	}
@@ -2900,20 +2352,20 @@ func (u DefinitionSource) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *DefinitionSource) UnmarshalJSON(data []byte) error {
+func (u *SpecSource) UnmarshalJSON(data []byte) error {
 	u.union = append(u.union[:0], data...)
 	return nil
 }
 
 // Raw returns the JSON exactly as received.
-func (u DefinitionSource) Raw() json.RawMessage {
+func (u SpecSource) Raw() json.RawMessage {
 	return u.union
 }
 
-// Discriminator returns the "kind" field, which names the variant.
-func (u DefinitionSource) Discriminator() (string, error) {
+// Discriminator returns the "type" field, which names the variant.
+func (u SpecSource) Discriminator() (string, error) {
 	var probe struct {
-		Kind string `json:"kind"`
+		Kind string `json:"type"`
 	}
 	if err := json.Unmarshal(u.union, &probe); err != nil {
 		return "", err
@@ -2921,15 +2373,15 @@ func (u DefinitionSource) Discriminator() (string, error) {
 	return probe.Kind, nil
 }
 
-// AsURLDefinitionSource decodes the value as URLDefinitionSource.
-func (u DefinitionSource) AsURLDefinitionSource() (URLDefinitionSource, error) {
-	var v URLDefinitionSource
+// AsURLSpecSource decodes the value as URLSpecSource.
+func (u SpecSource) AsURLSpecSource() (URLSpecSource, error) {
+	var v URLSpecSource
 	err := json.Unmarshal(u.union, &v)
 	return v, err
 }
 
-// FromURLDefinitionSource sets the value to a URLDefinitionSource.
-func (u *DefinitionSource) FromURLDefinitionSource(v URLDefinitionSource) error {
+// FromURLSpecSource sets the value to a URLSpecSource.
+func (u *SpecSource) FromURLSpecSource(v URLSpecSource) error {
 	encoded, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -2938,15 +2390,15 @@ func (u *DefinitionSource) FromURLDefinitionSource(v URLDefinitionSource) error 
 	return nil
 }
 
-// AsRepositoryDefinitionSource decodes the value as RepositoryDefinitionSource.
-func (u DefinitionSource) AsRepositoryDefinitionSource() (RepositoryDefinitionSource, error) {
-	var v RepositoryDefinitionSource
+// AsRepositorySpecSource decodes the value as RepositorySpecSource.
+func (u SpecSource) AsRepositorySpecSource() (RepositorySpecSource, error) {
+	var v RepositorySpecSource
 	err := json.Unmarshal(u.union, &v)
 	return v, err
 }
 
-// FromRepositoryDefinitionSource sets the value to a RepositoryDefinitionSource.
-func (u *DefinitionSource) FromRepositoryDefinitionSource(v RepositoryDefinitionSource) error {
+// FromRepositorySpecSource sets the value to a RepositorySpecSource.
+func (u *SpecSource) FromRepositorySpecSource(v RepositorySpecSource) error {
 	encoded, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -2955,28 +2407,99 @@ func (u *DefinitionSource) FromRepositoryDefinitionSource(v RepositoryDefinition
 	return nil
 }
 
-// URLDefinitionSource is an API model.
-type URLDefinitionSource struct {
-	Kind string `json:"kind"`
+// URLSpecSource is an API model.
+type URLSpecSource struct {
+	Type string                `json:"type"`
+	URL  URLSpecSourceSettings `json:"url"`
+}
+
+// URLSpecSourceSettings is an API model.
+type URLSpecSourceSettings struct {
 	// URL URL fetched for every generation.
 	URL string `json:"url"`
 	// HeadersConfigured Whether Typeship has stored write-only request headers for this URL.
 	HeadersConfigured bool `json:"headers_configured"`
 }
 
-// RepositoryDefinitionSource is an API model.
-type RepositoryDefinitionSource struct {
-	Kind       string                      `json:"kind"`
-	Repository RepositoryReferenceResponse `json:"repository"`
-	// Path Repository-relative Definition entrypoint.
+// RepositorySpecSource is an API model.
+type RepositorySpecSource struct {
+	Type       string                       `json:"type"`
+	Repository RepositorySpecSourceSettings `json:"repository"`
+}
+
+// RepositorySpecSourceSettings is an API model.
+type RepositorySpecSourceSettings struct {
+	Provider   RepositoryProvider   `json:"provider"`
+	Identifier RepositoryIdentifier `json:"identifier"`
+	// Path Repository-relative Spec entrypoint.
 	Path string `json:"path"`
 }
 
-// DefinitionUpdateRequest is an API model. Omitted fields remain unchanged. Supplied objects and arrays replace the whole field. URL source headers are preserved when the URL is unchanged and headers are omitted; null or empty headers clear them.
-type DefinitionUpdateRequest struct {
-	Source *DefinitionSourceInput `json:"source,omitempty"`
+// Format is one of "openapi", "graphql".
+type Format string
+
+const (
+	FormatOpenapi Format = "openapi"
+	FormatGraphql Format = "graphql"
+)
+
+// SpecPatchResponse is an API model. A fix applied to the resolved Spec before generation. Paths are JSON Pointers into the document. A patch whose target no longer exists is skipped and reported as a warning on the generation, never silently.
+type SpecPatchResponse struct {
+	Op Op `json:"op"`
+	// Path JSON-Pointer-style path. Pattern segments enable bulk fixes: * (any child), ** (any depth), [key=value] (filter), e.g. /paths/**/parameters/[name=account_id]/schema/type. Renaming a schema under /components/schemas also rewrites its $refs.
+	Path string `json:"path"`
+	// Value set only; the replacement value.
+	Value any `json:"value,omitempty"`
+	// To rename only; the new key name.
+	To     *string `json:"to,omitempty"`
+	Reason *string `json:"reason,omitempty"`
+}
+
+// GraphqlSettingsResponse is an API model. What a GraphQL schema cannot say about itself. Ignored for OpenAPI specs.
+type GraphqlSettingsResponse struct {
+	// Endpoint The URL every request is POSTed to; the generated client's default baseUrl. Defaults to the URL the schema was fetched from. Without either, baseUrl is a required client option.
+	Endpoint *string `json:"endpoint,omitempty"`
+	// Environments Named endpoints (sandbox, production). Each becomes a client environment; the first is the default unless endpoint is set.
+	Environments []GraphqlSettingsResponseEnvironmentsItem `json:"environments,omitempty"`
+	// Auth How requests authenticate. bearer sends Authorization: Bearer; basic is for key-pair APIs (public key as username, private key as password); api_key sends a header named by api_key_header; none generates no auth option.
+	Auth *Auth `json:"auth,omitempty"`
+	// APIKeyHeader Header carrying the key when auth is api_key. Required for that mode; Typeship does not invent a vendor-specific header name.
+	APIKeyHeader *string `json:"api_key_header,omitempty"`
+	// Title The API's name; drives the package and client names ("Acme" gives acme and AcmeClient). Defaults to a name derived from the endpoint's host.
+	Title *string `json:"title,omitempty"`
+	// Scalars JSON representation of each custom scalar, keyed by GraphQL scalar name. Unmapped scalars generate as the language's untyped JSON value and produce a warning. Unmatched keys warn.
+	Scalars map[string]Scalars `json:"scalars,omitempty"`
+}
+
+// GraphqlSettingsResponseEnvironmentsItem is an API model.
+type GraphqlSettingsResponseEnvironmentsItem struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+// DiagnosticPolicyResponse is an API model. Source pull-request enforcement threshold, new-versus-complete baseline, and explicitly reviewed rule or location exceptions.
+type DiagnosticPolicyResponse struct {
+	// FailOn Severity threshold that fails the API change review check.
+	FailOn FailOn `json:"fail_on"`
+	// OnlyNew Enforce only occurrences introduced by the proposed source change.
+	OnlyNew      bool                            `json:"only_new"`
+	Suppressions []DiagnosticSuppressionResponse `json:"suppressions"`
+}
+
+// DiagnosticSuppressionResponse is an API model.
+type DiagnosticSuppressionResponse struct {
+	RuleID string `json:"rule_id"`
+	// Path Exact schema coordinate. Omit only to suppress every occurrence of the rule.
+	Path *string `json:"path,omitempty"`
+	// Reason The reviewed product decision behind this exception.
+	Reason string `json:"reason"`
+}
+
+// SpecUpdateRequest is an API model. Omitted fields remain unchanged. Supplied objects and arrays replace the whole field. URL source headers are preserved when the URL is unchanged and headers are omitted; null or empty headers clear them.
+type SpecUpdateRequest struct {
+	Source *SpecSourceInput `json:"source,omitempty"`
 	// Patches Replace all patches in order. An empty array removes every patch; null is invalid.
-	Patches []DefinitionPatchParams `json:"patches,omitempty"`
+	Patches []SpecPatchParams `json:"patches,omitempty"`
 	// Graphql Replace all GraphQL settings. Null or an empty object clears them.
 	Graphql *Nullable[GraphqlSettings] `json:"graphql,omitempty"`
 	// DiagnosticPolicy Replace the complete policy and suppression list. Null and an empty object are invalid.
@@ -2984,8 +2507,8 @@ type DefinitionUpdateRequest struct {
 }
 
 // UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
-func (v *DefinitionUpdateRequest) UnmarshalJSON(data []byte) error {
-	type plain DefinitionUpdateRequest
+func (v *SpecUpdateRequest) UnmarshalJSON(data []byte) error {
+	type plain SpecUpdateRequest
 	decoded := plain(*v)
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
@@ -2997,9 +2520,360 @@ func (v *DefinitionUpdateRequest) UnmarshalJSON(data []byte) error {
 	if string(fields["graphql"]) == "null" {
 		decoded.Graphql = NullableNull[GraphqlSettings]()
 	}
-	*v = DefinitionUpdateRequest(decoded)
+	*v = SpecUpdateRequest(decoded)
 	return nil
 }
+
+// SpecRevisionList is an API model.
+type SpecRevisionList struct {
+	Object ListObject     `json:"object"`
+	Data   []SpecRevision `json:"data"`
+	// HasMore Whether another page is available after this one.
+	HasMore bool `json:"has_more"`
+	// NextCursor Pass this value as cursor to retrieve the next page; null on the last page.
+	NextCursor *string   `json:"next_cursor"`
+	RequestID  RequestID `json:"request_id"`
+}
+
+// SpecRevision is an API model.
+type SpecRevision struct {
+	ID        SpecRevisionID `json:"id"`
+	Object    string         `json:"object"`
+	ProjectID ProjectID      `json:"project_id"`
+	SpecID    SpecID         `json:"spec_id"`
+	Format    Format         `json:"format"`
+	FileCount int64          `json:"file_count"`
+	// Sha256 SHA-256 digest of every source file path, digest, and size in the resolved graph.
+	Sha256 string `json:"sha256"`
+	// SizeBytes Total bytes across all source files.
+	SizeBytes int64 `json:"size_bytes"`
+	// Source Origin recorded when this immutable revision was created.
+	Source *SpecRevisionSource `json:"source"`
+	// DiagnosticSummary Present on retrieve; list responses omit it.
+	DiagnosticSummary *DiagnosticSummary `json:"diagnostic_summary,omitempty"`
+	// Diagnostics Present only with include=diagnostics. Ordered by severity, then rule identifier.
+	Diagnostics []Diagnostic `json:"diagnostics,omitempty"`
+	// PatchDiagnostics Present only with include=diagnostics. Coded misses or conflicts from applying the Spec's patches to this revision.
+	PatchDiagnostics []DiagnosticWarning `json:"patch_diagnostics,omitempty"`
+	CreatedAt        string              `json:"created_at"`
+	RequestID        *RequestID          `json:"request_id,omitempty"`
+}
+
+// SpecRevisionSource is one of URLSpecRevisionSource, RepositorySpecRevisionSource.
+// Go has no sum types, so it holds the JSON as received and decodes on
+// request: try the As* accessors, or switch on Discriminator() when the
+// spec names one.
+type SpecRevisionSource struct {
+	union json.RawMessage
+}
+
+// MarshalJSON writes the value as it was set or received.
+func (u SpecRevisionSource) MarshalJSON() ([]byte, error) {
+	if u.union == nil {
+		return []byte("null"), nil
+	}
+	return u.union, nil
+}
+
+// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
+func (u *SpecRevisionSource) UnmarshalJSON(data []byte) error {
+	u.union = append(u.union[:0], data...)
+	return nil
+}
+
+// Raw returns the JSON exactly as received.
+func (u SpecRevisionSource) Raw() json.RawMessage {
+	return u.union
+}
+
+// Discriminator returns the "type" field, which names the variant.
+func (u SpecRevisionSource) Discriminator() (string, error) {
+	var probe struct {
+		Kind string `json:"type"`
+	}
+	if err := json.Unmarshal(u.union, &probe); err != nil {
+		return "", err
+	}
+	return probe.Kind, nil
+}
+
+// AsURLSpecRevisionSource decodes the value as URLSpecRevisionSource.
+func (u SpecRevisionSource) AsURLSpecRevisionSource() (URLSpecRevisionSource, error) {
+	var v URLSpecRevisionSource
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromURLSpecRevisionSource sets the value to a URLSpecRevisionSource.
+func (u *SpecRevisionSource) FromURLSpecRevisionSource(v URLSpecRevisionSource) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AsRepositorySpecRevisionSource decodes the value as RepositorySpecRevisionSource.
+func (u SpecRevisionSource) AsRepositorySpecRevisionSource() (RepositorySpecRevisionSource, error) {
+	var v RepositorySpecRevisionSource
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromRepositorySpecRevisionSource sets the value to a RepositorySpecRevisionSource.
+func (u *SpecRevisionSource) FromRepositorySpecRevisionSource(v RepositorySpecRevisionSource) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// URLSpecRevisionSource is an API model.
+type URLSpecRevisionSource struct {
+	Type string                   `json:"type"`
+	URL  URLSpecRevisionSourceURL `json:"url"`
+}
+
+// URLSpecRevisionSourceURL is an API model.
+type URLSpecRevisionSourceURL struct {
+	URL string `json:"url"`
+}
+
+// RepositorySpecRevisionSource is an API model.
+type RepositorySpecRevisionSource struct {
+	Type       string                                 `json:"type"`
+	Repository RepositorySpecRevisionSourceRepository `json:"repository"`
+}
+
+// RepositorySpecRevisionSourceRepository is an API model.
+type RepositorySpecRevisionSourceRepository struct {
+	Provider   RepositoryProvider   `json:"provider"`
+	Identifier RepositoryIdentifier `json:"identifier"`
+	// Path Repository-relative Spec entrypoint path.
+	Path string `json:"path"`
+	// Ref Git ref resolved for this revision, when recorded.
+	Ref *string `json:"ref,omitempty"`
+	// CommitSha Exact Git commit consumed, when recorded.
+	CommitSha *string `json:"commit_sha,omitempty"`
+}
+
+// DiagnosticSummary is an API model. Counts of grouped Diagnostics, one per rule. Retrieve the revision with include=diagnostics for each Diagnostic.
+type DiagnosticSummary struct {
+	// Status passed: no Diagnostic fails the Spec's Diagnostic policy. blocked: at least one does; retrieve with include=diagnostics and fix those marked blocking.
+	Status DiagnosticSummaryStatus `json:"status"`
+	// ErrorCount Diagnostics reporting invalid behavior.
+	ErrorCount int64 `json:"error_count"`
+	// WarningCount Diagnostics reporting material risk.
+	WarningCount int64 `json:"warning_count"`
+	// SuggestionCount Diagnostics suggesting an improvement.
+	SuggestionCount int64 `json:"suggestion_count"`
+	// BlockingCount Diagnostics that fail the Spec's Diagnostic policy.
+	BlockingCount int64 `json:"blocking_count"`
+	// BaselineSpecRevisionID The previous revision of this Spec that introduced Diagnostics are compared with, or null for the first revision.
+	BaselineSpecRevisionID *SpecRevisionID `json:"baseline_spec_revision_id"`
+}
+
+// DiagnosticSummaryStatus is one of "passed", "blocked". passed: no Diagnostic fails the Spec's Diagnostic policy. blocked: at least one does; retrieve with include=diagnostics and fix those marked blocking.
+type DiagnosticSummaryStatus string
+
+const (
+	DiagnosticSummaryStatusPassed  DiagnosticSummaryStatus = "passed"
+	DiagnosticSummaryStatusBlocked DiagnosticSummaryStatus = "blocked"
+)
+
+// Diagnostic is an API model. Every occurrence of one Diagnostic rule in a Spec Revision, grouped into one decision. Diagnostics are evaluated when read, using the Spec's current patches and Diagnostic policy.
+type Diagnostic struct {
+	// ID Stable rule identifier, unique within a Spec Revision. Suppressions name it as rule_id.
+	ID     string `json:"id"`
+	Object string `json:"object"`
+	// Blocking Whether this Diagnostic fails the Spec's Diagnostic policy. Suppressed occurrences and, when only_new is set, occurrences present in the baseline never block.
+	Blocking bool `json:"blocking"`
+	// Introduced Whether any occurrence is new since baseline_spec_revision_id in the Diagnostic summary. Always true when there is no baseline.
+	Introduced bool `json:"introduced"`
+	// Severity Whether the rule reports invalid behavior, material risk, or an improvement.
+	Severity DiagnosticSeverity `json:"severity"`
+	// Category Product dimension affected by the diagnostic.
+	Category DiagnosticCategory `json:"category"`
+	// Title Concise statement of the root cause.
+	Title string `json:"title"`
+	// Message One explanation of the finding and why it matters.
+	Message string `json:"message"`
+	// Surfaces Public surfaces affected by the root cause.
+	Surfaces []DiagnosticSurface `json:"surfaces"`
+	// OwnerDecisionRequired Whether remediation requires intent that the Spec cannot prove.
+	OwnerDecisionRequired bool `json:"owner_decision_required"`
+	// Locations All affected coordinates, kept under one grouped diagnostic.
+	Locations []DiagnosticLocation `json:"locations"`
+	Fix       *DiagnosticFix       `json:"fix,omitempty"`
+	// AuthoringBrief Grounded instructions an agent can use to edit the source. The brief preserves existing behavior and requires owner input when the contract cannot prove the missing product decision.
+	AuthoringBrief string `json:"authoring_brief"`
+}
+
+// DiagnosticSeverity is one of "error", "warning", "suggestion". Whether the rule reports invalid behavior, material risk, or an improvement.
+type DiagnosticSeverity string
+
+const (
+	DiagnosticSeverityError      DiagnosticSeverity = "error"
+	DiagnosticSeverityWarning    DiagnosticSeverity = "warning"
+	DiagnosticSeveritySuggestion DiagnosticSeverity = "suggestion"
+)
+
+// DiagnosticCategory is one of "correctness", "sdk_ergonomics", "agent_usability", "safety". Product dimension affected by the diagnostic.
+type DiagnosticCategory string
+
+const (
+	DiagnosticCategoryCorrectness    DiagnosticCategory = "correctness"
+	DiagnosticCategorySDKErgonomics  DiagnosticCategory = "sdk_ergonomics"
+	DiagnosticCategoryAgentUsability DiagnosticCategory = "agent_usability"
+	DiagnosticCategorySafety         DiagnosticCategory = "safety"
+)
+
+// DiagnosticSurface is one of "api", "sdk", "cli", "mcp".
+type DiagnosticSurface string
+
+const (
+	DiagnosticSurfaceAPI DiagnosticSurface = "api"
+	DiagnosticSurfaceSDK DiagnosticSurface = "sdk"
+	DiagnosticSurfaceCLI DiagnosticSurface = "cli"
+	DiagnosticSurfaceMCP DiagnosticSurface = "mcp"
+)
+
+// DiagnosticLocation is an API model. One exact place where a Diagnostic rule found evidence.
+type DiagnosticLocation struct {
+	// FilePath Source file path from the Spec Revision when the finding maps to a captured file.
+	FilePath *string `json:"file_path,omitempty"`
+	// FileID The captured source file, present with file_path. Read it with getFile.
+	FileID *FileID `json:"file_id,omitempty"`
+	// Path JSON Pointer for OpenAPI, or schema coordinate for GraphQL.
+	Path string `json:"path"`
+	// Operation Human-readable operation coordinate when the location belongs to an operation.
+	Operation *string `json:"operation,omitempty"`
+	// Evidence Occurrence-specific evidence. This is not a remediation instruction.
+	Evidence *string `json:"evidence,omitempty"`
+}
+
+// FileID is a generated API type.
+type FileID string
+
+// DiagnosticFix is an API model. A reviewable remediation that does not invent API behavior.
+type DiagnosticFix struct {
+	// Title Concise action for the API author.
+	Title string `json:"title"`
+	// Type spec_patch is an exact OpenAPI edit Typeship can derive; source_edit requires author intent or a lossless GraphQL source edit.
+	Type DiagnosticFixType `json:"type"`
+	// Patches Exact patches when type is spec_patch.
+	Patches []SpecPatchResponse `json:"patches,omitempty"`
+	// Instructions Source-level guidance when an exact patch would invent intent.
+	Instructions *string `json:"instructions,omitempty"`
+}
+
+// DiagnosticFixType is one of "spec_patch", "source_edit". spec_patch is an exact OpenAPI edit Typeship can derive; source_edit requires author intent or a lossless GraphQL source edit.
+type DiagnosticFixType string
+
+const (
+	DiagnosticFixTypeSpecPatch  DiagnosticFixType = "spec_patch"
+	DiagnosticFixTypeSourceEdit DiagnosticFixType = "source_edit"
+)
+
+// DiagnosticWarning is an API model.
+type DiagnosticWarning struct {
+	Code    DiagnosticWarningCode `json:"code"`
+	Message string                `json:"message"`
+}
+
+// DiagnosticWarningCode is one of "unsupported_format", "invalid_document", "invalid_patch", "no_match", "append_target_type", "rename_target_type", "rename_conflict".
+type DiagnosticWarningCode string
+
+const (
+	DiagnosticWarningCodeUnsupportedFormat DiagnosticWarningCode = "unsupported_format"
+	DiagnosticWarningCodeInvalidDocument   DiagnosticWarningCode = "invalid_document"
+	DiagnosticWarningCodeInvalidPatch      DiagnosticWarningCode = "invalid_patch"
+	DiagnosticWarningCodeNoMatch           DiagnosticWarningCode = "no_match"
+	DiagnosticWarningCodeAppendTargetType  DiagnosticWarningCode = "append_target_type"
+	DiagnosticWarningCodeRenameTargetType  DiagnosticWarningCode = "rename_target_type"
+	DiagnosticWarningCodeRenameConflict    DiagnosticWarningCode = "rename_conflict"
+)
+
+// SpecRevisionResponse is an API model.
+type SpecRevisionResponse struct {
+	ID        SpecRevisionID `json:"id"`
+	Object    string         `json:"object"`
+	ProjectID ProjectID      `json:"project_id"`
+	SpecID    SpecID         `json:"spec_id"`
+	Format    Format         `json:"format"`
+	FileCount int64          `json:"file_count"`
+	// Sha256 SHA-256 digest of every source file path, digest, and size in the resolved graph.
+	Sha256 string `json:"sha256"`
+	// SizeBytes Total bytes across all source files.
+	SizeBytes int64 `json:"size_bytes"`
+	// Source Origin recorded when this immutable revision was created.
+	Source *SpecRevisionSource `json:"source"`
+	// DiagnosticSummary Present on retrieve; list responses omit it.
+	DiagnosticSummary *DiagnosticSummary `json:"diagnostic_summary,omitempty"`
+	// Diagnostics Present only with include=diagnostics. Ordered by severity, then rule identifier.
+	Diagnostics []Diagnostic `json:"diagnostics,omitempty"`
+	// PatchDiagnostics Present only with include=diagnostics. Coded misses or conflicts from applying the Spec's patches to this revision.
+	PatchDiagnostics []DiagnosticWarning `json:"patch_diagnostics,omitempty"`
+	CreatedAt        string              `json:"created_at"`
+	RequestID        RequestID           `json:"request_id"`
+}
+
+// SpecRevisionFileList is an API model.
+type SpecRevisionFileList struct {
+	Object     ListObject         `json:"object"`
+	Data       []SpecRevisionFile `json:"data"`
+	HasMore    bool               `json:"has_more"`
+	NextCursor *string            `json:"next_cursor"`
+	RequestID  RequestID          `json:"request_id"`
+}
+
+// SpecRevisionFile is an API model.
+type SpecRevisionFile struct {
+	ID     FileID `json:"id"`
+	Object string `json:"object"`
+	// Path Path within the Spec Revision, Generation package, or Target package.
+	Path      string `json:"path"`
+	SizeBytes int64  `json:"size_bytes"`
+	// Sha256 Digest of the complete file.
+	Sha256 string `json:"sha256"`
+	// Encoding utf8: content is text. base64: content is base64-encoded binary bytes.
+	Encoding SpecRevisionFileEncoding `json:"encoding"`
+	// Mode Git file mode for package files; null for Spec source files.
+	Mode *GitFileMode `json:"mode"`
+	// CreatedAt When Typeship first issued this file ID.
+	CreatedAt string `json:"created_at"`
+	// Role entrypoint and reference: captured source files. resolved: the single normalized document Typeship generated from.
+	Role SpecRevisionFileRole `json:"role"`
+}
+
+// SpecRevisionFileEncoding is one of "utf8", "base64". utf8: content is text. base64: content is base64-encoded binary bytes.
+type SpecRevisionFileEncoding string
+
+const (
+	SpecRevisionFileEncodingUTF8   SpecRevisionFileEncoding = "utf8"
+	SpecRevisionFileEncodingBase64 SpecRevisionFileEncoding = "base64"
+)
+
+// GitFileMode is one of "100644", "100755", "120000". Git file mode. 100755 is executable; 120000 is a symbolic link whose content is its target.
+type GitFileMode string
+
+const (
+	GitFileMode100644 GitFileMode = "100644"
+	GitFileMode100755 GitFileMode = "100755"
+	GitFileMode120000 GitFileMode = "120000"
+)
+
+// SpecRevisionFileRole is one of "entrypoint", "reference", "resolved". entrypoint and reference: captured source files. resolved: the single normalized document Typeship generated from.
+type SpecRevisionFileRole string
+
+const (
+	SpecRevisionFileRoleEntrypoint SpecRevisionFileRole = "entrypoint"
+	SpecRevisionFileRoleReference  SpecRevisionFileRole = "reference"
+	SpecRevisionFileRoleResolved   SpecRevisionFileRole = "resolved"
+)
 
 // TargetList is an API model.
 type TargetList struct {
@@ -3010,26 +2884,24 @@ type TargetList struct {
 	RequestID  RequestID  `json:"request_id"`
 }
 
-// Target is an API model.
+// Target is an API model. All Targets follow reviewed SemVer. Before 1.0.0, breaking changes require a minor version; the policy is fixed rather than configurable.
 type Target struct {
-	ID           TargetID      `json:"id"`
-	Object       string        `json:"object"`
-	ProjectID    ProjectID     `json:"project_id"`
-	DefinitionID DefinitionID  `json:"definition_id"`
-	Name         string        `json:"name"`
-	Generator    GeneratorKind `json:"generator"`
-	// Dependency Present only on a go-cli Target, naming the sibling Go SDK Target the CLI is generated against. Every other generator reports null.
-	Dependency     *TargetDependency   `json:"dependency"`
-	State          State               `json:"state"`
-	Edition        string              `json:"edition"`
-	ReleaseChannel ReleaseChannel      `json:"release_channel"`
-	VersionPolicy  TargetVersionPolicy `json:"version_policy"`
-	// CurrentVersion Read-only version of the Target's Current release, or null before its first release. Registry publication status is separate; inspect the Target Release for publication results.
-	CurrentVersion        *string                `json:"current_version"`
-	ProposedVersion       *string                `json:"proposed_version"`
-	ProposedVersionSource *ProposedVersionSource `json:"proposed_version_source"`
-	Checks                TargetChecksResponse   `json:"checks"`
-	// Config Target-specific overrides merged over Project.config. GraphQL settings are Definition-owned and never appear here.
+	ID        TargetID      `json:"id"`
+	Object    string        `json:"object"`
+	ProjectID ProjectID     `json:"project_id"`
+	SpecID    SpecID        `json:"spec_id"`
+	Name      string        `json:"name"`
+	Type      GeneratorKind `json:"type"`
+	// Dependency Present only on a go_cli Target, naming the sibling Go SDK Target the CLI is generated against. Every other Target type reports null.
+	Dependency     *TargetDependency `json:"dependency"`
+	Status         Status            `json:"status"`
+	ReleaseChannel ReleaseChannel    `json:"release_channel"`
+	// VersionCurrent Read-only version of the Target's latest release, or null before its first release. Publishing status is separate; inspect the release for its results.
+	VersionCurrent *string `json:"version_current"`
+	// DraftID The Target's open Draft. After a merge it names the next Draft.
+	DraftID DraftID              `json:"draft_id"`
+	Checks  TargetChecksResponse `json:"checks"`
+	// Config Target-specific overrides merged over Project.config. GraphQL settings are Spec-owned and never appear here.
 	Config *TargetConfigResponse `json:"config"`
 	// Deliveries At most one repository and one hosted MCP Delivery.
 	Deliveries []Delivery `json:"deliveries"`
@@ -3038,28 +2910,16 @@ type Target struct {
 	RequestID  *RequestID `json:"request_id,omitempty"`
 }
 
-// TargetDependency is an API model. One Target generated from a sibling Target. A go-cli Target carries kind go_sdk_module, naming the Go SDK Target it is generated against.
+// TargetDependency is an API model. One Target generated from a sibling Target. A go_cli Target carries type go_sdk_module, naming the Go SDK Target it is generated against.
 type TargetDependency struct {
-	Kind     string   `json:"kind"`
+	Type     string   `json:"type"`
 	TargetID TargetID `json:"target_id"`
 }
 
-// TargetVersionPolicy is an API model.
-type TargetVersionPolicy struct {
-	Mode         string `json:"mode"`
-	Pre1Breaking string `json:"pre1_breaking"`
-}
+// DraftID is a generated API type.
+type DraftID string
 
-// ProposedVersionSource is one of "console", "api", "github".
-type ProposedVersionSource string
-
-const (
-	ProposedVersionSourceConsole ProposedVersionSource = "console"
-	ProposedVersionSourceAPI     ProposedVersionSource = "api"
-	ProposedVersionSourceGithub  ProposedVersionSource = "github"
-)
-
-// TargetChecksResponse is an API model. Required checks run against the complete combined package. Generated checks and customer commands share one reproducible workflow; repository_required names existing repository checks. Supplying checks replaces all settings. Omitted generated restores build, package, and public_entrypoint; omitted repository_required and customer restore empty lists. An empty object restores these defaults. An empty array clears the corresponding list.
+// TargetChecksResponse is an API model. Required checks run against the code in the Draft. Generated checks and customer commands share one reproducible workflow; repository_required names existing repository checks. Supplying checks replaces all settings. Omitted generated restores build, package, and public_entrypoint; omitted repository_required and customer restore empty lists. An empty object restores these defaults. An empty array clears the corresponding list.
 type TargetChecksResponse struct {
 	Generated          []Generated                        `json:"generated,omitempty"`
 	RepositoryRequired []string                           `json:"repository_required,omitempty"`
@@ -3080,11 +2940,11 @@ type TargetConfigResponse struct {
 	// Pagination Per-operation pagination control, keyed by operationId or "METHOD /path". Unmatched keys are reported as generation warnings.
 	Pagination map[string]TargetConfigResponsePaginationValue `json:"pagination,omitempty"`
 	Auth       *TargetAuthenticationConfigResponse            `json:"auth,omitempty"`
-	CLI        *CLIBehaviorResponse                           `json:"cli,omitempty"`
+	CLI        *TargetCLIBehaviorResponse                     `json:"cli,omitempty"`
 	MCP        *MCPBehaviorResponse                           `json:"mcp,omitempty"`
 	Readme     *ReadmeBehaviorResponse                        `json:"readme,omitempty"`
 	Package    *PackageBehaviorResponse                       `json:"package,omitempty"`
-	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Definition's externalDocs URL.
+	// DocsURL The API's documentation site. Read through its llms.txt by the generated CLI's docs command, the MCP server's docs tools, and the package's AGENTS.md. Defaults to the Spec's externalDocs URL.
 	DocsURL *string `json:"docs_url,omitempty"`
 	// DocsIndexURL Exact llms.txt URL when the documentation site does not publish it at docs_url + /llms.txt.
 	DocsIndexURL *string `json:"docs_index_url,omitempty"`
@@ -3164,6 +3024,24 @@ type TargetAuthenticationEnvironmentResponse struct {
 	OauthApplication *string `json:"oauth_application,omitempty"`
 }
 
+// TargetCLIBehaviorResponse is an API model. How the generated CLI behaves. Part of Config.
+type TargetCLIBehaviorResponse struct {
+	// CommandName Command users run, independent of how the CLI is distributed.
+	CommandName *string `json:"command_name,omitempty"`
+	// UpdateNotice Opt in to a once-a-day registry check that prints an upgrade hint. Off by default; generated code phones nobody unless this is enabled.
+	UpdateNotice *bool `json:"update_notice,omitempty"`
+	// ChangelogURL Public HTTP(S) URL read by the optional changelog command in generated CLIs. Supports UTF-8 Markdown, plain text, and static HTML; embedded credentials are not allowed. Omit or clear to disable, then regenerate.
+	ChangelogURL *string `json:"changelog_url,omitempty"`
+	// SupportURL Where the generated CLI's feedback command sends users. GitHub issues/new URLs get a prefilled title and environment details.
+	SupportURL *string `json:"support_url,omitempty"`
+	// MCPURL Hosted MCP endpoint installed by the generated CLI instead of launching the package's local stdio server.
+	MCPURL *string `json:"mcp_url,omitempty"`
+	// SkillsRepo GitHub owner/name of the skills package the generated CLI offers to install during init.
+	SkillsRepo *string `json:"skills_repo,omitempty"`
+	// Relay Enable webhook relay sessions for this CLI Target. Requires Pro. Turning it off prevents new sessions.
+	Relay *bool `json:"relay,omitempty"`
+}
+
 // Delivery is one of RepositoryDelivery, HostedMCPDelivery.
 // Go has no sum types, so it holds the JSON as received and decodes on
 // request: try the As* accessors, or switch on Discriminator() when the
@@ -3191,10 +3069,10 @@ func (u Delivery) Raw() json.RawMessage {
 	return u.union
 }
 
-// Discriminator returns the "kind" field, which names the variant.
+// Discriminator returns the "type" field, which names the variant.
 func (u Delivery) Discriminator() (string, error) {
 	var probe struct {
-		Kind string `json:"kind"`
+		Kind string `json:"type"`
 	}
 	if err := json.Unmarshal(u.union, &probe); err != nil {
 		return "", err
@@ -3238,54 +3116,120 @@ func (u *Delivery) FromHostedMCPDelivery(v HostedMCPDelivery) error {
 
 // RepositoryDelivery is an API model.
 type RepositoryDelivery struct {
-	ID             DeliveryID                  `json:"id"`
-	Object         string                      `json:"object"`
-	TargetID       TargetID                    `json:"target_id"`
-	Kind           string                      `json:"kind"`
-	State          State                       `json:"state"`
-	Repository     RepositoryReferenceResponse `json:"repository"`
-	Directory      *string                     `json:"directory"`
-	PackageName    *string                     `json:"package_name"`
-	ModulePath     *string                     `json:"module_path"`
-	PublishOnMerge bool                        `json:"publish_on_merge"`
-	CreatedAt      string                      `json:"created_at"`
-	UpdatedAt      string                      `json:"updated_at"`
+	ID       DeliveryID `json:"id"`
+	Object   string     `json:"object"`
+	TargetID TargetID   `json:"target_id"`
+	Type     string     `json:"type"`
+	// Status active: the repository accepts generated changes. action_required: inspect issues for the correction. disabled: the Target is disabled and receives no changes.
+	Status     RepositoryDeliveryStatus   `json:"status"`
+	Repository RepositoryDeliverySettings `json:"repository"`
+	Issues     []RepositoryDeliveryIssue  `json:"issues"`
+	// RequiredChecks Repository check names Typeship expects before accepting a Draft.
+	RequiredChecks []string `json:"required_checks"`
+	// LastEvent Last observed repository event relevant to this Delivery, if available. A failed event adds an actionable issue.
+	LastEvent *RepositoryDeliveryEvent `json:"last_event"`
+	CreatedAt string                   `json:"created_at"`
+	UpdatedAt string                   `json:"updated_at"`
 }
 
 // DeliveryID is a generated API type.
 type DeliveryID string
 
-// HostedMCPDelivery is an API model.
-type HostedMCPDelivery struct {
-	ID        DeliveryID `json:"id"`
-	Object    string     `json:"object"`
-	TargetID  TargetID   `json:"target_id"`
-	Kind      string     `json:"kind"`
-	State     State      `json:"state"`
-	URL       *string    `json:"url"`
-	CreatedAt string     `json:"created_at"`
-	UpdatedAt string     `json:"updated_at"`
+// RepositoryDeliveryStatus is one of "active", "action_required", "disabled". active: the repository accepts generated changes. action_required: inspect issues for the correction. disabled: the Target is disabled and receives no changes.
+type RepositoryDeliveryStatus string
+
+const (
+	RepositoryDeliveryStatusActive         RepositoryDeliveryStatus = "active"
+	RepositoryDeliveryStatusActionRequired RepositoryDeliveryStatus = "action_required"
+	RepositoryDeliveryStatusDisabled       RepositoryDeliveryStatus = "disabled"
+)
+
+// RepositoryDeliverySettings is an API model.
+type RepositoryDeliverySettings struct {
+	Provider       RepositoryProvider   `json:"provider"`
+	Identifier     RepositoryIdentifier `json:"identifier"`
+	Directory      *string              `json:"directory"`
+	PackageName    *string              `json:"package_name"`
+	ModulePath     *string              `json:"module_path"`
+	PublishOnMerge bool                 `json:"publish_on_merge"`
 }
 
-// TargetFieldsParams is an API model.
-type TargetFieldsParams struct {
+// RepositoryDeliveryIssue is an API model.
+type RepositoryDeliveryIssue struct {
+	Code RepositoryDeliveryIssueCode `json:"code"`
+	// Message Specific customer action or repository setting to inspect.
+	Message string `json:"message"`
+}
+
+// RepositoryDeliveryIssueCode is one of "app_not_installed", "repository_unreachable", "contents_write_missing", "pull_request_missing", "approval_label_missing", "check_missing", "event_failed".
+type RepositoryDeliveryIssueCode string
+
+const (
+	RepositoryDeliveryIssueCodeAppNotInstalled       RepositoryDeliveryIssueCode = "app_not_installed"
+	RepositoryDeliveryIssueCodeRepositoryUnreachable RepositoryDeliveryIssueCode = "repository_unreachable"
+	RepositoryDeliveryIssueCodeContentsWriteMissing  RepositoryDeliveryIssueCode = "contents_write_missing"
+	RepositoryDeliveryIssueCodePullRequestMissing    RepositoryDeliveryIssueCode = "pull_request_missing"
+	RepositoryDeliveryIssueCodeApprovalLabelMissing  RepositoryDeliveryIssueCode = "approval_label_missing"
+	RepositoryDeliveryIssueCodeCheckMissing          RepositoryDeliveryIssueCode = "check_missing"
+	RepositoryDeliveryIssueCodeEventFailed           RepositoryDeliveryIssueCode = "event_failed"
+)
+
+// RepositoryDeliveryEvent is an API model.
+type RepositoryDeliveryEvent struct {
+	// Event Repository event type.
+	Event string `json:"event"`
+	// Status superseded: a newer event for the same repository replaced this one before it finished.
+	Status    RepositoryDeliveryEventStatus `json:"status"`
+	CreatedAt string                        `json:"created_at"`
+}
+
+// RepositoryDeliveryEventStatus is one of "queued", "running", "completed", "failed", "superseded". superseded: a newer event for the same repository replaced this one before it finished.
+type RepositoryDeliveryEventStatus string
+
+const (
+	RepositoryDeliveryEventStatusQueued     RepositoryDeliveryEventStatus = "queued"
+	RepositoryDeliveryEventStatusRunning    RepositoryDeliveryEventStatus = "running"
+	RepositoryDeliveryEventStatusCompleted  RepositoryDeliveryEventStatus = "completed"
+	RepositoryDeliveryEventStatusFailed     RepositoryDeliveryEventStatus = "failed"
+	RepositoryDeliveryEventStatusSuperseded RepositoryDeliveryEventStatus = "superseded"
+)
+
+// HostedMCPDelivery is an API model.
+type HostedMCPDelivery struct {
+	ID       DeliveryID `json:"id"`
+	Object   string     `json:"object"`
+	TargetID TargetID   `json:"target_id"`
+	Type     string     `json:"type"`
+	// Status active: the endpoint serves the Target's latest accepted package. disabled: the Target is disabled and the endpoint is paused.
+	Status    Status                    `json:"status"`
+	HostedMCP HostedMCPDeliverySettings `json:"hosted_mcp"`
+	CreatedAt string                    `json:"created_at"`
+	UpdatedAt string                    `json:"updated_at"`
+}
+
+// HostedMCPDeliverySettings is an API model.
+type HostedMCPDeliverySettings struct {
+	// URL Hosted MCP endpoint for this Target, or null while it is being provisioned.
+	URL *string `json:"url"`
+}
+
+// TargetCreateRequest is an API model.
+type TargetCreateRequest struct {
+	ProjectID      ProjectID       `json:"project_id"`
 	Name           string          `json:"name"`
-	DefinitionID   DefinitionID    `json:"definition_id"`
-	Generator      GeneratorKind   `json:"generator"`
-	State          *State          `json:"state,omitempty"`
-	Edition        *string         `json:"edition,omitempty"`
+	SpecID         SpecID          `json:"spec_id"`
+	Type           GeneratorKind   `json:"type"`
+	Status         *Status         `json:"status,omitempty"`
 	ReleaseChannel *ReleaseChannel `json:"release_channel,omitempty"`
-	// ProposedVersion Optional larger or prerelease SemVer for the next reviewed release.
-	ProposedVersion *Nullable[string] `json:"proposed_version,omitempty"`
-	Checks          *TargetChecks     `json:"checks,omitempty"`
-	// Config Target-specific overrides merged over Project.config. GraphQL settings are rejected here and belong to the Definition.
+	Checks         *TargetChecks   `json:"checks,omitempty"`
+	// Config Target-specific overrides merged over Project.config. GraphQL settings are rejected here and belong to the Spec.
 	Config     *Nullable[TargetConfigParams] `json:"config,omitempty"`
 	Deliveries []DeliveryInput               `json:"deliveries,omitempty"`
 }
 
 // UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
-func (v *TargetFieldsParams) UnmarshalJSON(data []byte) error {
-	type plain TargetFieldsParams
+func (v *TargetCreateRequest) UnmarshalJSON(data []byte) error {
+	type plain TargetCreateRequest
 	decoded := plain(*v)
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
@@ -3294,48 +3238,37 @@ func (v *TargetFieldsParams) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &fields); err != nil {
 		return err
 	}
-	if string(fields["proposed_version"]) == "null" {
-		decoded.ProposedVersion = NullableNull[string]()
-	}
 	if string(fields["config"]) == "null" {
 		decoded.Config = NullableNull[TargetConfigParams]()
 	}
-	*v = TargetFieldsParams(decoded)
+	*v = TargetCreateRequest(decoded)
 	return nil
 }
 
 // TargetResponse is an API model.
 type TargetResponse struct {
-	ID           TargetID      `json:"id"`
-	Object       string        `json:"object"`
-	ProjectID    ProjectID     `json:"project_id"`
-	DefinitionID DefinitionID  `json:"definition_id"`
-	Name         string        `json:"name"`
-	Generator    GeneratorKind `json:"generator"`
-	// Dependency Present only on a go-cli Target, naming the sibling Go SDK Target the CLI is generated against. Every other generator reports null.
-	Dependency     *TargetDependency           `json:"dependency"`
-	State          State                       `json:"state"`
-	Edition        string                      `json:"edition"`
-	ReleaseChannel ReleaseChannel              `json:"release_channel"`
-	VersionPolicy  TargetResponseVersionPolicy `json:"version_policy"`
-	// CurrentVersion Read-only version of the Target's Current release, or null before its first release. Registry publication status is separate; inspect the Target Release for publication results.
-	CurrentVersion        *string                `json:"current_version"`
-	ProposedVersion       *string                `json:"proposed_version"`
-	ProposedVersionSource *ProposedVersionSource `json:"proposed_version_source"`
-	Checks                TargetChecksResponse   `json:"checks"`
-	// Config Target-specific overrides merged over Project.config. GraphQL settings are Definition-owned and never appear here.
+	ID        TargetID      `json:"id"`
+	Object    string        `json:"object"`
+	ProjectID ProjectID     `json:"project_id"`
+	SpecID    SpecID        `json:"spec_id"`
+	Name      string        `json:"name"`
+	Type      GeneratorKind `json:"type"`
+	// Dependency Present only on a go_cli Target, naming the sibling Go SDK Target the CLI is generated against. Every other Target type reports null.
+	Dependency     *TargetDependency `json:"dependency"`
+	Status         Status            `json:"status"`
+	ReleaseChannel ReleaseChannel    `json:"release_channel"`
+	// VersionCurrent Read-only version of the Target's latest release, or null before its first release. Publishing status is separate; inspect the release for its results.
+	VersionCurrent *string `json:"version_current"`
+	// DraftID The Target's open Draft. After a merge it names the next Draft.
+	DraftID DraftID              `json:"draft_id"`
+	Checks  TargetChecksResponse `json:"checks"`
+	// Config Target-specific overrides merged over Project.config. GraphQL settings are Spec-owned and never appear here.
 	Config *TargetConfigResponse `json:"config"`
 	// Deliveries At most one repository and one hosted MCP Delivery.
 	Deliveries []Delivery `json:"deliveries"`
 	CreatedAt  string     `json:"created_at"`
 	UpdatedAt  string     `json:"updated_at"`
 	RequestID  RequestID  `json:"request_id"`
-}
-
-// TargetResponseVersionPolicy is an API model.
-type TargetResponseVersionPolicy struct {
-	Mode         string `json:"mode"`
-	Pre1Breaking string `json:"pre1_breaking"`
 }
 
 // DeletedTarget is an API model.
@@ -3349,13 +3282,10 @@ type DeletedTarget struct {
 // TargetUpdateRequest is an API model.
 type TargetUpdateRequest struct {
 	Name           *string         `json:"name,omitempty"`
-	State          *State          `json:"state,omitempty"`
-	Edition        *string         `json:"edition,omitempty"`
+	Status         *Status         `json:"status,omitempty"`
 	ReleaseChannel *ReleaseChannel `json:"release_channel,omitempty"`
-	// ProposedVersion Send only this field to select an exact SemVer, or null for automatic selection. The Target and Draft endpoints both support an optional If-Match precondition.
-	ProposedVersion *Nullable[string] `json:"proposed_version,omitempty"`
-	Checks          *TargetChecks     `json:"checks,omitempty"`
-	// Config Replaces the complete stored override object. Send null or an empty object to resume Project inheritance. Effective values merge over Project.config; GraphQL settings belong to the Definition.
+	Checks         *TargetChecks   `json:"checks,omitempty"`
+	// Config Replaces the complete stored override object. Send null or an empty object to resume Project inheritance. Effective values merge over Project.config; GraphQL settings belong to the Spec.
 	Config *Nullable[TargetConfigParams] `json:"config,omitempty"`
 	// Deliveries Replaces the Delivery set; include each kind you want to keep. Retained kinds preserve their ID, creation time, and hosted URL. Each supplied Delivery replaces its configuration, so omitted optional settings reset to their defaults. Omit deliveries to keep the existing set, or send [] to remove all Deliveries. Removing and later recreating a kind allocates a new ID and, for hosted_mcp, a new URL.
 	Deliveries []DeliveryInput `json:"deliveries,omitempty"`
@@ -3372,9 +3302,6 @@ func (v *TargetUpdateRequest) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &fields); err != nil {
 		return err
 	}
-	if string(fields["proposed_version"]) == "null" {
-		decoded.ProposedVersion = NullableNull[string]()
-	}
 	if string(fields["config"]) == "null" {
 		decoded.Config = NullableNull[TargetConfigParams]()
 	}
@@ -3382,61 +3309,63 @@ func (v *TargetUpdateRequest) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// TargetReleaseList is an API model.
-type TargetReleaseList struct {
-	Object     ListObject      `json:"object"`
-	Data       []TargetRelease `json:"data"`
-	HasMore    bool            `json:"has_more"`
-	NextCursor *string         `json:"next_cursor"`
-	RequestID  RequestID       `json:"request_id"`
+// TargetAdoption is an API model.
+type TargetAdoption struct {
+	// Version Exact already-published package version to make the latest release.
+	Version string `json:"version"`
+	// Tag Immutable repository tag containing the matching package source.
+	Tag string `json:"tag"`
 }
 
-// TargetRelease is an API model.
-type TargetRelease struct {
-	ID       TargetReleaseID `json:"id"`
-	Object   string          `json:"object"`
-	TargetID TargetID        `json:"target_id"`
+// ReleaseResponse is an API model.
+type ReleaseResponse struct {
+	ID       ReleaseID `json:"id"`
+	Object   string    `json:"object"`
+	TargetID TargetID  `json:"target_id"`
 	// GenerationID Null only for a verified release imported during package adoption.
-	GenerationID *GenerationID       `json:"generation_id"`
-	Origin       TargetReleaseOrigin `json:"origin"`
+	GenerationID *GenerationID         `json:"generation_id"`
+	Origin       ReleaseResponseOrigin `json:"origin"`
 	// Version Immutable package version released from this Target.
-	Version string         `json:"version"`
-	Channel ReleaseChannel `json:"channel"`
-	// Provider Delivery provider that accepted the release.
-	Provider             string                       `json:"provider"`
-	Repository           *RepositoryReferenceResponse `json:"repository"`
-	DefinitionRevisionID *DefinitionRevisionID        `json:"definition_revision_id"`
-	// DeliveryRevision Immutable provider-native revision that was merged or published.
-	DeliveryRevision string `json:"delivery_revision"`
-	// SourceDigest Digest of the exact accepted source tree used for publication.
-	SourceDigest     *string                        `json:"source_digest"`
-	Checks           []PackageCheck                 `json:"checks"`
-	AcceptedRisks    []AcceptedCompatibilityRisk    `json:"accepted_risks"`
-	ImportProvenance *TargetReleaseImportProvenance `json:"import_provenance"`
-	Publications     []Publication                  `json:"publications"`
-	CreatedAt        string                         `json:"created_at"`
-	RequestID        *RequestID                     `json:"request_id,omitempty"`
+	Version        string                       `json:"version"`
+	Channel        ReleaseChannel               `json:"channel"`
+	Repository     *RepositoryReferenceResponse `json:"repository"`
+	SpecRevisionID *SpecRevisionID              `json:"spec_revision_id"`
+	// CommitSha Git commit containing the accepted package. Compare it with the Delivery repository history or checked-out commit.
+	CommitSha string                  `json:"commit_sha"`
+	Checks    []PackageCheck          `json:"checks"`
+	Approvals []CompatibilityApproval `json:"approvals"`
+	// ImportProvenance For an adopted Release, compare the tag and registry URL with the published package and its artifact digest. Null for a Release created by Typeship.
+	ImportProvenance *ReleaseResponseImportProvenance `json:"import_provenance"`
+	Publications     []Publication                    `json:"publications"`
+	CreatedAt        string                           `json:"created_at"`
+	RequestID        RequestID                        `json:"request_id"`
 }
 
-// TargetReleaseID is a generated API type.
-type TargetReleaseID string
+// ReleaseID is a generated API type.
+type ReleaseID string
 
-// TargetReleaseOrigin is one of "typeship", "imported".
-type TargetReleaseOrigin string
+// ReleaseResponseOrigin is one of "typeship", "imported".
+type ReleaseResponseOrigin string
 
 const (
-	TargetReleaseOriginTypeship TargetReleaseOrigin = "typeship"
-	TargetReleaseOriginImported TargetReleaseOrigin = "imported"
+	ReleaseResponseOriginTypeship ReleaseResponseOrigin = "typeship"
+	ReleaseResponseOriginImported ReleaseResponseOrigin = "imported"
 )
+
+// RepositoryReferenceResponse is an API model.
+type RepositoryReferenceResponse struct {
+	Provider   RepositoryProvider   `json:"provider"`
+	Identifier RepositoryIdentifier `json:"identifier"`
+}
 
 // PackageCheck is an API model.
 type PackageCheck struct {
 	Name       string             `json:"name"`
 	Source     PackageCheckSource `json:"source"`
 	Required   bool               `json:"required"`
-	State      PackageCheckState  `json:"state"`
+	Status     PackageCheckStatus `json:"status"`
 	Reason     string             `json:"reason"`
-	Revision   string             `json:"revision"`
+	CommitSha  string             `json:"commit_sha"`
 	URL        *string            `json:"url"`
 	ObservedAt *string            `json:"observed_at"`
 }
@@ -3451,57 +3380,64 @@ const (
 	PackageCheckSourceCompatibility PackageCheckSource = "compatibility"
 )
 
-// PackageCheckState is one of "pending", "passed", "failed", "not_assessed".
-type PackageCheckState string
+// PackageCheckStatus is one of "pending", "passed", "failed", "not_assessed".
+type PackageCheckStatus string
 
 const (
-	PackageCheckStatePending     PackageCheckState = "pending"
-	PackageCheckStatePassed      PackageCheckState = "passed"
-	PackageCheckStateFailed      PackageCheckState = "failed"
-	PackageCheckStateNotAssessed PackageCheckState = "not_assessed"
+	PackageCheckStatusPending     PackageCheckStatus = "pending"
+	PackageCheckStatusPassed      PackageCheckStatus = "passed"
+	PackageCheckStatusFailed      PackageCheckStatus = "failed"
+	PackageCheckStatusNotAssessed PackageCheckStatus = "not_assessed"
 )
 
-// AcceptedCompatibilityRisk is an API model.
-type AcceptedCompatibilityRisk struct {
-	Comparison       AcceptedCompatibilityRiskComparison `json:"comparison"`
-	Reason           string                              `json:"reason"`
-	ApprovedBy       string                              `json:"approved_by"`
-	ApprovedRevision string                              `json:"approved_revision"`
-	ApprovedAt       string                              `json:"approved_at"`
+// CompatibilityApproval is an API model.
+type CompatibilityApproval struct {
+	Source      CompatibilityApprovalSource `json:"source"`
+	Reason      string                      `json:"reason"`
+	ApprovedBy  string                      `json:"approved_by"`
+	ApprovedSha string                      `json:"approved_sha"`
+	ApprovedAt  string                      `json:"approved_at"`
 }
 
-// AcceptedCompatibilityRiskComparison is one of "current", "published".
-type AcceptedCompatibilityRiskComparison string
+// CompatibilityApprovalSource is one of "source_pr", "draft_pr".
+type CompatibilityApprovalSource string
 
 const (
-	AcceptedCompatibilityRiskComparisonCurrent   AcceptedCompatibilityRiskComparison = "current"
-	AcceptedCompatibilityRiskComparisonPublished AcceptedCompatibilityRiskComparison = "published"
+	CompatibilityApprovalSourceSourcePr CompatibilityApprovalSource = "source_pr"
+	CompatibilityApprovalSourceDraftPr  CompatibilityApprovalSource = "draft_pr"
 )
 
-// TargetReleaseImportProvenance is an API model.
-type TargetReleaseImportProvenance struct {
-	Tag            *string `json:"tag"`
-	RegistryURL    *string `json:"registry_url"`
+// ReleaseResponseImportProvenance is an API model. For an adopted Release, compare the tag and registry URL with the published package and its artifact digest. Null for a Release created by Typeship.
+type ReleaseResponseImportProvenance struct {
+	// Tag Git tag to compare with the repository release, if available.
+	Tag *string `json:"tag"`
+	// RegistryURL Published package page to inspect, if available.
+	RegistryURL *string `json:"registry_url"`
+	// ArtifactDigest Published artifact digest to compare with registry metadata, if available.
 	ArtifactDigest *string `json:"artifact_digest"`
-	ImportedAt     *string `json:"imported_at"`
+	// ImportedAt When Typeship recorded the adopted package.
+	ImportedAt *string `json:"imported_at"`
 }
 
 // Publication is an API model.
 type Publication struct {
-	ID              PublicationID          `json:"id"`
-	Object          string                 `json:"object"`
-	TargetReleaseID TargetReleaseID        `json:"target_release_id"`
-	Destination     PublicationDestination `json:"destination"`
-	State           PublicationState       `json:"state"`
-	Attempt         int64                  `json:"attempt"`
-	RunURL          *string                `json:"run_url"`
-	RegistryURL     *string                `json:"registry_url"`
-	ArtifactDigest  *string                `json:"artifact_digest"`
+	ID             PublicationID          `json:"id"`
+	Object         string                 `json:"object"`
+	ReleaseID      ReleaseID              `json:"release_id"`
+	Destination    PublicationDestination `json:"destination"`
+	Status         PublicationStatus      `json:"status"`
+	Attempt        int64                  `json:"attempt"`
+	RunURL         *string                `json:"run_url"`
+	RegistryURL    *string                `json:"registry_url"`
+	ArtifactDigest *string                `json:"artifact_digest"`
 	// Errors Recorded failures. Empty when this resource has no recorded failure.
 	Errors     []DomainError `json:"errors"`
 	StartedAt  *string       `json:"started_at"`
 	FinishedAt *string       `json:"finished_at"`
-	UpdatedAt  string        `json:"updated_at"`
+	// RuntimeMs Milliseconds from started_at to finished_at; null until the attempt finishes.
+	RuntimeMs *int64 `json:"runtime_ms"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 // PublicationID is a generated API type.
@@ -3518,243 +3454,237 @@ const (
 	PublicationDestinationMCP    PublicationDestination = "mcp"
 )
 
-// PublicationState is one of "pending", "publishing", "published", "failed", "disabled".
-type PublicationState string
+// PublicationStatus is one of "pending", "publishing", "published", "failed", "disabled".
+type PublicationStatus string
 
 const (
-	PublicationStatePending    PublicationState = "pending"
-	PublicationStatePublishing PublicationState = "publishing"
-	PublicationStatePublished  PublicationState = "published"
-	PublicationStateFailed     PublicationState = "failed"
-	PublicationStateDisabled   PublicationState = "disabled"
+	PublicationStatusPending    PublicationStatus = "pending"
+	PublicationStatusPublishing PublicationStatus = "publishing"
+	PublicationStatusPublished  PublicationStatus = "published"
+	PublicationStatusFailed     PublicationStatus = "failed"
+	PublicationStatusDisabled   PublicationStatus = "disabled"
 )
 
-// TargetDraftResponse is an API model.
-type TargetDraftResponse struct {
-	Object         string                      `json:"object"`
-	TargetID       TargetID                    `json:"target_id"`
-	ProjectID      ProjectID                   `json:"project_id"`
-	Status         DraftStatus                 `json:"status"`
-	CurrentVersion *string                     `json:"current_version"`
-	Version        *string                     `json:"version"`
-	Selection      TargetDraftSelection        `json:"selection"`
-	Readiness      *TargetDraftReadiness       `json:"readiness"`
-	Changes        *TargetDraftResponseChanges `json:"changes"`
-	// HeadRevision Draft commit that readiness, checks, and conflicts describe. Send it as expected_head_revision when resolving or discarding.
-	HeadRevision   *string `json:"head_revision"`
-	PullRequestURL *string `json:"pull_request_url"`
-	// GenerationID Generation whose package this Draft contains.
-	GenerationID *GenerationID `json:"generation_id"`
-	// Conflicts Conflict counts for the current merge stage; null when the Draft has no conflicts.
-	Conflicts *TargetDraftConflicts `json:"conflicts"`
-	// CustomizedFiles Files where the Draft differs from the last accepted package; null until the Draft is integrated.
-	CustomizedFiles *int64 `json:"customized_files"`
-	// HistoryRecovery Present only while status is history_rewritten.
-	HistoryRecovery *TargetDraftHistoryRecovery `json:"history_recovery"`
-	RequestID       RequestID                   `json:"request_id"`
-	Checks          []PackageCheck              `json:"checks"`
-}
-
-// DraftStatus is one of "no_draft", "generating", "branch_changed", "conflicted", "needs_generation", "history_rewritten", "checking", "failed", "ready". The Draft's state and its one next step. no_draft: no Draft is open; generate the Target. generating: Typeship is updating the Draft branch; retrieve the Draft again. branch_changed: the Draft branch has a commit Typeship has not integrated, such as your push or a discard; Typeship starts that integration from the repository event, so retrieve the Draft again, and generate the Target only if the status persists. conflicted: some conflicts have no decision; list files with filter=conflicted and resolve them. needs_generation: saved conflict decisions, an approved history recovery, or a settings change are not applied yet; generate the Target. history_rewritten: the default branch no longer contains the accepted package; review files with filter=history and approve history recovery. checking: package checks are running on head_revision; retrieve the Draft again. failed: readiness failed or could not be assessed; inspect readiness and checks, fix the package or pull request, and push to the Draft. ready: every required check passed on head_revision; merge the pull request.
+// DraftStatus is one of "none", "working", "action_required", "ready", "merged". none: the open Draft has no pending change; generate the Target to start one. working: Typeship is generating, carrying repository edits forward, applying decisions, or checking the Draft; retrieve it again. action_required: use the typed reason to find the customer's next action. ready: required checks passed on head_sha; merge the pull request. merged: the pull request merged and the Draft is final; retrieve the Target for the draft_id of its next Draft.
 type DraftStatus string
 
 const (
-	DraftStatusNoDraft          DraftStatus = "no_draft"
-	DraftStatusGenerating       DraftStatus = "generating"
-	DraftStatusBranchChanged    DraftStatus = "branch_changed"
-	DraftStatusConflicted       DraftStatus = "conflicted"
-	DraftStatusNeedsGeneration  DraftStatus = "needs_generation"
-	DraftStatusHistoryRewritten DraftStatus = "history_rewritten"
-	DraftStatusChecking         DraftStatus = "checking"
-	DraftStatusFailed           DraftStatus = "failed"
-	DraftStatusReady            DraftStatus = "ready"
+	DraftStatusNone           DraftStatus = "none"
+	DraftStatusWorking        DraftStatus = "working"
+	DraftStatusActionRequired DraftStatus = "action_required"
+	DraftStatusReady          DraftStatus = "ready"
+	DraftStatusMerged         DraftStatus = "merged"
 )
 
-// TargetDraftSelection is one of TargetDraftSelectionVariant1, TargetDraftSelectionVariant2.
-// Go has no sum types, so it holds the JSON as received and decodes on
-// request: try the As* accessors, or switch on Discriminator() when the
-// spec names one.
-type TargetDraftSelection struct {
-	union json.RawMessage
+// DraftList is an API model.
+type DraftList struct {
+	Object     ListObject `json:"object"`
+	Data       []Draft    `json:"data"`
+	HasMore    bool       `json:"has_more"`
+	NextCursor *string    `json:"next_cursor"`
+	RequestID  RequestID  `json:"request_id"`
 }
 
-// MarshalJSON writes the value as it was set or received.
-func (u TargetDraftSelection) MarshalJSON() ([]byte, error) {
-	if u.union == nil {
-		return []byte("null"), nil
-	}
-	return u.union, nil
+// Draft is an API model. One reviewed package change for a Target. A Target has one open Draft, named by its draft_id; when the pull request merges, the Draft becomes merged and final, and the Target opens a new Draft with a new ID.
+type Draft struct {
+	ID        DraftID     `json:"id"`
+	Object    string      `json:"object"`
+	TargetID  TargetID    `json:"target_id"`
+	ProjectID ProjectID   `json:"project_id"`
+	Status    DraftStatus `json:"status"`
+	// Reason Present and required when status is action_required; absent otherwise.
+	Reason *DraftActionReason `json:"reason,omitempty"`
+	// VersionNext Next version for this Draft, or null before a version is selected.
+	VersionNext *string `json:"version_next"`
+	// VersionSource Where version_next was selected; null once the Draft merged.
+	VersionSource *DraftVersionSource `json:"version_source"`
+	Readiness     *DraftReadiness     `json:"readiness"`
+	Changes       *DraftChanges       `json:"changes"`
+	// HeadSha Draft commit that readiness, checks, and conflicts describe. Send it as expected_head_sha when resolving or discarding.
+	HeadSha *string `json:"head_sha"`
+	// PullRequest The Draft pull request in the destination repository, or null before one is opened.
+	PullRequest *DraftPullRequest `json:"pull_request"`
+	// GenerationID Generation whose package this Draft contains.
+	GenerationID *GenerationID `json:"generation_id"`
+	// ReleaseID Release this Draft created when it merged; null while open, or when a merge changed only tests or checks.
+	ReleaseID *ReleaseID `json:"release_id"`
+	// CreatedAt When the Draft opened.
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+	// Conflicts Conflict counts for the current merge stage; null when the Draft has no conflicts.
+	Conflicts *DraftConflicts `json:"conflicts"`
+	// CustomizedFiles Files where the Draft differs from the last accepted package; null until the Draft is integrated.
+	CustomizedFiles *int64 `json:"customized_files"`
+	// HistoryRecovery Present only while status is action_required and reason is history_rewritten.
+	HistoryRecovery *DraftHistoryRecovery `json:"history_recovery"`
+	RequestID       *RequestID            `json:"request_id,omitempty"`
+	Checks          []PackageCheck        `json:"checks"`
 }
 
-// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *TargetDraftSelection) UnmarshalJSON(data []byte) error {
-	u.union = append(u.union[:0], data...)
-	return nil
-}
+// DraftActionReason is one of "conflict", "checks_failed", "review_failed", "checks_unavailable", "history_rewritten". conflict: resolve the listed files. checks_failed: correct failed package checks. review_failed: correct the Draft title, version, or other readiness finding. checks_unavailable: restore a required check. history_rewritten: review the affected files and approve recovery.
+type DraftActionReason string
 
-// Raw returns the JSON exactly as received.
-func (u TargetDraftSelection) Raw() json.RawMessage {
-	return u.union
-}
+const (
+	DraftActionReasonConflict          DraftActionReason = "conflict"
+	DraftActionReasonChecksFailed      DraftActionReason = "checks_failed"
+	DraftActionReasonReviewFailed      DraftActionReason = "review_failed"
+	DraftActionReasonChecksUnavailable DraftActionReason = "checks_unavailable"
+	DraftActionReasonHistoryRewritten  DraftActionReason = "history_rewritten"
+)
 
-// AsTargetDraftSelectionVariant1 decodes the value as TargetDraftSelectionVariant1.
-func (u TargetDraftSelection) AsTargetDraftSelectionVariant1() (TargetDraftSelectionVariant1, error) {
-	var v TargetDraftSelectionVariant1
-	err := json.Unmarshal(u.union, &v)
-	return v, err
-}
+// DraftVersionSource is one of "automatic", "console", "api", "github". Where version_next was selected; null once the Draft merged.
+type DraftVersionSource string
 
-// FromTargetDraftSelectionVariant1 sets the value to a TargetDraftSelectionVariant1.
-func (u *TargetDraftSelection) FromTargetDraftSelectionVariant1(v TargetDraftSelectionVariant1) error {
-	encoded, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	u.union = encoded
-	return nil
-}
+const (
+	DraftVersionSourceAutomatic DraftVersionSource = "automatic"
+	DraftVersionSourceConsole   DraftVersionSource = "console"
+	DraftVersionSourceAPI       DraftVersionSource = "api"
+	DraftVersionSourceGithub    DraftVersionSource = "github"
+)
 
-// AsTargetDraftSelectionVariant2 decodes the value as TargetDraftSelectionVariant2.
-func (u TargetDraftSelection) AsTargetDraftSelectionVariant2() (TargetDraftSelectionVariant2, error) {
-	var v TargetDraftSelectionVariant2
-	err := json.Unmarshal(u.union, &v)
-	return v, err
-}
-
-// FromTargetDraftSelectionVariant2 sets the value to a TargetDraftSelectionVariant2.
-func (u *TargetDraftSelection) FromTargetDraftSelectionVariant2(v TargetDraftSelectionVariant2) error {
-	encoded, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	u.union = encoded
-	return nil
-}
-
-// TargetDraftSelectionVariant1 is an API model.
-type TargetDraftSelectionVariant1 struct {
-	Mode string `json:"mode"`
-}
-
-// TargetDraftSelectionVariant2 is an API model.
-type TargetDraftSelectionVariant2 struct {
-	Mode    string `json:"mode"`
-	Version string `json:"version"`
-	// Source Where the selection was made.
-	Source *ProposedVersionSource `json:"source"`
-}
-
-// TargetDraftReadiness is an API model. Readiness decision for the Draft's head_revision. Null readiness on the Draft means no candidate exists.
-type TargetDraftReadiness struct {
-	// State success means required checks passed; failure means the Draft needs correction or review; error means assessment could not finish; pending means checks have not finished.
-	State ReleaseReadiness `json:"state"`
+// DraftReadiness is an API model. Readiness decision for the Draft's head_sha. Null readiness on the Draft means no Draft has been generated.
+type DraftReadiness struct {
+	// Status success means required checks passed; failure means the Draft needs correction or review; error means assessment could not finish; pending means checks have not finished.
+	Status DraftReadinessStatus `json:"status"`
 	// Description Human-readable explanation of the current decision. Do not parse it for control flow.
 	Description string `json:"description"`
-	// APICompatibility API surface comparison against Current. unknown means analysis is unavailable.
-	APICompatibility APICompatibility `json:"api_compatibility"`
-	// PackageCompatibility Package and supported SDK source comparison against Current. unknown means analysis is incomplete or unavailable.
-	PackageCompatibility APICompatibility `json:"package_compatibility"`
+	// CompatibilityAPI API surface comparison against the latest release. unknown means analysis is unavailable.
+	CompatibilityAPI CompatibilityAPI `json:"compatibility_api"`
+	// CompatibilityPackage Package and supported SDK source comparison against the latest release. unknown means analysis is incomplete or unavailable.
+	CompatibilityPackage CompatibilityAPI `json:"compatibility_package"`
 	// VersionCorrect Whether the version satisfies the assessed change. Null when no verdict is available.
 	VersionCorrect *bool `json:"version_correct"`
-	// RequiredBump Minimum assessed version bump. Null when no bump has been determined.
-	RequiredBump *TargetDraftReadinessRequiredBump `json:"required_bump"`
-	// PreviousVersion Version used for the comparison. Null when no comparison version is available.
-	PreviousVersion *string `json:"previous_version"`
+	// BumpRequired Minimum assessed version bump. Approval never waives an insufficient bump. Null when no bump has been determined.
+	BumpRequired *DraftReadinessBumpRequired `json:"bump_required"`
+	// VersionPrevious Latest release version used for the comparison. Null before the first release.
+	VersionPrevious *string `json:"version_previous"`
 	// TitleError Draft title error that must be corrected before release. Null when none is recorded.
 	TitleError *string `json:"title_error"`
 }
 
-// TargetDraftReadinessRequiredBump is one of "major", "minor", "patch". Minimum assessed version bump. Null when no bump has been determined.
-type TargetDraftReadinessRequiredBump string
+// DraftReadinessStatus is one of "success", "failure", "error", "pending". success means required checks passed; failure means the Draft needs correction or review; error means assessment could not finish; pending means checks have not finished.
+type DraftReadinessStatus string
 
 const (
-	TargetDraftReadinessRequiredBumpMajor TargetDraftReadinessRequiredBump = "major"
-	TargetDraftReadinessRequiredBumpMinor TargetDraftReadinessRequiredBump = "minor"
-	TargetDraftReadinessRequiredBumpPatch TargetDraftReadinessRequiredBump = "patch"
+	DraftReadinessStatusSuccess DraftReadinessStatus = "success"
+	DraftReadinessStatusFailure DraftReadinessStatus = "failure"
+	DraftReadinessStatusError   DraftReadinessStatus = "error"
+	DraftReadinessStatusPending DraftReadinessStatus = "pending"
 )
 
-// TargetDraftResponseChanges is an API model.
-type TargetDraftResponseChanges struct {
-	// Changelog Cumulative changelog against Current.
+// CompatibilityAPI is one of "compatible", "breaking", "unknown".
+type CompatibilityAPI string
+
+const (
+	CompatibilityAPICompatible CompatibilityAPI = "compatible"
+	CompatibilityAPIBreaking   CompatibilityAPI = "breaking"
+	CompatibilityAPIUnknown    CompatibilityAPI = "unknown"
+)
+
+// DraftReadinessBumpRequired is one of "major", "minor", "patch". Minimum assessed version bump. Approval never waives an insufficient bump. Null when no bump has been determined.
+type DraftReadinessBumpRequired string
+
+const (
+	DraftReadinessBumpRequiredMajor DraftReadinessBumpRequired = "major"
+	DraftReadinessBumpRequiredMinor DraftReadinessBumpRequired = "minor"
+	DraftReadinessBumpRequiredPatch DraftReadinessBumpRequired = "patch"
+)
+
+// DraftChanges is an API model.
+type DraftChanges struct {
+	// Changelog Cumulative changelog against the latest release.
 	Changelog       *string `json:"changelog,omitempty"`
 	BreakingCount   *int64  `json:"breaking_count,omitempty"`
-	PreviousVersion *string `json:"previous_version,omitempty"`
+	VersionPrevious *string `json:"version_previous,omitempty"`
 }
 
-// TargetDraftConflicts is an API model.
-type TargetDraftConflicts struct {
+// DraftPullRequest is an API model.
+type DraftPullRequest struct {
+	URL    string `json:"url"`
+	Number int64  `json:"number"`
+}
+
+// DraftConflicts is an API model.
+type DraftConflicts struct {
 	// Total Conflicts in the current merge stage.
 	Total int64 `json:"total"`
-	// Decided Conflicts with a saved decision for head_revision.
+	// Decided Conflicts with a saved decision for head_sha.
 	Decided int64 `json:"decided"`
 }
 
-// TargetDraftHistoryRecovery is an API model. The approval inputs for a default-branch history rewrite.
-type TargetDraftHistoryRecovery struct {
-	// DefaultRevision Rewritten default-branch commit. Send it as expected_default_revision.
-	DefaultRevision string `json:"default_revision"`
-	// HeadRevision Draft commit Typeship last observed. Send it as expected_head_revision.
-	HeadRevision *string `json:"head_revision"`
+// DraftHistoryRecovery is an API model. The approval inputs for a default-branch history rewrite.
+type DraftHistoryRecovery struct {
+	// DefaultSha Rewritten default-branch commit. Send it as expected_default_sha.
+	DefaultSha string `json:"default_sha"`
+	// HeadSha Draft commit Typeship last observed. Send it as expected_head_sha.
+	HeadSha *string `json:"head_sha"`
 	// PreservedBranch Existing Draft branch that stays available after recovery opens a new Draft.
 	PreservedBranch *string `json:"preserved_branch"`
 }
 
-// TargetDraftUpdateParams is an API model.
-type TargetDraftUpdateParams struct {
-	// Version Exact SemVer, or null to return to automatic selection.
-	Version *string `json:"version"`
+// DraftResponse is an API model.
+type DraftResponse struct {
+	ID        DraftID     `json:"id"`
+	Object    string      `json:"object"`
+	TargetID  TargetID    `json:"target_id"`
+	ProjectID ProjectID   `json:"project_id"`
+	Status    DraftStatus `json:"status"`
+	// Reason Present and required when status is action_required; absent otherwise.
+	Reason *DraftActionReason `json:"reason,omitempty"`
+	// VersionNext Next version for this Draft, or null before a version is selected.
+	VersionNext *string `json:"version_next"`
+	// VersionSource Where version_next was selected; null once the Draft merged.
+	VersionSource *DraftVersionSource   `json:"version_source"`
+	Readiness     *DraftReadiness       `json:"readiness"`
+	Changes       *DraftResponseChanges `json:"changes"`
+	// HeadSha Draft commit that readiness, checks, and conflicts describe. Send it as expected_head_sha when resolving or discarding.
+	HeadSha *string `json:"head_sha"`
+	// PullRequest The Draft pull request in the destination repository, or null before one is opened.
+	PullRequest *DraftResponsePullRequest `json:"pull_request"`
+	// GenerationID Generation whose package this Draft contains.
+	GenerationID *GenerationID `json:"generation_id"`
+	// ReleaseID Release this Draft created when it merged; null while open, or when a merge changed only tests or checks.
+	ReleaseID *ReleaseID `json:"release_id"`
+	// CreatedAt When the Draft opened.
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+	// Conflicts Conflict counts for the current merge stage; null when the Draft has no conflicts.
+	Conflicts *DraftConflicts `json:"conflicts"`
+	// CustomizedFiles Files where the Draft differs from the last accepted package; null until the Draft is integrated.
+	CustomizedFiles *int64 `json:"customized_files"`
+	// HistoryRecovery Present only while status is action_required and reason is history_rewritten.
+	HistoryRecovery *DraftHistoryRecovery `json:"history_recovery"`
+	RequestID       RequestID             `json:"request_id"`
+	Checks          []PackageCheck        `json:"checks"`
 }
 
-// TargetAdoption is an API model.
-type TargetAdoption struct {
-	// Version Exact already-published package version to make Current.
-	Version string `json:"version"`
-	// Tag Immutable repository tag containing the matching package source.
-	Tag string `json:"tag"`
+// DraftResponseChanges is an API model.
+type DraftResponseChanges struct {
+	// Changelog Cumulative changelog against the latest release.
+	Changelog       *string `json:"changelog,omitempty"`
+	BreakingCount   *int64  `json:"breaking_count,omitempty"`
+	VersionPrevious *string `json:"version_previous,omitempty"`
 }
 
-// TargetReleaseResponse is an API model.
-type TargetReleaseResponse struct {
-	ID       TargetReleaseID `json:"id"`
-	Object   string          `json:"object"`
-	TargetID TargetID        `json:"target_id"`
-	// GenerationID Null only for a verified release imported during package adoption.
-	GenerationID *GenerationID       `json:"generation_id"`
-	Origin       TargetReleaseOrigin `json:"origin"`
-	// Version Immutable package version released from this Target.
-	Version string         `json:"version"`
-	Channel ReleaseChannel `json:"channel"`
-	// Provider Delivery provider that accepted the release.
-	Provider             string                       `json:"provider"`
-	Repository           *RepositoryReferenceResponse `json:"repository"`
-	DefinitionRevisionID *DefinitionRevisionID        `json:"definition_revision_id"`
-	// DeliveryRevision Immutable provider-native revision that was merged or published.
-	DeliveryRevision string `json:"delivery_revision"`
-	// SourceDigest Digest of the exact accepted source tree used for publication.
-	SourceDigest     *string                                `json:"source_digest"`
-	Checks           []PackageCheck                         `json:"checks"`
-	AcceptedRisks    []AcceptedCompatibilityRisk            `json:"accepted_risks"`
-	ImportProvenance *TargetReleaseResponseImportProvenance `json:"import_provenance"`
-	Publications     []Publication                          `json:"publications"`
-	CreatedAt        string                                 `json:"created_at"`
-	RequestID        RequestID                              `json:"request_id"`
+// DraftResponsePullRequest is an API model.
+type DraftResponsePullRequest struct {
+	URL    string `json:"url"`
+	Number int64  `json:"number"`
 }
 
-// TargetReleaseResponseImportProvenance is an API model.
-type TargetReleaseResponseImportProvenance struct {
-	Tag            *string `json:"tag"`
-	RegistryURL    *string `json:"registry_url"`
-	ArtifactDigest *string `json:"artifact_digest"`
-	ImportedAt     *string `json:"imported_at"`
+// DraftUpdateRequest is an API model.
+type DraftUpdateRequest struct {
+	// VersionNext Exact SemVer, or null to return to automatic selection.
+	VersionNext *string `json:"version_next"`
 }
 
-// TargetsListDraftFilesParamsFilter is one of "conflicted", "customized", "history".
-type TargetsListDraftFilesParamsFilter string
+// DraftsListFilesParamsFilter is one of "conflicted", "customized", "history".
+type DraftsListFilesParamsFilter string
 
 const (
-	TargetsListDraftFilesParamsFilterConflicted TargetsListDraftFilesParamsFilter = "conflicted"
-	TargetsListDraftFilesParamsFilterCustomized TargetsListDraftFilesParamsFilter = "customized"
-	TargetsListDraftFilesParamsFilterHistory    TargetsListDraftFilesParamsFilter = "history"
+	DraftsListFilesParamsFilterConflicted DraftsListFilesParamsFilter = "conflicted"
+	DraftsListFilesParamsFilterCustomized DraftsListFilesParamsFilter = "customized"
+	DraftsListFilesParamsFilterHistory    DraftsListFilesParamsFilter = "history"
 )
 
 // DraftFileList is an API model.
@@ -3771,12 +3701,12 @@ type DraftFile struct {
 	Object string `json:"object"`
 	// Path Path relative to the Target's package directory.
 	Path string `json:"path"`
-	// Customization How the Draft differs from the last accepted package at this path; null when it does not.
+	// Customization How the Draft differs from the last merged package at this path; null when it does not.
 	Customization *Change            `json:"customization"`
 	Conflict      *DraftFileConflict `json:"conflict"`
 	History       *DraftFileHistory  `json:"history"`
-	// Sides Sides of the comparison to read with retrieveDraftFileContent. A missing side means the file is absent there. Listed for conflicts and history files.
-	Sides []DraftFileSideSummary `json:"sides"`
+	// Sides File IDs to read with getFile for a conflict or history file; null for other customized files.
+	Sides *DraftFileSides `json:"sides"`
 }
 
 // Change is one of "added", "edited", "deleted", "mode_changed".
@@ -3791,29 +3721,29 @@ const (
 
 // DraftFileConflict is an API model.
 type DraftFileConflict struct {
-	// Kind Why the merge stopped. no_common_version: there is no earlier version to compare, such as the first Draft of an adopted package. file_ownership: generated output collides with a file you added. repository_deleted_incoming_changed and incoming_deleted_repository_changed: one side deleted a file the other changed. overlapping_text: both sides edited the same lines. too_large_to_merge: the file has too many changed lines to merge line by line. binary_changed and file_mode_changed: both sides changed binary content or the file mode.
-	Kind DraftFileConflictKind `json:"kind"`
-	// Source Where the incoming version comes from: the new Generation, commits on the default branch, or the code of a Draft whose branch was rebased, reset, or deleted (its old branch is preserved). The merge applies previous_draft, then default_branch, then generation, and stops at the first stage with conflicts, so applying one stage's decisions can report conflicts from the next.
+	// Type Why the Draft needs a decision. no_common_version: there is no last merged version to compare, such as the first Draft of an adopted package. file_ownership: generated output collides with a file you added. yours_deleted_generated_changed and generated_deleted_yours_changed: one side deleted a file the other changed. overlapping_text: both sides edited the same lines. too_large_to_merge: the file has too many changed lines to merge line by line. binary_changed and file_mode_changed: both sides changed binary content or the file mode.
+	Type DraftFileConflictType `json:"type"`
+	// Source Where the code in this Draft comes from: newly generated files, commits on the default branch, or edits from a Draft whose branch was rebased, reset, or deleted. Typeship may find another conflict after these decisions are applied.
 	Source DraftFileConflictSource `json:"source"`
-	// Decision Decision saved for this conflict on head_revision; null when none. Saved decisions apply when the Target is generated.
+	// Decision Decision saved for this conflict on head_sha; null when none. Typeship continues when every conflict has a decision.
 	Decision *DraftFileConflictDecision `json:"decision"`
 }
 
-// DraftFileConflictKind is one of "no_common_version", "file_ownership", "repository_deleted_incoming_changed", "incoming_deleted_repository_changed", "overlapping_text", "too_large_to_merge", "binary_changed", "file_mode_changed". Why the merge stopped. no_common_version: there is no earlier version to compare, such as the first Draft of an adopted package. file_ownership: generated output collides with a file you added. repository_deleted_incoming_changed and incoming_deleted_repository_changed: one side deleted a file the other changed. overlapping_text: both sides edited the same lines. too_large_to_merge: the file has too many changed lines to merge line by line. binary_changed and file_mode_changed: both sides changed binary content or the file mode.
-type DraftFileConflictKind string
+// DraftFileConflictType is one of "no_common_version", "file_ownership", "yours_deleted_generated_changed", "generated_deleted_yours_changed", "overlapping_text", "too_large_to_merge", "binary_changed", "file_mode_changed". Why the Draft needs a decision. no_common_version: there is no last merged version to compare, such as the first Draft of an adopted package. file_ownership: generated output collides with a file you added. yours_deleted_generated_changed and generated_deleted_yours_changed: one side deleted a file the other changed. overlapping_text: both sides edited the same lines. too_large_to_merge: the file has too many changed lines to merge line by line. binary_changed and file_mode_changed: both sides changed binary content or the file mode.
+type DraftFileConflictType string
 
 const (
-	DraftFileConflictKindNoCommonVersion                  DraftFileConflictKind = "no_common_version"
-	DraftFileConflictKindFileOwnership                    DraftFileConflictKind = "file_ownership"
-	DraftFileConflictKindRepositoryDeletedIncomingChanged DraftFileConflictKind = "repository_deleted_incoming_changed"
-	DraftFileConflictKindIncomingDeletedRepositoryChanged DraftFileConflictKind = "incoming_deleted_repository_changed"
-	DraftFileConflictKindOverlappingText                  DraftFileConflictKind = "overlapping_text"
-	DraftFileConflictKindTooLargeToMerge                  DraftFileConflictKind = "too_large_to_merge"
-	DraftFileConflictKindBinaryChanged                    DraftFileConflictKind = "binary_changed"
-	DraftFileConflictKindFileModeChanged                  DraftFileConflictKind = "file_mode_changed"
+	DraftFileConflictTypeNoCommonVersion              DraftFileConflictType = "no_common_version"
+	DraftFileConflictTypeFileOwnership                DraftFileConflictType = "file_ownership"
+	DraftFileConflictTypeYoursDeletedGeneratedChanged DraftFileConflictType = "yours_deleted_generated_changed"
+	DraftFileConflictTypeGeneratedDeletedYoursChanged DraftFileConflictType = "generated_deleted_yours_changed"
+	DraftFileConflictTypeOverlappingText              DraftFileConflictType = "overlapping_text"
+	DraftFileConflictTypeTooLargeToMerge              DraftFileConflictType = "too_large_to_merge"
+	DraftFileConflictTypeBinaryChanged                DraftFileConflictType = "binary_changed"
+	DraftFileConflictTypeFileModeChanged              DraftFileConflictType = "file_mode_changed"
 )
 
-// DraftFileConflictSource is one of "generation", "default_branch", "previous_draft". Where the incoming version comes from: the new Generation, commits on the default branch, or the code of a Draft whose branch was rebased, reset, or deleted (its old branch is preserved). The merge applies previous_draft, then default_branch, then generation, and stops at the first stage with conflicts, so applying one stage's decisions can report conflicts from the next.
+// DraftFileConflictSource is one of "generation", "default_branch", "previous_draft". Where the code in this Draft comes from: newly generated files, commits on the default branch, or edits from a Draft whose branch was rebased, reset, or deleted. Typeship may find another conflict after these decisions are applied.
 type DraftFileConflictSource string
 
 const (
@@ -3822,89 +3752,36 @@ const (
 	DraftFileConflictSourcePreviousDraft DraftFileConflictSource = "previous_draft"
 )
 
-// DraftFileConflictDecision is one of "repository", "incoming", "content". Decision saved for this conflict on head_revision; null when none. Saved decisions apply when the Target is generated.
+// DraftFileConflictDecision is one of "yours", "generated", "content". Decision saved for this conflict on head_sha; null when none. Typeship continues when every conflict has a decision.
 type DraftFileConflictDecision string
 
 const (
-	DraftFileConflictDecisionRepository DraftFileConflictDecision = "repository"
-	DraftFileConflictDecisionIncoming   DraftFileConflictDecision = "incoming"
-	DraftFileConflictDecisionContent    DraftFileConflictDecision = "content"
+	DraftFileConflictDecisionYours     DraftFileConflictDecision = "yours"
+	DraftFileConflictDecisionGenerated DraftFileConflictDecision = "generated"
+	DraftFileConflictDecisionContent   DraftFileConflictDecision = "content"
 )
 
 // DraftFileHistory is an API model.
 type DraftFileHistory struct {
-	// Change How the rewritten default branch differs from the last accepted package; null when only the Draft differs.
+	// Change How the rewritten default branch differs from the last merged package; null when only the Draft differs.
 	Change *Change `json:"change"`
 	// DraftDiffers The Draft branch has a different version than the rewritten default branch. Recovery carries the Draft version forward.
 	DraftDiffers bool `json:"draft_differs"`
 }
 
-// DraftFileSideSummary is an API model.
-type DraftFileSideSummary struct {
-	Side      DraftFileSide `json:"side"`
-	Mode      GitFileMode   `json:"mode"`
-	SizeBytes int64         `json:"size_bytes"`
-	// Encoding utf8 for text; base64 for binary content.
-	Encoding Encoding `json:"encoding"`
+// DraftFileSides is an API model. File IDs for each side of a conflict or history comparison. null means the file is absent on that side.
+type DraftFileSides struct {
+	Base      *FileID `json:"base"`
+	Yours     *FileID `json:"yours"`
+	Generated *FileID `json:"generated"`
 }
 
-// DraftFileSide is one of "base", "repository", "incoming", "accepted", "default", "draft". One side of a Draft file comparison. A conflict has base (the common version before both changes), repository (the file on the Draft), and incoming (the file the merge brings in). A default-branch history rewrite has accepted (the last accepted package), default (the rewritten default branch), and draft (the current Draft branch).
-type DraftFileSide string
-
-const (
-	DraftFileSideBase       DraftFileSide = "base"
-	DraftFileSideRepository DraftFileSide = "repository"
-	DraftFileSideIncoming   DraftFileSide = "incoming"
-	DraftFileSideAccepted   DraftFileSide = "accepted"
-	DraftFileSideDefault    DraftFileSide = "default"
-	DraftFileSideDraft      DraftFileSide = "draft"
-)
-
-// GitFileMode is one of "100644", "100755", "120000". Git file mode. 100755 is executable; 120000 is a symbolic link whose content is its target.
-type GitFileMode string
-
-const (
-	GitFileMode100644 GitFileMode = "100644"
-	GitFileMode100755 GitFileMode = "100755"
-	GitFileMode120000 GitFileMode = "120000"
-)
-
-// Encoding is one of "utf8", "base64".
-type Encoding string
-
-const (
-	EncodingUTF8   Encoding = "utf8"
-	EncodingBase64 Encoding = "base64"
-)
-
-// DraftFileContentResponse is an API model.
-type DraftFileContentResponse struct {
-	Object   string        `json:"object"`
-	TargetID TargetID      `json:"target_id"`
-	Path     string        `json:"path"`
-	Side     DraftFileSide `json:"side"`
-	// Encoding utf8 means content is text; base64 means content is base64-encoded binary bytes.
-	Encoding Encoding `json:"encoding"`
-	// Content At most 24 KiB of the file starting at offset. Text chunks never split a character; concatenate chunks in order.
-	Content string      `json:"content"`
-	Mode    GitFileMode `json:"mode"`
-	// SizeBytes Size of the whole file in bytes.
-	SizeBytes int64 `json:"size_bytes"`
-	// Offset Byte offset of this chunk in the file.
-	Offset int64 `json:"offset"`
-	// NextCursor Pass as cursor, with the same path and side, to read the next chunk; null at the end of the file.
-	NextCursor *string   `json:"next_cursor"`
-	RequestID  RequestID `json:"request_id"`
-}
-
-// ResolveDraftConflicts is an API model.
-type ResolveDraftConflicts struct {
-	// ExpectedHeadRevision The Draft's head_revision. A newer Draft commit returns 409 stale_draft without saving.
-	ExpectedHeadRevision string `json:"expected_head_revision"`
-	// Resolutions Unique current conflict paths. Final file content must total at most 2 MiB. Decisions save together or not at all.
+// DraftResolveRequest is an API model.
+type DraftResolveRequest struct {
+	// ExpectedHeadSha The Draft's head_sha. A newer Draft commit returns 409 resource_changed without saving.
+	ExpectedHeadSha string `json:"expected_head_sha"`
+	// Resolutions Unique current conflict or customized paths. Choose generated to discard a customization, including a Draft-only file. Final file content must total at most 2 MiB. Decisions apply together or not at all.
 	Resolutions []DraftConflictDecision `json:"resolutions"`
-	// DryRun Validate the decisions and return the planned files without saving.
-	DryRun *bool `json:"dry_run,omitempty"`
 }
 
 // DraftConflictDecision is one of DraftConflictDecisionVariant1, DraftConflictDecisionVariant2, DraftConflictDecisionVariant3, DraftConflictDecisionVariant4.
@@ -4009,12 +3886,12 @@ type DraftConflictDecisionVariant1 struct {
 	Keep DraftConflictDecisionVariant1Keep `json:"keep"`
 }
 
-// DraftConflictDecisionVariant1Keep is one of "repository", "incoming". Keep that version of the file exactly. Keeping an absent version deletes the path.
+// DraftConflictDecisionVariant1Keep is one of "yours", "generated". Keep that version of the file exactly. Keeping an absent version deletes the path.
 type DraftConflictDecisionVariant1Keep string
 
 const (
-	DraftConflictDecisionVariant1KeepRepository DraftConflictDecisionVariant1Keep = "repository"
-	DraftConflictDecisionVariant1KeepIncoming   DraftConflictDecisionVariant1Keep = "incoming"
+	DraftConflictDecisionVariant1KeepYours     DraftConflictDecisionVariant1Keep = "yours"
+	DraftConflictDecisionVariant1KeepGenerated DraftConflictDecisionVariant1Keep = "generated"
 )
 
 // DraftConflictDecisionVariant2 is an API model.
@@ -4043,190 +3920,128 @@ type DraftConflictDecisionVariant4 struct {
 	Content any `json:"content"`
 }
 
-// DraftConflictResolutionResponse is an API model.
-type DraftConflictResolutionResponse struct {
-	Object   string   `json:"object"`
-	TargetID TargetID `json:"target_id"`
-	// HeadRevision Draft commit the decisions belong to.
-	HeadRevision string `json:"head_revision"`
-	// Status preview: nothing was saved. saved: the decisions are stored and apply when the Target is generated.
-	Status DraftConflictResolutionResponseStatus `json:"status"`
-	Files  []DraftPlannedFile                    `json:"files"`
-	// RemainingConflicts Conflicts without a decision once these are saved. At 0 the Draft status becomes needs_generation.
-	RemainingConflicts int64     `json:"remaining_conflicts"`
-	RequestID          RequestID `json:"request_id"`
+// DraftRecoverRequest is an API model.
+type DraftRecoverRequest struct {
+	// ExpectedDefaultSha The Draft's history_recovery.default_sha.
+	ExpectedDefaultSha string `json:"expected_default_sha"`
+	// ExpectedHeadSha The Draft's history_recovery.head_sha; null when the Draft branch is absent.
+	ExpectedHeadSha *string `json:"expected_head_sha"`
 }
 
-// DraftConflictResolutionResponseStatus is one of "preview", "saved". preview: nothing was saved. saved: the decisions are stored and apply when the Target is generated.
-type DraftConflictResolutionResponseStatus string
-
-const (
-	DraftConflictResolutionResponseStatusPreview DraftConflictResolutionResponseStatus = "preview"
-	DraftConflictResolutionResponseStatusSaved   DraftConflictResolutionResponseStatus = "saved"
-)
-
-// DraftPlannedFile is an API model.
-type DraftPlannedFile struct {
-	Path string `json:"path"`
-	// Action keep: the Draft's version stays. write: the file gets new content. delete: the path is removed.
-	Action DraftPlannedFileAction `json:"action"`
-	Mode   *GitFileMode           `json:"mode"`
-	// SizeBytes Size of the resulting file; null when it is deleted.
-	SizeBytes *int64 `json:"size_bytes"`
+// ReleaseList is an API model.
+type ReleaseList struct {
+	Object     ListObject `json:"object"`
+	Data       []Release  `json:"data"`
+	HasMore    bool       `json:"has_more"`
+	NextCursor *string    `json:"next_cursor"`
+	RequestID  RequestID  `json:"request_id"`
 }
 
-// DraftPlannedFileAction is one of "keep", "write", "delete". keep: the Draft's version stays. write: the file gets new content. delete: the path is removed.
-type DraftPlannedFileAction string
-
-const (
-	DraftPlannedFileActionKeep   DraftPlannedFileAction = "keep"
-	DraftPlannedFileActionWrite  DraftPlannedFileAction = "write"
-	DraftPlannedFileActionDelete DraftPlannedFileAction = "delete"
-)
-
-// DiscardDraftCustomizations is an API model.
-type DiscardDraftCustomizations struct {
-	// ExpectedHeadRevision The Draft's head_revision. A newer Draft commit returns 409 stale_draft without committing.
-	ExpectedHeadRevision string `json:"expected_head_revision"`
-	// Paths Customized paths that are not conflicts, to replace with the generated files. A listed file that exists only on the Draft is deleted.
-	Paths []string `json:"paths"`
-	// DryRun Return the planned writes and deletions without committing.
-	DryRun *bool `json:"dry_run,omitempty"`
+// Release is an API model.
+type Release struct {
+	ID       ReleaseID `json:"id"`
+	Object   string    `json:"object"`
+	TargetID TargetID  `json:"target_id"`
+	// GenerationID Null only for a verified release imported during package adoption.
+	GenerationID *GenerationID         `json:"generation_id"`
+	Origin       ReleaseResponseOrigin `json:"origin"`
+	// Version Immutable package version released from this Target.
+	Version        string                       `json:"version"`
+	Channel        ReleaseChannel               `json:"channel"`
+	Repository     *RepositoryReferenceResponse `json:"repository"`
+	SpecRevisionID *SpecRevisionID              `json:"spec_revision_id"`
+	// CommitSha Git commit containing the accepted package. Compare it with the Delivery repository history or checked-out commit.
+	CommitSha string                  `json:"commit_sha"`
+	Checks    []PackageCheck          `json:"checks"`
+	Approvals []CompatibilityApproval `json:"approvals"`
+	// ImportProvenance For an adopted Release, compare the tag and registry URL with the published package and its artifact digest. Null for a Release created by Typeship.
+	ImportProvenance *ReleaseImportProvenance `json:"import_provenance"`
+	Publications     []Publication            `json:"publications"`
+	CreatedAt        string                   `json:"created_at"`
+	RequestID        *RequestID               `json:"request_id,omitempty"`
 }
 
-// DraftCustomizationDiscardResponse is an API model.
-type DraftCustomizationDiscardResponse struct {
-	Object   string   `json:"object"`
-	TargetID TargetID `json:"target_id"`
-	// HeadRevision preview: the inspected Draft commit. committed: the new Draft commit.
-	HeadRevision string `json:"head_revision"`
-	// Status preview: nothing was written. committed: one commit was added to the Draft branch; the Draft status is branch_changed until Typeship integrates it.
-	Status    DraftCustomizationDiscardResponseStatus `json:"status"`
-	Files     []DraftPlannedFile                      `json:"files"`
-	RequestID RequestID                               `json:"request_id"`
+// ReleaseImportProvenance is an API model. For an adopted Release, compare the tag and registry URL with the published package and its artifact digest. Null for a Release created by Typeship.
+type ReleaseImportProvenance struct {
+	// Tag Git tag to compare with the repository release, if available.
+	Tag *string `json:"tag"`
+	// RegistryURL Published package page to inspect, if available.
+	RegistryURL *string `json:"registry_url"`
+	// ArtifactDigest Published artifact digest to compare with registry metadata, if available.
+	ArtifactDigest *string `json:"artifact_digest"`
+	// ImportedAt When Typeship recorded the adopted package.
+	ImportedAt *string `json:"imported_at"`
 }
 
-// DraftCustomizationDiscardResponseStatus is one of "preview", "committed". preview: nothing was written. committed: one commit was added to the Draft branch; the Draft status is branch_changed until Typeship integrates it.
-type DraftCustomizationDiscardResponseStatus string
-
-const (
-	DraftCustomizationDiscardResponseStatusPreview   DraftCustomizationDiscardResponseStatus = "preview"
-	DraftCustomizationDiscardResponseStatusCommitted DraftCustomizationDiscardResponseStatus = "committed"
-)
-
-// RecoverDraftHistoryParams is an API model.
-type RecoverDraftHistoryParams struct {
-	// ExpectedDefaultRevision The Draft's history_recovery.default_revision.
-	ExpectedDefaultRevision string `json:"expected_default_revision"`
-	// ExpectedHeadRevision The Draft's history_recovery.head_revision; null when the Draft branch is absent.
-	ExpectedHeadRevision *string `json:"expected_head_revision"`
+// DeliveryList is an API model.
+type DeliveryList struct {
+	Object     ListObject `json:"object"`
+	Data       []Delivery `json:"data"`
+	HasMore    bool       `json:"has_more"`
+	NextCursor *string    `json:"next_cursor"`
+	RequestID  RequestID  `json:"request_id"`
 }
 
-// DraftHistoryRecoveryResponse is an API model.
-type DraftHistoryRecoveryResponse struct {
-	Object   string   `json:"object"`
-	TargetID TargetID `json:"target_id"`
-	// Status approved: recovery is saved and the Draft status is needs_generation. not_needed: the default branch still contains the accepted package.
-	Status          DraftHistoryRecoveryResponseStatus `json:"status"`
-	DefaultRevision string                             `json:"default_revision"`
-	HeadRevision    *string                            `json:"head_revision"`
-	// PreservedBranch Existing Draft branch that stays available when Generate opens the recovered Draft.
-	PreservedBranch *string   `json:"preserved_branch"`
-	RequestID       RequestID `json:"request_id"`
-}
-
-// DraftHistoryRecoveryResponseStatus is one of "approved", "not_needed". approved: recovery is saved and the Draft status is needs_generation. not_needed: the default branch still contains the accepted package.
-type DraftHistoryRecoveryResponseStatus string
-
-const (
-	DraftHistoryRecoveryResponseStatusApproved  DraftHistoryRecoveryResponseStatus = "approved"
-	DraftHistoryRecoveryResponseStatusNotNeeded DraftHistoryRecoveryResponseStatus = "not_needed"
-)
-
-// DeliveryResponse is an API model. Repository fields are present for a repository Delivery; url is present for a hosted_mcp Delivery.
+// DeliveryResponse is an API model. repository is present for a repository Delivery, with issues, required_checks, and last_event; hosted_mcp is present for a hosted_mcp Delivery.
 type DeliveryResponse struct {
-	ID             DeliveryID                   `json:"id"`
-	Object         string                       `json:"object"`
-	TargetID       TargetID                     `json:"target_id"`
-	Kind           DeliveryResponseKind         `json:"kind"`
-	State          State                        `json:"state"`
-	Repository     *RepositoryReferenceResponse `json:"repository,omitempty"`
-	Directory      *string                      `json:"directory,omitempty"`
-	PackageName    *string                      `json:"package_name,omitempty"`
-	ModulePath     *string                      `json:"module_path,omitempty"`
-	PublishOnMerge *bool                        `json:"publish_on_merge,omitempty"`
-	URL            *string                      `json:"url,omitempty"`
-	CreatedAt      string                       `json:"created_at"`
-	UpdatedAt      string                       `json:"updated_at"`
-	RequestID      RequestID                    `json:"request_id"`
+	ID             DeliveryID                  `json:"id"`
+	Object         string                      `json:"object"`
+	TargetID       TargetID                    `json:"target_id"`
+	Type           DeliveryResponseType        `json:"type"`
+	Status         RepositoryDeliveryStatus    `json:"status"`
+	Repository     *RepositoryDeliverySettings `json:"repository,omitempty"`
+	Issues         []RepositoryDeliveryIssue   `json:"issues,omitempty"`
+	RequiredChecks []string                    `json:"required_checks,omitempty"`
+	LastEvent      *RepositoryDeliveryEvent    `json:"last_event,omitempty"`
+	HostedMCP      *HostedMCPDeliverySettings  `json:"hosted_mcp,omitempty"`
+	CreatedAt      string                      `json:"created_at"`
+	UpdatedAt      string                      `json:"updated_at"`
+	RequestID      RequestID                   `json:"request_id"`
 }
 
-// DeliveryResponseKind is one of "repository", "hosted_mcp".
-type DeliveryResponseKind string
+// DeliveryResponseType is one of "repository", "hosted_mcp".
+type DeliveryResponseType string
 
 const (
-	DeliveryResponseKindRepository DeliveryResponseKind = "repository"
-	DeliveryResponseKindHostedMCP  DeliveryResponseKind = "hosted_mcp"
+	DeliveryResponseTypeRepository DeliveryResponseType = "repository"
+	DeliveryResponseTypeHostedMCP  DeliveryResponseType = "hosted_mcp"
 )
+
+// PublicationList is an API model.
+type PublicationList struct {
+	Object     ListObject    `json:"object"`
+	Data       []Publication `json:"data"`
+	HasMore    bool          `json:"has_more"`
+	NextCursor *string       `json:"next_cursor"`
+	RequestID  RequestID     `json:"request_id"`
+}
 
 // PublicationResponse is an API model.
 type PublicationResponse struct {
-	ID              PublicationID          `json:"id"`
-	Object          string                 `json:"object"`
-	TargetReleaseID TargetReleaseID        `json:"target_release_id"`
-	Destination     PublicationDestination `json:"destination"`
-	State           PublicationState       `json:"state"`
-	Attempt         int64                  `json:"attempt"`
-	RunURL          *string                `json:"run_url"`
-	RegistryURL     *string                `json:"registry_url"`
-	ArtifactDigest  *string                `json:"artifact_digest"`
+	ID             PublicationID          `json:"id"`
+	Object         string                 `json:"object"`
+	ReleaseID      ReleaseID              `json:"release_id"`
+	Destination    PublicationDestination `json:"destination"`
+	Status         PublicationStatus      `json:"status"`
+	Attempt        int64                  `json:"attempt"`
+	RunURL         *string                `json:"run_url"`
+	RegistryURL    *string                `json:"registry_url"`
+	ArtifactDigest *string                `json:"artifact_digest"`
 	// Errors Recorded failures. Empty when this resource has no recorded failure.
 	Errors     []DomainError `json:"errors"`
 	StartedAt  *string       `json:"started_at"`
 	FinishedAt *string       `json:"finished_at"`
-	UpdatedAt  string        `json:"updated_at"`
-	CreatedAt  string        `json:"created_at"`
-	RequestID  RequestID     `json:"request_id"`
+	// RuntimeMs Milliseconds from started_at to finished_at; null until the attempt finishes.
+	RuntimeMs *int64    `json:"runtime_ms"`
+	CreatedAt string    `json:"created_at"`
+	UpdatedAt string    `json:"updated_at"`
+	RequestID RequestID `json:"request_id"`
 }
 
-// GenerationResponse is an API model.
-type GenerationResponse struct {
-	ID     GenerationID `json:"id"`
-	Object string       `json:"object"`
-	// FilesOmitted Present and true when the generated target was too large to inline; files_index lists paths, fetched one at a time via GET /generations/{generation_id}/file.
-	FilesOmitted         *bool                 `json:"files_omitted,omitempty"`
-	FilesIndex           []FileStub            `json:"files_index,omitempty"`
-	ProjectID            ProjectID             `json:"project_id"`
-	DefinitionRevisionID *DefinitionRevisionID `json:"definition_revision_id"`
-	Status               GenerationStatus      `json:"status"`
-	Trigger              GenerationTrigger     `json:"trigger"`
-	// TargetID Persisted Target identity. Null only for one-shot generation.
-	TargetID *TargetID `json:"target_id"`
-	// Generator Resolved generator implementation; provenance rather than resource identity.
-	Generator  GeneratorKind        `json:"generator"`
-	Provenance GenerationProvenance `json:"provenance"`
-	// Meta Null while queued or running, or when a failed or legacy generation produced no metadata.
-	Meta     *GenerationMeta `json:"meta"`
-	Warnings []string        `json:"warnings"`
-	// Files Present on retrieve and create; omitted in lists.
-	Files []GeneratedFile `json:"files,omitempty"`
-	// Errors Recorded failures. Empty when this resource has no recorded failure.
-	Errors    []DomainError `json:"errors"`
-	CreatedAt string        `json:"created_at"`
-	RequestID RequestID     `json:"request_id"`
-}
-
-// FileStub is an API model.
-type FileStub struct {
-	Path  string `json:"path"`
-	Bytes int64  `json:"bytes"`
-	Mode  Mode   `json:"mode"`
-}
-
-// DefinitionRevisionList is an API model.
-type DefinitionRevisionList struct {
-	Object ListObject           `json:"object"`
-	Data   []DefinitionRevision `json:"data"`
+// GenerationList is an API model.
+type GenerationList struct {
+	Object ListObject          `json:"object"`
+	Data   []GenerationSummary `json:"data"`
 	// HasMore Whether another page is available after this one.
 	HasMore bool `json:"has_more"`
 	// NextCursor Pass this value as cursor to retrieve the next page; null on the last page.
@@ -4234,189 +4049,103 @@ type DefinitionRevisionList struct {
 	RequestID  RequestID `json:"request_id"`
 }
 
-// DefinitionRevision is an API model.
-type DefinitionRevision struct {
-	ID            DefinitionRevisionID `json:"id"`
-	Object        string               `json:"object"`
-	ProjectID     ProjectID            `json:"project_id"`
-	DefinitionID  DefinitionID         `json:"definition_id"`
-	Format        Format               `json:"format"`
-	DocumentCount int64                `json:"document_count"`
-	// Documents Present on retrieve; list responses use document_count.
-	Documents []DefinitionDocument `json:"documents,omitempty"`
-	// Sha256 SHA-256 digest of every document coordinate, digest, and size in the resolved graph.
+// GenerationResponse is an API model.
+type GenerationResponse struct {
+	ID             GenerationID      `json:"id"`
+	Object         string            `json:"object"`
+	ProjectID      ProjectID         `json:"project_id"`
+	SpecRevisionID *SpecRevisionID   `json:"spec_revision_id"`
+	Status         GenerationStatus  `json:"status"`
+	Trigger        GenerationTrigger `json:"trigger"`
+	TargetID       *TargetID         `json:"target_id"`
+	Type           GeneratorKind     `json:"type"`
+	// Name Package name; null until known.
+	Name *string `json:"name"`
+	// Version Package version; null until known.
+	Version  *string             `json:"version"`
+	Warnings []GenerationWarning `json:"warnings"`
+	// Coverage Operation coverage; null until generation has finished.
+	Coverage *GenerationCoverage `json:"coverage"`
+	// FileCount Generated package files. List them with listGenerationFiles.
+	FileCount int64         `json:"file_count"`
+	Errors    []DomainError `json:"errors"`
+	// RuntimeMs Milliseconds from the start of the run until it completed or failed; null while queued or running.
+	RuntimeMs *int64    `json:"runtime_ms"`
+	CreatedAt string    `json:"created_at"`
+	UpdatedAt string    `json:"updated_at"`
+	RequestID RequestID `json:"request_id"`
+}
+
+// FileList is an API model.
+type FileList struct {
+	Object     ListObject `json:"object"`
+	Data       []File     `json:"data"`
+	HasMore    bool       `json:"has_more"`
+	NextCursor *string    `json:"next_cursor"`
+	RequestID  RequestID  `json:"request_id"`
+}
+
+// File is an API model.
+type File struct {
+	ID     FileID `json:"id"`
+	Object string `json:"object"`
+	// Path Path within the Spec Revision, Generation package, or Target package.
+	Path      string `json:"path"`
+	SizeBytes int64  `json:"size_bytes"`
+	// Sha256 Digest of the complete file.
 	Sha256 string `json:"sha256"`
-	// SizeBytes Total bytes across all source documents.
-	SizeBytes int64 `json:"size_bytes"`
-	// Source Origin recorded when this immutable revision was created.
-	Source    *DefinitionRevisionSource `json:"source"`
-	CreatedAt string                    `json:"created_at"`
-	RequestID *RequestID                `json:"request_id,omitempty"`
+	// Encoding utf8: content is text. base64: content is base64-encoded binary bytes.
+	Encoding SpecRevisionFileEncoding `json:"encoding"`
+	// Mode Git file mode for package files; null for Spec source files.
+	Mode *GitFileMode `json:"mode"`
+	// CreatedAt When Typeship first issued this file ID.
+	CreatedAt string `json:"created_at"`
 }
 
-// DefinitionDocument is an API model.
-type DefinitionDocument struct {
-	ID   DefinitionDocumentID `json:"id"`
-	Role Role                 `json:"role"`
-	// Coordinate Repository-relative path or same-origin URL captured in this revision.
-	Coordinate string `json:"coordinate"`
-	Sha256     string `json:"sha256"`
-	SizeBytes  int64  `json:"size_bytes"`
-}
-
-// DefinitionDocumentID is a generated API type.
-type DefinitionDocumentID string
-
-// Role is one of "entrypoint", "reference".
-type Role string
-
-const (
-	RoleEntrypoint Role = "entrypoint"
-	RoleReference  Role = "reference"
-)
-
-// DefinitionRevisionSource is one of URLDefinitionRevisionSource, RepositoryDefinitionRevisionSource.
-// Go has no sum types, so it holds the JSON as received and decodes on
-// request: try the As* accessors, or switch on Discriminator() when the
-// spec names one.
-type DefinitionRevisionSource struct {
-	union json.RawMessage
-}
-
-// MarshalJSON writes the value as it was set or received.
-func (u DefinitionRevisionSource) MarshalJSON() ([]byte, error) {
-	if u.union == nil {
-		return []byte("null"), nil
-	}
-	return u.union, nil
-}
-
-// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
-func (u *DefinitionRevisionSource) UnmarshalJSON(data []byte) error {
-	u.union = append(u.union[:0], data...)
-	return nil
-}
-
-// Raw returns the JSON exactly as received.
-func (u DefinitionRevisionSource) Raw() json.RawMessage {
-	return u.union
-}
-
-// Discriminator returns the "kind" field, which names the variant.
-func (u DefinitionRevisionSource) Discriminator() (string, error) {
-	var probe struct {
-		Kind string `json:"kind"`
-	}
-	if err := json.Unmarshal(u.union, &probe); err != nil {
-		return "", err
-	}
-	return probe.Kind, nil
-}
-
-// AsURLDefinitionRevisionSource decodes the value as URLDefinitionRevisionSource.
-func (u DefinitionRevisionSource) AsURLDefinitionRevisionSource() (URLDefinitionRevisionSource, error) {
-	var v URLDefinitionRevisionSource
-	err := json.Unmarshal(u.union, &v)
-	return v, err
-}
-
-// FromURLDefinitionRevisionSource sets the value to a URLDefinitionRevisionSource.
-func (u *DefinitionRevisionSource) FromURLDefinitionRevisionSource(v URLDefinitionRevisionSource) error {
-	encoded, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	u.union = encoded
-	return nil
-}
-
-// AsRepositoryDefinitionRevisionSource decodes the value as RepositoryDefinitionRevisionSource.
-func (u DefinitionRevisionSource) AsRepositoryDefinitionRevisionSource() (RepositoryDefinitionRevisionSource, error) {
-	var v RepositoryDefinitionRevisionSource
-	err := json.Unmarshal(u.union, &v)
-	return v, err
-}
-
-// FromRepositoryDefinitionRevisionSource sets the value to a RepositoryDefinitionRevisionSource.
-func (u *DefinitionRevisionSource) FromRepositoryDefinitionRevisionSource(v RepositoryDefinitionRevisionSource) error {
-	encoded, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	u.union = encoded
-	return nil
-}
-
-// URLDefinitionRevisionSource is an API model.
-type URLDefinitionRevisionSource struct {
-	Kind string `json:"kind"`
-	URL  string `json:"url"`
-}
-
-// RepositoryDefinitionRevisionSource is an API model.
-type RepositoryDefinitionRevisionSource struct {
-	Kind       string                      `json:"kind"`
-	Repository RepositoryReferenceResponse `json:"repository"`
-	// Path Repository-relative Definition entrypoint path.
-	Path string `json:"path"`
-	// Ref Git ref resolved for this revision, when recorded.
-	Ref *string `json:"ref,omitempty"`
-	// CommitSha Exact Git commit consumed, when recorded.
-	CommitSha *string `json:"commit_sha,omitempty"`
-}
-
-// DefinitionRevisionResponse is an API model.
-type DefinitionRevisionResponse struct {
-	ID            DefinitionRevisionID `json:"id"`
-	Object        string               `json:"object"`
-	ProjectID     ProjectID            `json:"project_id"`
-	DefinitionID  DefinitionID         `json:"definition_id"`
-	Format        Format               `json:"format"`
-	DocumentCount int64                `json:"document_count"`
-	// Documents Present on retrieve; list responses use document_count.
-	Documents []DefinitionDocument `json:"documents,omitempty"`
-	// Sha256 SHA-256 digest of every document coordinate, digest, and size in the resolved graph.
+// FileResponse is an API model.
+type FileResponse struct {
+	ID     FileID `json:"id"`
+	Object string `json:"object"`
+	// Path Path within the Spec Revision, Generation package, or Target package.
+	Path      string `json:"path"`
+	SizeBytes int64  `json:"size_bytes"`
+	// Sha256 Digest of the complete file.
 	Sha256 string `json:"sha256"`
-	// SizeBytes Total bytes across all source documents.
-	SizeBytes int64 `json:"size_bytes"`
-	// Source Origin recorded when this immutable revision was created.
-	Source    *DefinitionRevisionSource `json:"source"`
-	CreatedAt string                    `json:"created_at"`
-	RequestID RequestID                 `json:"request_id"`
-}
-
-// DefinitionDocumentResponse is an API model.
-type DefinitionDocumentResponse struct {
-	ID                   DefinitionDocumentID `json:"id"`
-	Object               string               `json:"object"`
-	DefinitionRevisionID DefinitionRevisionID `json:"definition_revision_id"`
-	Role                 Role                 `json:"role"`
-	// Coordinate Repository-relative path or same-origin URL captured in this revision.
-	Coordinate string    `json:"coordinate"`
-	Sha256     string    `json:"sha256"`
-	SizeBytes  int64     `json:"size_bytes"`
-	CreatedAt  string    `json:"created_at"`
+	// Encoding utf8: content is text. base64: content is base64-encoded binary bytes.
+	Encoding SpecRevisionFileEncoding `json:"encoding"`
+	// Mode Git file mode for package files; null for Spec source files.
+	Mode *GitFileMode `json:"mode"`
+	// CreatedAt When Typeship first issued this file ID.
+	CreatedAt string `json:"created_at"`
+	// Content At most 24 KiB of the file starting at offset, encoded as encoding says. Text chunks never split a character; concatenate chunks in order.
+	Content string `json:"content"`
+	// Offset Byte offset of this chunk in the file.
+	Offset int64 `json:"offset"`
+	// NextCursor Pass as cursor to read the next chunk; null at the end of the file.
+	NextCursor *string   `json:"next_cursor"`
 	RequestID  RequestID `json:"request_id"`
 }
 
-// Account is an API model. The organization an API key belongs to. Members share its projects, keys, and plan; sign-in identity is not part of the API.
-type Account struct {
+// Organization is an API model. The organization an API key belongs to. Members share its projects, keys, and plan; sign-in identity is not part of the API.
+type Organization struct {
+	// ID Opaque, output-only organization identifier. Copy it unchanged; its format is not a contract.
 	ID     string `json:"id"`
 	Object string `json:"object"`
 	// Name The organization's display name.
-	Name      string      `json:"name"`
-	Plan      AccountPlan `json:"plan"`
-	CreatedAt string      `json:"created_at"`
-	RequestID RequestID   `json:"request_id"`
+	Name      string           `json:"name"`
+	Plan      OrganizationPlan `json:"plan"`
+	CreatedAt string           `json:"created_at"`
+	UpdatedAt string           `json:"updated_at"`
+	RequestID RequestID        `json:"request_id"`
 }
 
-// AccountPlan is one of "free", "pro", "enterprise".
-type AccountPlan string
+// OrganizationPlan is one of "free", "pro", "enterprise".
+type OrganizationPlan string
 
 const (
-	AccountPlanFree       AccountPlan = "free"
-	AccountPlanPro        AccountPlan = "pro"
-	AccountPlanEnterprise AccountPlan = "enterprise"
+	OrganizationPlanFree       OrganizationPlan = "free"
+	OrganizationPlanPro        OrganizationPlan = "pro"
+	OrganizationPlanEnterprise OrganizationPlan = "enterprise"
 )
 
 // APIKeyList is an API model.
@@ -4436,11 +4165,13 @@ type APIKey struct {
 	Object string `json:"object"`
 	Name   string `json:"name"`
 	// Last4 Last four characters of the secret; the secret itself is never stored.
-	Last4      string     `json:"last4"`
-	Revoked    bool       `json:"revoked"`
-	LastUsedAt *string    `json:"last_used_at"`
-	CreatedAt  string     `json:"created_at"`
-	RequestID  *RequestID `json:"request_id,omitempty"`
+	Last4      string  `json:"last4"`
+	Revoked    bool    `json:"revoked"`
+	LastUsedAt *string `json:"last_used_at"`
+	CreatedAt  string  `json:"created_at"`
+	// UpdatedAt When the key last changed, such as its revocation.
+	UpdatedAt string     `json:"updated_at"`
+	RequestID *RequestID `json:"request_id,omitempty"`
 }
 
 // APIKeyResponse is an API model.
@@ -4449,9 +4180,11 @@ type APIKeyResponse struct {
 	Object string `json:"object"`
 	Name   string `json:"name"`
 	// Last4 Last four characters of the secret; the secret itself is never stored.
-	Last4      string    `json:"last4"`
-	Revoked    bool      `json:"revoked"`
-	LastUsedAt *string   `json:"last_used_at"`
-	CreatedAt  string    `json:"created_at"`
-	RequestID  RequestID `json:"request_id"`
+	Last4      string  `json:"last4"`
+	Revoked    bool    `json:"revoked"`
+	LastUsedAt *string `json:"last_used_at"`
+	CreatedAt  string  `json:"created_at"`
+	// UpdatedAt When the key last changed, such as its revocation.
+	UpdatedAt string    `json:"updated_at"`
+	RequestID RequestID `json:"request_id"`
 }

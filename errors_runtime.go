@@ -16,6 +16,7 @@ import (
 //	var apiErr *APIError
 //	if errors.As(err, &apiErr) { fmt.Println(apiErr.Status) }
 type APIError struct {
+	Code      string
 	Status    int
 	Body      []byte
 	RequestID string
@@ -30,7 +31,45 @@ func (e *APIError) Error() string {
 	if e.RequestID != "" {
 		msg += " (request " + e.RequestID + ")"
 	}
-	return msg
+	return msg + ". " + nextStep(e.Status)
+}
+
+func nextStep(status int) string {
+	switch status {
+	case 401:
+		return "Check the credential and retry."
+	case 403:
+		return "Check the credential's permissions and retry."
+	case 404:
+		return "Check the requested identifier or path."
+	case 409:
+		return "Refresh the resource and retry the change."
+	case 400, 422:
+		return "Correct the request and retry."
+	case 429:
+		return "Wait before retrying the request."
+	}
+	if status >= 500 {
+		return "Retry later; contact the API provider if this continues."
+	}
+	return "Inspect the error body and correct the request before retrying."
+}
+
+func codeFromBody(body []byte, status int) string {
+	var probe map[string]any
+	if json.Unmarshal(body, &probe) == nil {
+		if code, ok := probe["code"].(string); ok && code != "" {
+			return code
+		}
+		if errors, ok := probe["errors"].([]any); ok && len(errors) > 0 {
+			if first, ok := errors[0].(map[string]any); ok {
+				if code, ok := first["code"].(string); ok && code != "" {
+					return code
+				}
+			}
+		}
+	}
+	return fmt.Sprintf("http_%d", status)
 }
 
 // Decode unmarshals the raw error body into v.
@@ -41,16 +80,39 @@ func (e *APIError) Decode(v any) error {
 // TransportError means no HTTP response arrived at all: a network failure,
 // DNS problem, timeout, or cancelled context.
 type TransportError struct {
-	Method string
-	URL    string
-	Err    error
+	Code      string
+	Status    int
+	RequestID string
+	Body      []byte
+	Method    string
+	URL       string
+	Err       error
 }
 
 func (e *TransportError) Error() string {
-	return fmt.Sprintf("%s %s failed: %v", e.Method, e.URL, e.Err)
+	return fmt.Sprintf("%s %s failed: %v. Check the connection and retry.", e.Method, e.URL, e.Err)
 }
 
 func (e *TransportError) Unwrap() error { return e.Err }
+
+// ResponseParseError preserves a malformed successful response and its cause.
+type ResponseParseError struct {
+	Code      string
+	Status    int
+	RequestID string
+	Body      []byte
+	Err       error
+}
+
+func (e *ResponseParseError) Error() string {
+	return fmt.Sprintf("HTTP %d response body could not be decoded. Check the API response or contact its provider.", e.Status)
+}
+
+func (e *ResponseParseError) Unwrap() error { return e.Err }
+
+func responseParseError(status int, body []byte, requestID string, err error) error {
+	return &ResponseParseError{Code: "response_parse_error", Status: status, Body: body, RequestID: requestID, Err: err}
+}
 
 // messageFromBody pulls a human message out of a JSON error payload so
 // err.Error() says something useful without the caller decoding first.
@@ -62,6 +124,13 @@ func messageFromBody(body []byte) string {
 	for _, key := range []string{"message", "error", "detail", "error_description"} {
 		if value, ok := probe[key].(string); ok && value != "" {
 			return value
+		}
+	}
+	if errors, ok := probe["errors"].([]any); ok && len(errors) > 0 {
+		if first, ok := errors[0].(map[string]any); ok {
+			if value, ok := first["message"].(string); ok {
+				return value
+			}
 		}
 	}
 	return ""
