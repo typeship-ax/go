@@ -1,6 +1,6 @@
 # typeship — agent context
 
-This package contains the generated Go SDK for **typeship** (API v1.0.0, package v0.24.0).
+This package contains the generated Go SDK for **typeship** (API v1.0.0, package v0.25.0).
 
 Resolve an OpenAPI or GraphQL Spec, diagnose it, and keep every
 selected CLI, MCP, and SDK Target current.
