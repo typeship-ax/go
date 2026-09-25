@@ -17,13 +17,15 @@ type TargetsService struct {
 type TargetsListParams struct {
 	// Limit Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 invalid_request. List query parameters must appear only once; unrecognized parameters also return 400.
 	Limit *int64 `json:"-"`
-	// Cursor Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it. Omit to start at the first page. Empty, malformed, or repeated cursors return 400 invalid_request. The page limit may change between requests.
+	// Cursor Opaque cursor from the preceding page's next_cursor. Valid only for the same organization, operation, filters, and ordering that issued it. Omit to start at the first page. Empty, malformed, or repeated cursors return 400 invalid_request. The page limit may change between requests.
 	Cursor *string `json:"-"`
+	// ProjectID Only Targets in this Project.
+	ProjectID *ProjectID `json:"-"`
 }
 
 // TargetsCreateParams are the inputs for TargetsService.Create.
 type TargetsCreateParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
 	IdempotencyKey *string `json:"-"`
 }
 
@@ -39,64 +41,24 @@ type TargetsUpdateParams struct {
 	IfMatch *string `json:"-"`
 }
 
-// TargetsListReleasesParams are the inputs for TargetsService.ListReleases.
-type TargetsListReleasesParams struct {
-	// Limit Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 invalid_request. List query parameters must appear only once; unrecognized parameters also return 400.
-	Limit *int64 `json:"-"`
-	// Cursor Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it. Omit to start at the first page. Empty, malformed, or repeated cursors return 400 invalid_request. The page limit may change between requests.
-	Cursor *string `json:"-"`
-}
-
-// TargetsUpdateDraftParams are the inputs for TargetsService.UpdateDraft.
-type TargetsUpdateDraftParams struct {
-	// IfMatch ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes.
-	IfMatch *string `json:"-"`
-}
-
-// TargetsAdoptReleaseParams are the inputs for TargetsService.AdoptRelease.
-type TargetsAdoptReleaseParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+// TargetsAdoptParams are the inputs for TargetsService.Adopt.
+type TargetsAdoptParams struct {
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
 	IdempotencyKey *string `json:"-"`
 }
 
-// TargetsRepublishReleaseParams are the inputs for TargetsService.RepublishRelease.
-type TargetsRepublishReleaseParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
-	IdempotencyKey *string `json:"-"`
-}
-
-// TargetsListDraftFilesParams are the inputs for TargetsService.ListDraftFiles.
-type TargetsListDraftFilesParams struct {
-	// Filter conflicted: conflicts only. customized: files that differ from the last accepted package. history: files affected by a default-branch history rewrite. Omit for conflicted and customized files.
-	Filter *TargetsListDraftFilesParamsFilter `json:"-"`
-	// Limit Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 invalid_request. List query parameters must appear only once; unrecognized parameters also return 400.
-	Limit *int64 `json:"-"`
-	// Cursor Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it. Omit to start at the first page. Empty, malformed, or repeated cursors return 400 invalid_request. The page limit may change between requests.
-	Cursor *string `json:"-"`
-}
-
-// TargetsRetrieveDraftFileContentParams are the inputs for TargetsService.RetrieveDraftFileContent.
-type TargetsRetrieveDraftFileContentParams struct {
-	// Path File path from listDraftFiles.
-	Path string `json:"-"`
-	// Side A side listed for the file.
-	Side DraftFileSide `json:"-"`
-	// Cursor next_cursor from the preceding chunk of the same path and side.
-	Cursor *string `json:"-"`
-}
-
-// List a project's Targets.
+// List Targets.
 //
-// GET /projects/{project_id}/targets
+// GET /targets
 //
 // Returns an iterator that fetches pages lazily:
 //
-//	it := client.Targets.List(ctx, id, nil)
+//	it := client.Targets.List(ctx, nil)
 //	for it.Next() {
 //		item := it.Value()
 //	}
 //	if err := it.Err(); err != nil { ... }
-func (s *TargetsService) List(ctx context.Context, projectID string, params *TargetsListParams, opts ...RequestOption) *Iter[Target] {
+func (s *TargetsService) List(ctx context.Context, params *TargetsListParams, opts ...RequestOption) *Iter[Target] {
 	query := map[string]any{}
 	if params != nil {
 		if params.Limit != nil {
@@ -105,10 +67,13 @@ func (s *TargetsService) List(ctx context.Context, projectID string, params *Tar
 		if params.Cursor != nil {
 			query["cursor"] = *params.Cursor
 		}
+		if params.ProjectID != nil {
+			query["project_id"] = *params.ProjectID
+		}
 	}
 	req := request{
 		Method:     "GET",
-		Path:       fmt.Sprintf("/projects/%s/targets", url.PathEscape(projectID)),
+		Path:       "/targets",
 		Query:      query,
 		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
@@ -129,8 +94,8 @@ func (s *TargetsService) List(ctx context.Context, projectID string, params *Tar
 //
 // Creates a Target with its own configuration, Deliveries, and release history. Multiple Targets can use the same generator.
 //
-// POST /projects/{project_id}/targets
-func (s *TargetsService) Create(ctx context.Context, projectID string, body TargetFieldsParams, params *TargetsCreateParams, opts ...RequestOption) (*TargetResponse, error) {
+// POST /targets
+func (s *TargetsService) Create(ctx context.Context, body TargetCreateRequest, params *TargetsCreateParams, opts ...RequestOption) (*TargetResponse, error) {
 	headers := map[string]string{}
 	if params != nil {
 		if params.IdempotencyKey != nil {
@@ -139,7 +104,7 @@ func (s *TargetsService) Create(ctx context.Context, projectID string, body Targ
 	}
 	req := request{
 		Method:            "POST",
-		Path:              fmt.Sprintf("/projects/%s/targets", url.PathEscape(projectID)),
+		Path:              "/targets",
 		Headers:           headers,
 		Body:              body,
 		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
@@ -154,16 +119,16 @@ func (s *TargetsService) Create(ctx context.Context, projectID string, body Targ
 	return &out, nil
 }
 
-// Retrieve a Target.
+// Get a Target.
 //
 // GET /targets/{target_id}
-func (s *TargetsService) Retrieve(ctx context.Context, targetID string, opts ...RequestOption) (*TargetResponse, error) {
+func (s *TargetsService) Get(ctx context.Context, targetID string, opts ...RequestOption) (*TargetResponse, error) {
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/targets/%s", url.PathEscape(targetID)),
 		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "targets.retrieve",
+		SchemaKey:  "targets.get",
 		Idempotent: true,
 	}
 	var out TargetResponse
@@ -203,14 +168,15 @@ func (s *TargetsService) Delete(ctx context.Context, targetID string, params *Ta
 	return &out, nil
 }
 
-// Update a Target, its Deliveries, or its next reviewed version.
+// Update a Target or its Deliveries.
 //
 // Omitted fields keep their current values. Supplied config, checks, and deliveries replace their complete stored values.
+// With Project auto_generate enabled, changing Target config, checks, or Deliveries queues that Target's Generation. A queued or running Target reuses that Generation.
 // Omitting If-Match applies the update to the current resource; with If-Match, a stale ETag returns 412 precondition_failed without saving.
-// Send proposed_version by itself; use the Draft endpoint to select a version directly.
+// Select the next version through PATCH /drafts/{draft_id} on the Target's draft_id.
 //
 // A `409 target_busy` means the Target is publishing; wait for it to finish. A `409 delivery_conflict` means another Target owns the requested repository tree; retrieve both Targets, choose a free destination, and retry.
-// A `502` response means the update was saved, but retiring an obsolete review or regenerating a version selection failed. Retrieve the Target and follow the error's retryable and suggested_action fields. Repeating an unfinished version selection resumes generation; repeating a completed selection starts no new work.
+// A `502` response means the update was saved, but retiring an obsolete review or regenerating the Target failed. Retrieve the Target and follow the error's retryable and suggested_action fields.
 // See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 //
 // PATCH /targets/{target_id}
@@ -237,107 +203,12 @@ func (s *TargetsService) Update(ctx context.Context, targetID string, body Targe
 	return &out, nil
 }
 
-// ListReleases — list immutable releases for a Target.
+// Adopt a verified existing package as the latest release.
 //
-// GET /targets/{target_id}/releases
-//
-// Returns an iterator that fetches pages lazily:
-//
-//	it := client.Targets.ListReleases(ctx, id, nil)
-//	for it.Next() {
-//		item := it.Value()
-//	}
-//	if err := it.Err(); err != nil { ... }
-func (s *TargetsService) ListReleases(ctx context.Context, targetID string, params *TargetsListReleasesParams, opts ...RequestOption) *Iter[TargetRelease] {
-	query := map[string]any{}
-	if params != nil {
-		if params.Limit != nil {
-			query["limit"] = *params.Limit
-		}
-		if params.Cursor != nil {
-			query["cursor"] = *params.Cursor
-		}
-	}
-	req := request{
-		Method:     "GET",
-		Path:       fmt.Sprintf("/targets/%s/releases", url.PathEscape(targetID)),
-		Query:      query,
-		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "targets.listReleases",
-		Idempotent: true,
-	}
-	return newIter[TargetRelease](ctx, s.core, req, opts, pageConfig{
-		Style:           "cursor",
-		ItemsField:      "data",
-		CursorParam:     "cursor",
-		NextCursorField: "next_cursor",
-		HasMoreField:    "has_more",
-		LimitParam:      "limit",
-	})
-}
-
-// RetrieveDraft — retrieve a Target's rolling Draft release.
-//
-// Returns the Draft's status and its one next step, Current's version, the proposed version, readiness, checks, and conflict counts. Every status is described on `status`. The response carries an `ETag`; send it in `If-Match` when updating the Draft to avoid changing a newer version selection.
-//
-// GET /targets/{target_id}/draft
-func (s *TargetsService) RetrieveDraft(ctx context.Context, targetID string, opts ...RequestOption) (*TargetDraftResponse, error) {
-	req := request{
-		Method:     "GET",
-		Path:       fmt.Sprintf("/targets/%s/draft", url.PathEscape(targetID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "targets.retrieveDraft",
-		Idempotent: true,
-	}
-	var out TargetDraftResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// UpdateDraft — select an exact Draft version or return to automatic versioning.
-//
-// Checks your version choice against the required version bump, then regenerates the existing Draft pull request.
-//
-// Send the Draft's `ETag` in `If-Match` to reject an intervening change with 412 precondition_failed before saving or regenerating. Omitting `If-Match` applies the selection to the current Draft. Version is required; null restores automatic selection.
-//
-// A `502` response means the selected version was saved, but regeneration failed. Follow the error's retryable and suggested_action fields. Repeating an unfinished selection resumes generation; repeating a completed selection starts no new work. If using If-Match, retrieve the Draft and confirm the saved selection before retrying with its current ETag.
-// A `409 target_busy` means the Target is publishing; wait and retry. A `409 version_occupied` means the version is already released; retrieve the Draft and releases, choose a new version, and retry.
-// See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
-//
-// PATCH /targets/{target_id}/draft
-func (s *TargetsService) UpdateDraft(ctx context.Context, targetID string, body TargetDraftUpdateParams, params *TargetsUpdateDraftParams, opts ...RequestOption) (*TargetDraftResponse, error) {
-	headers := map[string]string{}
-	if params != nil {
-		if params.IfMatch != nil {
-			headers["If-Match"] = fmt.Sprint(*params.IfMatch)
-		}
-	}
-	req := request{
-		Method:    "PATCH",
-		Path:      fmt.Sprintf("/targets/%s/draft", url.PathEscape(targetID)),
-		Headers:   headers,
-		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "412": newPreconditionFailedError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
-		Security:  []map[string][]string{{"apiKey": {}}},
-		SchemaKey: "targets.updateDraft",
-	}
-	var out TargetDraftResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// AdoptRelease — adopt a verified existing package as Current.
-//
-// Checks the repository tag, package metadata, and registry artifact, then records the package as an Imported Current release. Opens the first Typeship Draft at the next major version; review it to establish the baseline for preserving existing code.
+// Checks the repository tag, package metadata, and registry artifact, then records the package as an Imported latest release. Opens the first Typeship Draft at the next major version; review it to establish the baseline for preserving existing code.
 //
 // POST /targets/{target_id}/adopt
-func (s *TargetsService) AdoptRelease(ctx context.Context, targetID string, body TargetAdoption, params *TargetsAdoptReleaseParams, opts ...RequestOption) (*TargetReleaseResponse, error) {
+func (s *TargetsService) Adopt(ctx context.Context, targetID string, body TargetAdoption, params *TargetsAdoptParams, opts ...RequestOption) (*ReleaseResponse, error) {
 	headers := map[string]string{}
 	if params != nil {
 		if params.IdempotencyKey != nil {
@@ -351,243 +222,10 @@ func (s *TargetsService) AdoptRelease(ctx context.Context, targetID string, body
 		Body:              body,
 		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:          []map[string][]string{{"apiKey": {}}},
-		SchemaKey:         "targets.adoptRelease",
+		SchemaKey:         "targets.adopt",
 		IdempotencyHeader: "Idempotency-Key",
 	}
-	var out TargetReleaseResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// RetrieveRelease — retrieve an immutable Target release.
-//
-// GET /target-releases/{target_release_id}
-func (s *TargetsService) RetrieveRelease(ctx context.Context, targetReleaseID string, opts ...RequestOption) (*TargetReleaseResponse, error) {
-	req := request{
-		Method:     "GET",
-		Path:       fmt.Sprintf("/target-releases/%s", url.PathEscape(targetReleaseID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "targets.retrieveRelease",
-		Idempotent: true,
-	}
-	var out TargetReleaseResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// RepublishRelease — retry publication of an exact Target release.
-//
-// Retries publication of the specified release through its repository workflow. Uses that release's version and accepted commit, even if a newer Draft or release exists.
-//
-// A `502` response means the repository publication workflow could not be dispatched.
-//
-// POST /target-releases/{target_release_id}/republish
-func (s *TargetsService) RepublishRelease(ctx context.Context, targetReleaseID string, params *TargetsRepublishReleaseParams, opts ...RequestOption) (*TargetReleaseResponse, error) {
-	headers := map[string]string{}
-	if params != nil {
-		if params.IdempotencyKey != nil {
-			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
-		}
-	}
-	req := request{
-		Method:            "POST",
-		Path:              fmt.Sprintf("/target-releases/%s/republish", url.PathEscape(targetReleaseID)),
-		Headers:           headers,
-		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
-		Security:          []map[string][]string{{"apiKey": {}}},
-		SchemaKey:         "targets.republishRelease",
-		IdempotencyHeader: "Idempotency-Key",
-	}
-	var out TargetReleaseResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// ListDraftFiles — list customized and conflicted files on a Draft.
-//
-// Lists the Draft's files that differ from the last accepted package or need a conflict decision, ordered by path, without file content. Each conflict names its kind, where the incoming version comes from, the saved decision, and the sides you can read with retrieveDraftFileContent. With `filter=history`, lists the files affected by a default-branch history rewrite instead; the list is empty when none is pending.
-//
-// Returns `409 stale_draft` while Typeship has not integrated the Draft's latest commit (Draft status generating or branch_changed), or when the Draft changes between pages.
-//
-// GET /targets/{target_id}/draft/files
-//
-// Returns an iterator that fetches pages lazily:
-//
-//	it := client.Targets.ListDraftFiles(ctx, id, nil)
-//	for it.Next() {
-//		item := it.Value()
-//	}
-//	if err := it.Err(); err != nil { ... }
-func (s *TargetsService) ListDraftFiles(ctx context.Context, targetID string, params *TargetsListDraftFilesParams, opts ...RequestOption) *Iter[DraftFile] {
-	query := map[string]any{}
-	if params != nil {
-		if params.Filter != nil {
-			query["filter"] = *params.Filter
-		}
-		if params.Limit != nil {
-			query["limit"] = *params.Limit
-		}
-		if params.Cursor != nil {
-			query["cursor"] = *params.Cursor
-		}
-	}
-	req := request{
-		Method:     "GET",
-		Path:       fmt.Sprintf("/targets/%s/draft/files", url.PathEscape(targetID)),
-		Query:      query,
-		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "targets.listDraftFiles",
-		Idempotent: true,
-	}
-	return newIter[DraftFile](ctx, s.core, req, opts, pageConfig{
-		Style:           "cursor",
-		ItemsField:      "data",
-		CursorParam:     "cursor",
-		NextCursorField: "next_cursor",
-		HasMoreField:    "has_more",
-		LimitParam:      "limit",
-	})
-}
-
-// RetrieveDraftFileContent — read one side of a Draft file.
-//
-// Returns up to 24 KiB of one side of a conflicted or history-affected file: text as UTF-8, binary content as base64. Follow `next_cursor` with the same path and side to read the rest, and concatenate the chunks in order. A side where the file is absent returns 404.
-//
-// GET /targets/{target_id}/draft/files/content
-func (s *TargetsService) RetrieveDraftFileContent(ctx context.Context, targetID string, params TargetsRetrieveDraftFileContentParams, opts ...RequestOption) (*DraftFileContentResponse, error) {
-	query := map[string]any{}
-	query["path"] = params.Path
-	query["side"] = params.Side
-	if params.Cursor != nil {
-		query["cursor"] = *params.Cursor
-	}
-	req := request{
-		Method:     "GET",
-		Path:       fmt.Sprintf("/targets/%s/draft/files/content", url.PathEscape(targetID)),
-		Query:      query,
-		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "targets.retrieveDraftFileContent",
-		Idempotent: true,
-	}
-	var out DraftFileContentResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// ResolveDraftConflicts — resolve selected Draft conflicts.
-//
-// Saves decisions for conflicts on the Draft's head_revision: keep the repository or incoming version, or supply the final content as text or, for binary files, base64. Decisions save together or not at all, and a decision can be replaced until it is applied. Use `dry_run` to validate them first.
-//
-// Saving changes no files. When every conflict has a decision, `remaining_conflicts` is 0 and the Draft status becomes `needs_generation`: generate the Target to apply the decisions and run its checks. Applying them can report conflicts from the next merge stage.
-//
-// POST /targets/{target_id}/draft/conflicts/resolve
-func (s *TargetsService) ResolveDraftConflicts(ctx context.Context, targetID string, body ResolveDraftConflicts, opts ...RequestOption) (*DraftConflictResolutionResponse, error) {
-	req := request{
-		Method:    "POST",
-		Path:      fmt.Sprintf("/targets/%s/draft/conflicts/resolve", url.PathEscape(targetID)),
-		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:  []map[string][]string{{"apiKey": {}}},
-		SchemaKey: "targets.resolveDraftConflicts",
-	}
-	var out DraftConflictResolutionResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// DiscardDraftCustomizations — discard selected Draft customizations.
-//
-// Replaces the listed customized paths that are not conflicts with the generated files, in one commit on the Draft branch. A listed file that exists only on the Draft is deleted. Use `dry_run` to see the planned writes and deletions first. Resolve conflicts with resolveDraftConflicts.
-//
-// After the commit, the Draft status is `branch_changed` until Typeship integrates it from the repository's pull request event and reruns the checks; you do not need to generate the Target.
-//
-// POST /targets/{target_id}/draft/customizations/discard
-func (s *TargetsService) DiscardDraftCustomizations(ctx context.Context, targetID string, body DiscardDraftCustomizations, opts ...RequestOption) (*DraftCustomizationDiscardResponse, error) {
-	req := request{
-		Method:    "POST",
-		Path:      fmt.Sprintf("/targets/%s/draft/customizations/discard", url.PathEscape(targetID)),
-		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:  []map[string][]string{{"apiKey": {}}},
-		SchemaKey: "targets.discardDraftCustomizations",
-	}
-	var out DraftCustomizationDiscardResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// RecoverDraftHistory — approve recovery from rewritten default-branch history.
-//
-// When the Draft status is `history_rewritten`, review the affected files with `listDraftFiles` and `filter=history`, then approve with the Draft's `history_recovery` revisions. Approval saves the recovery without changing Git, and the Draft status becomes `needs_generation`: generate the Target to open a new Draft from the rewritten default branch. The previous Draft branch stays available, and overlapping code comes back as conflicts to resolve. A rewritten Draft branch alone needs no approval.
-//
-// POST /targets/{target_id}/draft/history/recover
-func (s *TargetsService) RecoverDraftHistory(ctx context.Context, targetID string, body RecoverDraftHistoryParams, opts ...RequestOption) (*DraftHistoryRecoveryResponse, error) {
-	req := request{
-		Method:    "POST",
-		Path:      fmt.Sprintf("/targets/%s/draft/history/recover", url.PathEscape(targetID)),
-		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:  []map[string][]string{{"apiKey": {}}},
-		SchemaKey: "targets.recoverDraftHistory",
-	}
-	var out DraftHistoryRecoveryResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// RetrieveDelivery — retrieve a Delivery.
-//
-// Returns the configured repository or hosted MCP Delivery for a Target. A Delivery in another organization returns 404 not_found.
-//
-// GET /deliveries/{delivery_id}
-func (s *TargetsService) RetrieveDelivery(ctx context.Context, deliveryID string, opts ...RequestOption) (*DeliveryResponse, error) {
-	req := request{
-		Method:     "GET",
-		Path:       fmt.Sprintf("/deliveries/%s", url.PathEscape(deliveryID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "targets.retrieveDelivery",
-		Idempotent: true,
-	}
-	var out DeliveryResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// RetrievePublication — retrieve a Publication.
-//
-// Returns the current registry publication state for a Target Release. A Publication in another organization returns 404 not_found.
-//
-// GET /publications/{publication_id}
-func (s *TargetsService) RetrievePublication(ctx context.Context, publicationID string, opts ...RequestOption) (*PublicationResponse, error) {
-	req := request{
-		Method:     "GET",
-		Path:       fmt.Sprintf("/publications/%s", url.PathEscape(publicationID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "targets.retrievePublication",
-		Idempotent: true,
-	}
-	var out PublicationResponse
+	var out ReleaseResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}

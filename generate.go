@@ -14,7 +14,7 @@ type GenerateService struct {
 
 // GenerateRunParams are the inputs for GenerateService.Run.
 type GenerateRunParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
 	IdempotencyKey *string `json:"-"`
 }
 
@@ -24,15 +24,15 @@ type GenerateDownloadPackageParams struct {
 	Token string `json:"-"`
 }
 
-// Run — generate one package from a Definition.
+// Run — generate one package from a Spec.
 //
 // Returns one generated package without creating a Project.
 //
 // Supports [idempotent retries](https://typeship.dev/docs/typeship-api/idempotency); keyed responses include generated files in the replay cache.
 //
-// Use `download.url` to save the complete ZIP, verify `download.sha256`, and extract it into an empty directory. The link expires at `download.expires_at` and grants access to anyone who has it. CLI, MCP, and SDK calls supply an idempotency key automatically. Agents should request `fields=["download","meta","warnings","limits","claim"]` to keep the MCP result compact; files can exceed the response limit. Download the ZIP instead of repeating generation to retrieve omitted files.
+// Use `download.url` to save the complete ZIP, verify `download.sha256`, and extract it into an empty directory. The link expires at `download.expires_at` and grants access to anyone who has it. CLI, MCP, and SDK calls supply an idempotency key automatically. Agents should request `fields=["download","coverage","warnings","claim"]` to keep the MCP result compact; files can exceed the response limit. Download the ZIP instead of repeating generation to retrieve omitted files.
 //
-// Anonymous and Free requests include the first 25 operations. Paid plans include all operations. Anonymous requests are rate limited by IP address. Check `limits` for omitted operations; an invalid API key returns `401`.
+// Anonymous and Free requests include the first 25 operations. Paid plans include all operations. Anonymous requests are rate limited by IP address. Check `coverage` for omitted operations; an invalid API key returns `401`.
 //
 // An anonymous URL request without source headers may return `claim.url`. Sign in through that link within seven days to save the recipe as a Project.
 //

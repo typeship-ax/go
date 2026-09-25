@@ -26,7 +26,7 @@ To run the quickstart against this local module, save it as `cmd/example/main.go
 Generation does not publish a Go module. Set `go.mod` to a repository path you control, publish the module and tag its release, then use that module path and version with `go get`:
 
 ```sh
-go get github.com/typeship-ax/go@v0.23.0
+go get github.com/typeship-ax/go@v0.24.0
 ```
 
 ## Quickstart
@@ -50,7 +50,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	result, err := client.Account.Retrieve(ctx)
+	result, err := client.Organization.Get(ctx)
 	if err != nil {
 		var apiErr *typeship.APIError
 		if errors.As(err, &apiErr) {
@@ -89,14 +89,20 @@ if errors.As(err, &badRequest) {
 
 var apiErr *typeship.APIError
 if errors.As(err, &apiErr) {
-	fmt.Println(apiErr.Status, apiErr.RequestID) // any error response, documented or not
+	fmt.Println(apiErr.Code, apiErr.Status, apiErr.RequestID, apiErr.Body, apiErr.Error())
 }
 
 var transport *typeship.TransportError
 if errors.As(err, &transport) {
 	// no response at all: network, DNS, timeout, cancelled context
 }
+var parseErr *typeship.ResponseParseError
+if errors.As(err, &parseErr) {
+	fmt.Println(parseErr.Code, parseErr.Status, parseErr.RequestID, parseErr.Body)
+}
 ```
+
+Every error carries `Code`, `Status`, `RequestID`, `Body`, and an actionable `Error()` message. `TransportError.Status` is zero when no HTTP response arrived.
 
 ## Runtime validation
 
@@ -115,7 +121,7 @@ Pass `WithAPIResponse` to read the status, headers, and request id of a call alo
 
 ```go
 var meta typeship.APIResponse
-result, err := client.Account.Retrieve(ctx, typeship.WithAPIResponse(&meta))
+result, err := client.Organization.Get(ctx, typeship.WithAPIResponse(&meta))
 fmt.Println(meta.StatusCode, meta.RequestID, meta.Header.Get("RateLimit-Remaining"))
 ```
 

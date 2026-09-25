@@ -17,13 +17,13 @@ type ProjectsService struct {
 type ProjectsListParams struct {
 	// Limit Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 invalid_request. List query parameters must appear only once; unrecognized parameters also return 400.
 	Limit *int64 `json:"-"`
-	// Cursor Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it. Omit to start at the first page. Empty, malformed, or repeated cursors return 400 invalid_request. The page limit may change between requests.
+	// Cursor Opaque cursor from the preceding page's next_cursor. Valid only for the same organization, operation, filters, and ordering that issued it. Omit to start at the first page. Empty, malformed, or repeated cursors return 400 invalid_request. The page limit may change between requests.
 	Cursor *string `json:"-"`
 }
 
 // ProjectsCreateParams are the inputs for ProjectsService.Create.
 type ProjectsCreateParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
 	IdempotencyKey *string `json:"-"`
 }
 
@@ -39,31 +39,9 @@ type ProjectsUpdateParams struct {
 	IfMatch *string `json:"-"`
 }
 
-// ProjectsRefreshDiagnosticsParams are the inputs for ProjectsService.RefreshDiagnostics.
-type ProjectsRefreshDiagnosticsParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
-	IdempotencyKey *string `json:"-"`
-}
-
-// ProjectsRemediateDiagnosticsParams are the inputs for ProjectsService.RemediateDiagnostics.
-type ProjectsRemediateDiagnosticsParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
-	IdempotencyKey *string `json:"-"`
-}
-
-// ProjectsListGenerationsParams are the inputs for ProjectsService.ListGenerations.
-type ProjectsListGenerationsParams struct {
-	// Limit Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 invalid_request. List query parameters must appear only once; unrecognized parameters also return 400.
-	Limit *int64 `json:"-"`
-	// Cursor Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it. Omit to start at the first page. Empty, malformed, or repeated cursors return 400 invalid_request. The page limit may change between requests.
-	Cursor *string `json:"-"`
-	// TargetID Only generations for this persisted Target.
-	TargetID *TargetID `json:"-"`
-}
-
 // ProjectsGenerateParams are the inputs for ProjectsService.Generate.
 type ProjectsGenerateParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated account and operation; account-less generation uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
 	IdempotencyKey *string `json:"-"`
 }
 
@@ -109,7 +87,8 @@ func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, 
 
 // Create a project.
 //
-// Creates a Project from a URL or GitHub Definition.
+// Creates a Project from a URL or GitHub Spec.
+// Automatic generation is enabled by default for a saved Project.
 //
 // Free includes one saved Project, all selected Targets, and the first 25 operations per Target, with regeneration, history, delivery pull requests, and previews. Pro supports additional Projects and all operations. One-shot generation does not use a Project slot.
 //
@@ -138,18 +117,18 @@ func (s *ProjectsService) Create(ctx context.Context, body CreateProjectRequest,
 	return &out, nil
 }
 
-// Retrieve a project.
+// Get a project.
 //
-// Returns the Project's settings and Definition ID. List its Targets separately to retrieve Target configuration and Deliveries.
+// Returns the Project's settings and Spec ID. List its Targets separately to retrieve Target configuration and Deliveries.
 //
 // GET /projects/{project_id}
-func (s *ProjectsService) Retrieve(ctx context.Context, projectID string, opts ...RequestOption) (*Project, error) {
+func (s *ProjectsService) Get(ctx context.Context, projectID string, opts ...RequestOption) (*Project, error) {
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
 		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "projects.retrieve",
+		SchemaKey:  "projects.get",
 		Idempotent: true,
 	}
 	var out Project
@@ -191,9 +170,10 @@ func (s *ProjectsService) Delete(ctx context.Context, projectID string, params *
 // Update a project.
 //
 // Omitted fields keep their current values. A supplied config replaces the entire stored object; null or an empty object clears it.
+// With auto_generate enabled, changing shared config queues a Generation for each Target whose effective config changes. A queued or running Target reuses that Generation.
 // Omitting If-Match applies the update to the current resource; with If-Match, a stale ETag returns 412 precondition_failed without saving.
 //
-// A `409 target_busy` means a Target is publishing. Retrieve the Project, wait for publication to finish, reconcile your update, and retry.
+// A `409 target_busy` means a Target is publishing. Retrieve the Project, wait for publishing to finish, reconcile your update, and retry.
 // A `502` response means the Project was saved, but an obsolete release pull request could not be retired. Retrieve the Project and retry the same update to finish retiring reviews if that update is still desired.
 // See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 //
@@ -221,157 +201,13 @@ func (s *ProjectsService) Update(ctx context.Context, projectID string, body Upd
 	return &out, nil
 }
 
-// RetrieveDiagnostics — analyze a project's latest Definition Revision.
-//
-// Checks the latest Definition Revision after applying its saved patches. Each finding groups affected locations under a stable rule ID. A suggested patch is included only when the Definition provides enough information to determine the correction.
-//
-// GET /projects/{project_id}/diagnostics
-func (s *ProjectsService) RetrieveDiagnostics(ctx context.Context, projectID string, opts ...RequestOption) (*DiagnosticReport, error) {
-	req := request{
-		Method:     "GET",
-		Path:       fmt.Sprintf("/projects/%s/diagnostics", url.PathEscape(projectID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "projects.retrieveDiagnostics",
-		Idempotent: true,
-	}
-	var out DiagnosticReport
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// RefreshDiagnostics — refresh a project's Diagnostics from its configured source.
-//
-// Fetches the configured source and returns updated Diagnostics. Creates a Definition Revision only when the content changes. Does not generate Targets or use a metered generation.
-//
-// POST /projects/{project_id}/diagnostics
-func (s *ProjectsService) RefreshDiagnostics(ctx context.Context, projectID string, params *ProjectsRefreshDiagnosticsParams, opts ...RequestOption) (*DiagnosticReport, error) {
-	headers := map[string]string{}
-	if params != nil {
-		if params.IdempotencyKey != nil {
-			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
-		}
-	}
-	req := request{
-		Method:            "POST",
-		Path:              fmt.Sprintf("/projects/%s/diagnostics", url.PathEscape(projectID)),
-		Headers:           headers,
-		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:          []map[string][]string{{"apiKey": {}}},
-		SchemaKey:         "projects.refreshDiagnostics",
-		IdempotencyHeader: "Idempotency-Key",
-	}
-	var out DiagnosticReport
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// RemediateDiagnostics — apply exact, reviewed diagnostic remediations.
-//
-// Applies reviewed patches from Diagnostics. For a repository source, opens or updates a source pull request. For a URL source, saves Definition patches.
-//
-// Findings that need an API-owner decision return `422`. Read the finding's `authoring_brief` and update the source instead.
-//
-// POST /projects/{project_id}/diagnostics/remediations
-func (s *ProjectsService) RemediateDiagnostics(ctx context.Context, projectID string, body DiagnosticRemediationRequest, params *ProjectsRemediateDiagnosticsParams, opts ...RequestOption) (*DiagnosticRemediation, error) {
-	headers := map[string]string{}
-	if params != nil {
-		if params.IdempotencyKey != nil {
-			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
-		}
-	}
-	req := request{
-		Method:            "POST",
-		Path:              fmt.Sprintf("/projects/%s/diagnostics/remediations", url.PathEscape(projectID)),
-		Headers:           headers,
-		Body:              body,
-		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:          []map[string][]string{{"apiKey": {}}},
-		SchemaKey:         "projects.remediateDiagnostics",
-		IdempotencyHeader: "Idempotency-Key",
-	}
-	var out DiagnosticRemediation
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// RetrieveIntegrationHealth — diagnose a project's repository integrations.
-//
-// Checks repository access, Definition readability, source-approval labels, and required checks. Includes the latest webhook delivery so you can investigate missing updates.
-//
-// GET /projects/{project_id}/integration-health
-func (s *ProjectsService) RetrieveIntegrationHealth(ctx context.Context, projectID string, opts ...RequestOption) (*RepositoryIntegrationHealth, error) {
-	req := request{
-		Method:     "GET",
-		Path:       fmt.Sprintf("/projects/%s/integration-health", url.PathEscape(projectID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "projects.retrieveIntegrationHealth",
-		Idempotent: true,
-	}
-	var out RepositoryIntegrationHealth
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// ListGenerations — list a project's generations.
-//
-// GET /projects/{project_id}/generations
-//
-// Returns an iterator that fetches pages lazily:
-//
-//	it := client.Projects.ListGenerations(ctx, id, nil)
-//	for it.Next() {
-//		item := it.Value()
-//	}
-//	if err := it.Err(); err != nil { ... }
-func (s *ProjectsService) ListGenerations(ctx context.Context, projectID string, params *ProjectsListGenerationsParams, opts ...RequestOption) *Iter[GenerationSummary] {
-	query := map[string]any{}
-	if params != nil {
-		if params.Limit != nil {
-			query["limit"] = *params.Limit
-		}
-		if params.Cursor != nil {
-			query["cursor"] = *params.Cursor
-		}
-		if params.TargetID != nil {
-			query["target_id"] = *params.TargetID
-		}
-	}
-	req := request{
-		Method:     "GET",
-		Path:       fmt.Sprintf("/projects/%s/generations", url.PathEscape(projectID)),
-		Query:      query,
-		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "projects.listGenerations",
-		Idempotent: true,
-	}
-	return newIter[GenerationSummary](ctx, s.core, req, opts, pageConfig{
-		Style:           "cursor",
-		ItemsField:      "data",
-		CursorParam:     "cursor",
-		NextCursorField: "next_cursor",
-		HasMoreField:    "has_more",
-		LimitParam:      "limit",
-	})
-}
-
 // Generate — start generation for active Targets.
 //
-// Queues one Generation per active Target and returns their IDs. Retrieve each Generation until its status moves from `queued` to `running` and then `succeeded` or `failed`. `succeeded` means generated files are saved; check Delivery and Draft status separately for repository delivery and pull requests. A Target already queued or running is returned without starting another Generation. A matching Idempotency-Key replay returns the same Generations with their current statuses.
+// Queues one Generation per active Target and returns their IDs. Retrieve each Generation until its status moves from `queued` to `running` and then `completed` or `failed`. `completed` means generated files are saved; check Delivery and Draft status separately for repository delivery and pull requests. A Target already queued or running is returned without starting another Generation. A matching Idempotency-Key replay returns the same Generations with their current statuses.
 //
-// If the package already matches a destination and no Draft is open, delivery reports `pr_status: no_changes` without creating a commit, branch, or pull request. An existing Draft stays open. Automatic generation uses the same workflow.
+// If the package already matches a destination and no Draft is open, delivery creates no commit, branch, or pull request. An existing Draft stays open. Automatic generation uses the same workflow.
 //
-// POST /projects/{project_id}/generations
+// POST /projects/{project_id}/generate
 func (s *ProjectsService) Generate(ctx context.Context, projectID string, body GenerateProjectRequest, params *ProjectsGenerateParams, opts ...RequestOption) (*GenerationBatch, error) {
 	headers := map[string]string{}
 	if params != nil {
@@ -381,7 +217,7 @@ func (s *ProjectsService) Generate(ctx context.Context, projectID string, body G
 	}
 	req := request{
 		Method:            "POST",
-		Path:              fmt.Sprintf("/projects/%s/generations", url.PathEscape(projectID)),
+		Path:              fmt.Sprintf("/projects/%s/generate", url.PathEscape(projectID)),
 		Headers:           headers,
 		Body:              body,
 		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "413": newPayloadTooLargeError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},

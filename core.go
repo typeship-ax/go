@@ -350,7 +350,7 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 				}
 				continue
 			}
-			transportErr := &TransportError{Method: req.Method, URL: endpoint, Err: err}
+			transportErr := &TransportError{Code: "transport_error", Method: req.Method, URL: endpoint, Err: err}
 			if c.onError != nil {
 				c.onError(transportErr, req.Method, req.Path)
 			}
@@ -383,7 +383,7 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 				}
 				continue
 			}
-			return &TransportError{Method: req.Method, URL: endpoint, Err: readErr}
+			return &TransportError{Code: "transport_error", Status: resp.StatusCode, RequestID: requestID, Body: body, Method: req.Method, URL: endpoint, Err: readErr}
 		}
 
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
@@ -396,7 +396,7 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 				return nil
 			}
 			if err := decodeBody(body, resp.Header.Get("Content-Type"), out); err != nil {
-				return fmt.Errorf("decode %s %s: %w", req.Method, req.Path, err)
+				return responseParseError(resp.StatusCode, body, requestID, err)
 			}
 			return nil
 		}
@@ -421,7 +421,7 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 		return apiErr
 	}
 
-	return &TransportError{Method: req.Method, URL: endpoint, Err: lastErr}
+	return &TransportError{Code: "transport_error", Method: req.Method, URL: endpoint, Err: lastErr}
 }
 
 func requestIDFromBody(body []byte) string {

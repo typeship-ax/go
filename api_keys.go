@@ -17,7 +17,7 @@ type APIKeysService struct {
 type APIKeysListParams struct {
 	// Limit Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 invalid_request. List query parameters must appear only once; unrecognized parameters also return 400.
 	Limit *int64 `json:"-"`
-	// Cursor Opaque cursor from the preceding page's next_cursor. Valid only for the same account, operation, filters, and ordering that issued it. Omit to start at the first page. Empty, malformed, or repeated cursors return 400 invalid_request. The page limit may change between requests.
+	// Cursor Opaque cursor from the preceding page's next_cursor. Valid only for the same organization, operation, filters, and ordering that issued it. Omit to start at the first page. Empty, malformed, or repeated cursors return 400 invalid_request. The page limit may change between requests.
 	Cursor *string `json:"-"`
 }
 
@@ -69,18 +69,18 @@ func (s *APIKeysService) List(ctx context.Context, params *APIKeysListParams, op
 	})
 }
 
-// Retrieve an API key.
+// Get an API key.
 //
 // Returns the key summary and its ETag for conditional revocation.
 //
 // GET /api-keys/{api_key_id}
-func (s *APIKeysService) Retrieve(ctx context.Context, apiKeyID string, opts ...RequestOption) (*APIKeyResponse, error) {
+func (s *APIKeysService) Get(ctx context.Context, apiKeyID string, opts ...RequestOption) (*APIKeyResponse, error) {
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/api-keys/%s", url.PathEscape(apiKeyID)),
 		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
 		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "apiKeys.retrieve",
+		SchemaKey:  "apiKeys.get",
 		Idempotent: true,
 	}
 	var out APIKeyResponse
@@ -94,7 +94,7 @@ func (s *APIKeysService) Retrieve(ctx context.Context, apiKeyID string, opts ...
 //
 // Revokes a key. Repeating the request returns the same result.
 //
-// With OAuth, members can revoke their own keys; organization admins can revoke any key. Organization API keys can revoke any key in their account.
+// With OAuth, members can revoke their own keys; organization admins can revoke any key. Organization API keys can revoke any key in their organization.
 // See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 //
 // DELETE /api-keys/{api_key_id}
