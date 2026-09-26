@@ -10,7 +10,7 @@ For complete input and output schemas, use [`api.json`](./api.json), the machine
 
 ### `client.Generate.Run(ctx, body, params)`
 
-Generate one package from a Spec
+Generate a package from a Spec
 
 `POST /generate`
 
@@ -1371,6 +1371,7 @@ Safety: **read** · Authentication: **required**
 | --- | --- | --- | --- | --- |
 | `params.Limit` | query | `*int64` | no | Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 input_invalid. List query parameters must appear only once; repeated or unrecognized parameters return 400 query_param_invalid. |
 | `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. Valid only for the same organization, operation, filters, and ordering that issued it. Omit to start at the first page. Empty or malformed cursors, and cursors issued for different filters, return 400 cursor_invalid; start again from the first page. Repeated cursors return 400 query_param_invalid. The page limit may change between requests. |
+| `params.Status` | query | `*APIKeysListParamsStatus` | no | Only keys with this status. |
 
 Returns: `*Iter[APIKey]` — auto-paginating (`for it.Next()` walks every page)
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*RateLimitedError` (429), `*InternalServerError` (500)
@@ -1416,14 +1417,14 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 
 Revoke an API key
 
-`DELETE /api-keys/{api_key_id}`
+`POST /api-keys/{api_key_id}/revoke`
 
-Revokes a key. Repeating the request returns the same result.
+Revokes a key immediately. The key stays listed with `status: revoked`. Repeating the request returns the same result.
 
 With OAuth, members can revoke their own keys; organization admins can revoke any key. Organization API keys can revoke any key in their organization.
 See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 
-Safety: **destructive** · Authentication: **required**
+Safety: **write** · Authentication: **required**
 
 | Parameter | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |

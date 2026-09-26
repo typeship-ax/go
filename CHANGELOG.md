@@ -3,7 +3,7 @@
 
 
 
-## 0.26.0 (2026-09-26) (79 breaking)
+## 0.26.0 (2026-09-26) (81 breaking)
 
 ### Added
 - `releases.retry()`: POST `/releases/{release_id}/retry`
@@ -16,6 +16,8 @@
 
 ### Changed
 - `generate.run()`
+  - `return-type-changed`: response.object added: "package" \| \(string &amp; \{\}\) \(required\)
+  - `documentation-changed`: summary or description changed
   - **breaking** `error-schema-changed`: error 400.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
   - **breaking** `error-schema-changed`: error 401.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
   - **breaking** `error-schema-changed`: error 403.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
@@ -384,18 +386,27 @@
   - **breaking** `error-schema-changed`: error 429.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
   - **breaking** `error-schema-changed`: error 500.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
 - `apiKeys.list()`
+  - `param-added`: request parameter.status added: "active" \| "revoked" \(optional\)
+  - **breaking** `return-type-changed`: response.data\[\].revoked removed \(was boolean\)
+  - `return-type-changed`: response.data\[\].status added: \("active" \| "revoked"\) \| \(string &amp; \{\}\) \(required\)
   - **breaking** `error-schema-changed`: error 400.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
   - **breaking** `error-schema-changed`: error 401.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
   - **breaking** `error-schema-changed`: error 403.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
   - **breaking** `error-schema-changed`: error 429.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
   - **breaking** `error-schema-changed`: error 500.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
 - `apiKeys.get()`
+  - **breaking** `return-type-changed`: response.revoked removed \(was boolean\)
+  - `return-type-changed`: response.status added: \("active" \| "revoked"\) \| \(string &amp; \{\}\) \(required\)
   - **breaking** `error-schema-changed`: error 401.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
   - **breaking** `error-schema-changed`: error 403.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
   - **breaking** `error-schema-changed`: error 404.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
   - **breaking** `error-schema-changed`: error 429.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
   - **breaking** `error-schema-changed`: error 500.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
 - `apiKeys.revoke()`
+  - **breaking** `return-type-changed`: response.revoked removed \(was boolean\)
+  - `return-type-changed`: response.status added: \("active" \| "revoked"\) \| \(string &amp; \{\}\) \(required\)
+  - `http-changed`: DELETE /api-keys/\{api\_key\_id\} -&gt; POST /api-keys/\{api\_key\_id\}/revoke
+  - `documentation-changed`: summary or description changed
   - **breaking** `error-schema-changed`: error 400.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
   - **breaking** `error-schema-changed`: error 401.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
   - **breaking** `error-schema-changed`: error 403.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
@@ -405,6 +416,8 @@
   - **breaking** `error-schema-changed`: error 500.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid"
 
 ### Package contract (breaking)
+- **Breaking:** SDK declaration `APIKey.Revoked` removed
+- **Breaking:** SDK declaration `APIKeyResponse.Revoked` removed
 - **Breaking:** SDK declaration `CompatibilityAPI` removed
 - **Breaking:** SDK declaration `CompatibilityAPIBreaking` removed
 - **Breaking:** SDK declaration `CompatibilityAPICompatible` removed
@@ -448,6 +461,12 @@
 - SDK declaration `API` added
 - SDK declaration `APIBreaking` added
 - SDK declaration `APICompatible` added
+- SDK declaration `APIKey.Status` added
+- SDK declaration `APIKeyResponse.Status` added
+- SDK declaration `APIKeysListParams.Status` added
+- SDK declaration `APIKeysListParamsStatus` added
+- SDK declaration `APIKeysListParamsStatusActive` added
+- SDK declaration `APIKeysListParamsStatusRevoked` added
 - SDK declaration `APIUnknown` added
 - SDK declaration `DeletedDelivery` added
 - SDK declaration `DeliveriesCreateParams` added
@@ -475,6 +494,7 @@
 - SDK declaration `ErrorCodeDeliveryExists` added
 - SDK declaration `ErrorCodeDraftTitleInvalid` added
 - SDK declaration `ErrorDetail` added
+- SDK declaration `GenerationResult.Object` added
 - SDK declaration `HostedMCPDeliveryCreateRequest` added
 - SDK declaration `Publication.Type` added
 - SDK declaration `PublicationResponse.Type` added

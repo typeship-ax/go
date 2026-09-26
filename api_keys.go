@@ -19,6 +19,8 @@ type APIKeysListParams struct {
 	Limit *int64 `json:"-"`
 	// Cursor Opaque cursor from the preceding page's next_cursor. Valid only for the same organization, operation, filters, and ordering that issued it. Omit to start at the first page. Empty or malformed cursors, and cursors issued for different filters, return 400 cursor_invalid; start again from the first page. Repeated cursors return 400 query_param_invalid. The page limit may change between requests.
 	Cursor *string `json:"-"`
+	// Status Only keys with this status.
+	Status *APIKeysListParamsStatus `json:"-"`
 }
 
 // APIKeysRevokeParams are the inputs for APIKeysService.Revoke.
@@ -48,6 +50,9 @@ func (s *APIKeysService) List(ctx context.Context, params *APIKeysListParams, op
 		}
 		if params.Cursor != nil {
 			query["cursor"] = *params.Cursor
+		}
+		if params.Status != nil {
+			query["status"] = *params.Status
 		}
 	}
 	req := request{
@@ -92,12 +97,12 @@ func (s *APIKeysService) Get(ctx context.Context, apiKeyID string, opts ...Reque
 
 // Revoke an API key.
 //
-// Revokes a key. Repeating the request returns the same result.
+// Revokes a key immediately. The key stays listed with `status: revoked`. Repeating the request returns the same result.
 //
 // With OAuth, members can revoke their own keys; organization admins can revoke any key. Organization API keys can revoke any key in their organization.
 // See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 //
-// DELETE /api-keys/{api_key_id}
+// POST /api-keys/{api_key_id}/revoke
 func (s *APIKeysService) Revoke(ctx context.Context, apiKeyID string, params *APIKeysRevokeParams, opts ...RequestOption) (*APIKeyResponse, error) {
 	headers := map[string]string{}
 	if params != nil {
@@ -106,13 +111,12 @@ func (s *APIKeysService) Revoke(ctx context.Context, apiKeyID string, params *AP
 		}
 	}
 	req := request{
-		Method:     "DELETE",
-		Path:       fmt.Sprintf("/api-keys/%s", url.PathEscape(apiKeyID)),
-		Headers:    headers,
-		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "412": newPreconditionFailedError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "apiKeys.revoke",
-		Idempotent: true,
+		Method:    "POST",
+		Path:      fmt.Sprintf("/api-keys/%s/revoke", url.PathEscape(apiKeyID)),
+		Headers:   headers,
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "412": newPreconditionFailedError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:  []map[string][]string{{"apiKey": {}}},
+		SchemaKey: "apiKeys.revoke",
 	}
 	var out APIKeyResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {

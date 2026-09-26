@@ -520,6 +520,8 @@ type PackageBehavior struct {
 
 // GenerationResult is an API model.
 type GenerationResult struct {
+	// Object One generated package. It has no ID: download it with download.url before download.expires_at.
+	Object   string              `json:"object"`
 	Files    []GeneratedFile     `json:"files"`
 	Download *GenerationDownload `json:"download,omitempty"`
 	Warnings []GenerationWarning `json:"warnings"`
@@ -4274,6 +4276,14 @@ const (
 	OrganizationPlanEnterprise OrganizationPlan = "enterprise"
 )
 
+// APIKeysListParamsStatus is one of "active", "revoked".
+type APIKeysListParamsStatus string
+
+const (
+	APIKeysListParamsStatusActive  APIKeysListParamsStatus = "active"
+	APIKeysListParamsStatusRevoked APIKeysListParamsStatus = "revoked"
+)
+
 // APIKeyList is an API model.
 type APIKeyList struct {
 	Object ListObject `json:"object"`
@@ -4291,10 +4301,11 @@ type APIKey struct {
 	Object string `json:"object"`
 	Name   string `json:"name"`
 	// Last4 Last four characters of the secret; the secret itself is never stored.
-	Last4      string  `json:"last4"`
-	Revoked    bool    `json:"revoked"`
-	LastUsedAt *string `json:"last_used_at"`
-	CreatedAt  string  `json:"created_at"`
+	Last4 string `json:"last4"`
+	// Status active: the key authenticates requests. revoked: it no longer does and cannot be restored; create a new key in the Console or with typeship login.
+	Status     APIKeysListParamsStatus `json:"status"`
+	LastUsedAt *string                 `json:"last_used_at"`
+	CreatedAt  string                  `json:"created_at"`
 	// UpdatedAt When the key last changed, such as its revocation.
 	UpdatedAt string     `json:"updated_at"`
 	RequestID *RequestID `json:"request_id,omitempty"`
@@ -4306,10 +4317,11 @@ type APIKeyResponse struct {
 	Object string `json:"object"`
 	Name   string `json:"name"`
 	// Last4 Last four characters of the secret; the secret itself is never stored.
-	Last4      string  `json:"last4"`
-	Revoked    bool    `json:"revoked"`
-	LastUsedAt *string `json:"last_used_at"`
-	CreatedAt  string  `json:"created_at"`
+	Last4 string `json:"last4"`
+	// Status active: the key authenticates requests. revoked: it no longer does and cannot be restored; create a new key in the Console or with typeship login.
+	Status     APIKeysListParamsStatus `json:"status"`
+	LastUsedAt *string                 `json:"last_used_at"`
+	CreatedAt  string                  `json:"created_at"`
 	// UpdatedAt When the key last changed, such as its revocation.
 	UpdatedAt string    `json:"updated_at"`
 	RequestID RequestID `json:"request_id"`
