@@ -56,7 +56,7 @@ func (s *PackagesService) Generate(ctx context.Context, body GenerateRequest, pa
 	}
 	var out GenerationResult
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -82,7 +82,7 @@ func (s *PackagesService) Download(ctx context.Context, params PackagesDownloadP
 	}
 	var out []byte
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return out, nil
 }

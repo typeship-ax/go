@@ -71,7 +71,7 @@ func (s *TargetsService) Create(ctx context.Context, body TargetCreateRequest, p
 	}
 	var out TargetResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -133,7 +133,7 @@ func (s *TargetsService) Get(ctx context.Context, targetID string, opts ...Reque
 	}
 	var out TargetResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -168,7 +168,7 @@ func (s *TargetsService) Update(ctx context.Context, targetID string, body Targe
 	}
 	var out TargetResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -198,7 +198,7 @@ func (s *TargetsService) Delete(ctx context.Context, targetID string, params *Ta
 	}
 	var out DeletedTarget
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -227,7 +227,7 @@ func (s *TargetsService) Adopt(ctx context.Context, targetID string, body Target
 	}
 	var out ReleaseResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }

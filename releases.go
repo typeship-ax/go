@@ -86,7 +86,7 @@ func (s *ReleasesService) Get(ctx context.Context, releaseID string, opts ...Req
 	}
 	var out ReleaseResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -118,7 +118,7 @@ func (s *ReleasesService) Retry(ctx context.Context, releaseID string, params *R
 	}
 	var out ReleaseResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }

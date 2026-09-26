@@ -27,7 +27,7 @@ func (s *OrganizationService) Get(ctx context.Context, opts ...RequestOption) (*
 	}
 	var out Organization
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }

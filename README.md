@@ -74,6 +74,8 @@ func main() {
 
 - **Bearer token** — `typeship.WithBearerToken` (or `WithBearerTokenFunc` for tokens that expire), sent as `Authorization: Bearer <token>`.
 
+`client.WithCredentials(...)` returns a client with different credentials that shares this client's HTTP client and settings, for per-user or per-tenant calls.
+
 `typeship.WithOnRequest` sees every request before it is sent, for headers every call needs (API version headers, tenant ids).
 
 ## Errors

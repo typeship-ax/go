@@ -110,7 +110,7 @@ func (s *SpecRevisionsService) Get(ctx context.Context, specRevisionID string, p
 	}
 	var out SpecRevisionResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }

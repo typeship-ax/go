@@ -90,7 +90,7 @@ func (s *APIKeysService) Get(ctx context.Context, apiKeyID string, opts ...Reque
 	}
 	var out APIKeyResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -120,7 +120,7 @@ func (s *APIKeysService) Revoke(ctx context.Context, apiKeyID string, params *AP
 	}
 	var out APIKeyResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }

@@ -5,6 +5,7 @@ package typeship
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -104,6 +105,12 @@ func (it *Iter[T]) FirstPage() (map[string]json.RawMessage, error) {
 func (it *Iter[T]) fetch() bool {
 	var raw map[string]json.RawMessage
 	if err := it.core.do(it.ctx, it.req, &raw, it.opts...); err != nil {
+		// A 304 to a conditional list request: nothing new to walk.
+		if errors.Is(err, errNotModified) {
+			it.started = true
+			it.done = true
+			return false
+		}
 		it.err = err
 		return false
 	}

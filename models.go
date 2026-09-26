@@ -1007,6 +1007,10 @@ type AuthenticationConfigParams struct {
 	ApprovalURL *Nullable[string] `json:"approval_url,omitempty"`
 	// Environments Authentication selections keyed by generated API environment name.
 	Environments *Nullable[map[string]AuthenticationEnvironmentParams] `json:"environments,omitempty"`
+	// CredentialVariables Environment variables the generated CLI, MCP server, and SDK environment fallbacks read, keyed by security scheme name. A string names the token or key variable; a Basic scheme takes { username, password }. Wins over the scheme's x-typeship-env extension. Without either, names derive from the package and scheme.
+	CredentialVariables *Nullable[map[string]AuthenticationConfigParamsCredentialVariablesValue] `json:"credential_variables,omitempty"`
+	// CredentialParameters Whether a parameter carries the operation's credential, keyed by operationId, "METHOD /path", or "*" for every operation, then by the parameter's wire name. true leaves the parameter out of generated signatures, CLI flags, and MCP tool input, because the configured credential already reaches the API; false keeps it. Wins over the parameter's x-typeship-credential extension and the generator's inference.
+	CredentialParameters *Nullable[map[string]map[string]bool] `json:"credential_parameters,omitempty"`
 }
 
 // UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
@@ -1037,6 +1041,12 @@ func (v *AuthenticationConfigParams) UnmarshalJSON(data []byte) error {
 	}
 	if string(fields["environments"]) == "null" {
 		decoded.Environments = NullableNull[map[string]AuthenticationEnvironmentParams]()
+	}
+	if string(fields["credential_variables"]) == "null" {
+		decoded.CredentialVariables = NullableNull[map[string]AuthenticationConfigParamsCredentialVariablesValue]()
+	}
+	if string(fields["credential_parameters"]) == "null" {
+		decoded.CredentialParameters = NullableNull[map[string]map[string]bool]()
 	}
 	*v = AuthenticationConfigParams(decoded)
 	return nil
@@ -1240,6 +1250,73 @@ func (v *AuthenticationEnvironmentParams) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// AuthenticationConfigParamsCredentialVariablesValue is one of string, AuthenticationConfigParamsCredentialVariablesValueVariant2.
+// Go has no sum types, so it holds the JSON as received and decodes on
+// request: try the As* accessors, or switch on Discriminator() when the
+// spec names one.
+type AuthenticationConfigParamsCredentialVariablesValue struct {
+	union json.RawMessage
+}
+
+// MarshalJSON writes the value as it was set or received.
+func (u AuthenticationConfigParamsCredentialVariablesValue) MarshalJSON() ([]byte, error) {
+	if u.union == nil {
+		return []byte("null"), nil
+	}
+	return u.union, nil
+}
+
+// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
+func (u *AuthenticationConfigParamsCredentialVariablesValue) UnmarshalJSON(data []byte) error {
+	u.union = append(u.union[:0], data...)
+	return nil
+}
+
+// Raw returns the JSON exactly as received.
+func (u AuthenticationConfigParamsCredentialVariablesValue) Raw() json.RawMessage {
+	return u.union
+}
+
+// AsString decodes the value as string.
+func (u AuthenticationConfigParamsCredentialVariablesValue) AsString() (string, error) {
+	var v string
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromString sets the value to a string.
+func (u *AuthenticationConfigParamsCredentialVariablesValue) FromString(v string) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AsAuthenticationConfigParamsCredentialVariablesValueVariant2 decodes the value as AuthenticationConfigParamsCredentialVariablesValueVariant2.
+func (u AuthenticationConfigParamsCredentialVariablesValue) AsAuthenticationConfigParamsCredentialVariablesValueVariant2() (AuthenticationConfigParamsCredentialVariablesValueVariant2, error) {
+	var v AuthenticationConfigParamsCredentialVariablesValueVariant2
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromAuthenticationConfigParamsCredentialVariablesValueVariant2 sets the value to a AuthenticationConfigParamsCredentialVariablesValueVariant2.
+func (u *AuthenticationConfigParamsCredentialVariablesValue) FromAuthenticationConfigParamsCredentialVariablesValueVariant2(v AuthenticationConfigParamsCredentialVariablesValueVariant2) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AuthenticationConfigParamsCredentialVariablesValueVariant2 is an API model.
+type AuthenticationConfigParamsCredentialVariablesValueVariant2 struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 // CLIBehaviorParams is an API model. How the generated CLI behaves. Part of Config.
 type CLIBehaviorParams struct {
 	// CommandName Command users run, independent of how the CLI is distributed.
@@ -1427,6 +1504,10 @@ type AuthenticationConfigResponse struct {
 	ApprovalURL *string `json:"approval_url,omitempty"`
 	// Environments Authentication selections keyed by generated API environment name.
 	Environments map[string]AuthenticationEnvironmentResponse `json:"environments,omitempty"`
+	// CredentialVariables Environment variables the generated CLI, MCP server, and SDK environment fallbacks read, keyed by security scheme name. A string names the token or key variable; a Basic scheme takes { username, password }. Wins over the scheme's x-typeship-env extension. Without either, names derive from the package and scheme.
+	CredentialVariables map[string]AuthenticationConfigResponseCredentialVariablesValue `json:"credential_variables,omitempty"`
+	// CredentialParameters Whether a parameter carries the operation's credential, keyed by operationId, "METHOD /path", or "*" for every operation, then by the parameter's wire name. true leaves the parameter out of generated signatures, CLI flags, and MCP tool input, because the configured credential already reaches the API; false keeps it. Wins over the parameter's x-typeship-credential extension and the generator's inference.
+	CredentialParameters map[string]map[string]bool `json:"credential_parameters,omitempty"`
 }
 
 // OAuthServerResponse is an API model. Authorization-server metadata used by generated OAuth flows. Secrets and runtime credentials are never accepted here.
@@ -1481,6 +1562,73 @@ type AuthenticationEnvironmentResponse struct {
 	Scopes           []string `json:"scopes,omitempty"`
 	Audience         *string  `json:"audience,omitempty"`
 	Resource         *string  `json:"resource,omitempty"`
+}
+
+// AuthenticationConfigResponseCredentialVariablesValue is one of string, AuthenticationConfigResponseCredentialVariablesValueVariant2.
+// Go has no sum types, so it holds the JSON as received and decodes on
+// request: try the As* accessors, or switch on Discriminator() when the
+// spec names one.
+type AuthenticationConfigResponseCredentialVariablesValue struct {
+	union json.RawMessage
+}
+
+// MarshalJSON writes the value as it was set or received.
+func (u AuthenticationConfigResponseCredentialVariablesValue) MarshalJSON() ([]byte, error) {
+	if u.union == nil {
+		return []byte("null"), nil
+	}
+	return u.union, nil
+}
+
+// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
+func (u *AuthenticationConfigResponseCredentialVariablesValue) UnmarshalJSON(data []byte) error {
+	u.union = append(u.union[:0], data...)
+	return nil
+}
+
+// Raw returns the JSON exactly as received.
+func (u AuthenticationConfigResponseCredentialVariablesValue) Raw() json.RawMessage {
+	return u.union
+}
+
+// AsString decodes the value as string.
+func (u AuthenticationConfigResponseCredentialVariablesValue) AsString() (string, error) {
+	var v string
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromString sets the value to a string.
+func (u *AuthenticationConfigResponseCredentialVariablesValue) FromString(v string) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AsAuthenticationConfigResponseCredentialVariablesValueVariant2 decodes the value as AuthenticationConfigResponseCredentialVariablesValueVariant2.
+func (u AuthenticationConfigResponseCredentialVariablesValue) AsAuthenticationConfigResponseCredentialVariablesValueVariant2() (AuthenticationConfigResponseCredentialVariablesValueVariant2, error) {
+	var v AuthenticationConfigResponseCredentialVariablesValueVariant2
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromAuthenticationConfigResponseCredentialVariablesValueVariant2 sets the value to a AuthenticationConfigResponseCredentialVariablesValueVariant2.
+func (u *AuthenticationConfigResponseCredentialVariablesValue) FromAuthenticationConfigResponseCredentialVariablesValueVariant2(v AuthenticationConfigResponseCredentialVariablesValueVariant2) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AuthenticationConfigResponseCredentialVariablesValueVariant2 is an API model.
+type AuthenticationConfigResponseCredentialVariablesValueVariant2 struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 // CLIBehaviorResponse is an API model. How the generated CLI behaves. Part of Config.
@@ -4004,6 +4152,10 @@ type AuthenticationConfig struct {
 	ApprovalURL *string `json:"approval_url,omitempty"`
 	// Environments Authentication selections keyed by generated API environment name.
 	Environments map[string]AuthenticationEnvironment `json:"environments,omitempty"`
+	// CredentialVariables Environment variables the generated CLI, MCP server, and SDK environment fallbacks read, keyed by security scheme name. A string names the token or key variable; a Basic scheme takes { username, password }. Wins over the scheme's x-typeship-env extension. Without either, names derive from the package and scheme.
+	CredentialVariables map[string]AuthenticationConfigCredentialVariablesValue `json:"credential_variables,omitempty"`
+	// CredentialParameters Whether a parameter carries the operation's credential, keyed by operationId, "METHOD /path", or "*" for every operation, then by the parameter's wire name. true leaves the parameter out of generated signatures, CLI flags, and MCP tool input, because the configured credential already reaches the API; false keeps it. Wins over the parameter's x-typeship-credential extension and the generator's inference.
+	CredentialParameters map[string]map[string]bool `json:"credential_parameters,omitempty"`
 }
 
 // OAuthServer is an API model. Authorization-server metadata used by generated OAuth flows. Secrets and runtime credentials are never accepted here.
@@ -4058,6 +4210,73 @@ type AuthenticationEnvironment struct {
 	Scopes           []string `json:"scopes,omitempty"`
 	Audience         *string  `json:"audience,omitempty"`
 	Resource         *string  `json:"resource,omitempty"`
+}
+
+// AuthenticationConfigCredentialVariablesValue is one of string, AuthenticationConfigCredentialVariablesValueVariant2.
+// Go has no sum types, so it holds the JSON as received and decodes on
+// request: try the As* accessors, or switch on Discriminator() when the
+// spec names one.
+type AuthenticationConfigCredentialVariablesValue struct {
+	union json.RawMessage
+}
+
+// MarshalJSON writes the value as it was set or received.
+func (u AuthenticationConfigCredentialVariablesValue) MarshalJSON() ([]byte, error) {
+	if u.union == nil {
+		return []byte("null"), nil
+	}
+	return u.union, nil
+}
+
+// UnmarshalJSON keeps the raw JSON so any variant can be decoded later.
+func (u *AuthenticationConfigCredentialVariablesValue) UnmarshalJSON(data []byte) error {
+	u.union = append(u.union[:0], data...)
+	return nil
+}
+
+// Raw returns the JSON exactly as received.
+func (u AuthenticationConfigCredentialVariablesValue) Raw() json.RawMessage {
+	return u.union
+}
+
+// AsString decodes the value as string.
+func (u AuthenticationConfigCredentialVariablesValue) AsString() (string, error) {
+	var v string
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromString sets the value to a string.
+func (u *AuthenticationConfigCredentialVariablesValue) FromString(v string) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AsAuthenticationConfigCredentialVariablesValueVariant2 decodes the value as AuthenticationConfigCredentialVariablesValueVariant2.
+func (u AuthenticationConfigCredentialVariablesValue) AsAuthenticationConfigCredentialVariablesValueVariant2() (AuthenticationConfigCredentialVariablesValueVariant2, error) {
+	var v AuthenticationConfigCredentialVariablesValueVariant2
+	err := json.Unmarshal(u.union, &v)
+	return v, err
+}
+
+// FromAuthenticationConfigCredentialVariablesValueVariant2 sets the value to a AuthenticationConfigCredentialVariablesValueVariant2.
+func (u *AuthenticationConfigCredentialVariablesValue) FromAuthenticationConfigCredentialVariablesValueVariant2(v AuthenticationConfigCredentialVariablesValueVariant2) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	u.union = encoded
+	return nil
+}
+
+// AuthenticationConfigCredentialVariablesValueVariant2 is an API model.
+type AuthenticationConfigCredentialVariablesValueVariant2 struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 // CLIBehavior is an API model. How the generated CLI behaves. Part of Config.

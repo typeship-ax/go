@@ -72,7 +72,7 @@ func (s *ProjectsService) Create(ctx context.Context, body CreateProjectRequest,
 	}
 	var out ProjectResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -133,7 +133,7 @@ func (s *ProjectsService) Get(ctx context.Context, projectID string, opts ...Req
 	}
 	var out ProjectResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -167,7 +167,7 @@ func (s *ProjectsService) Update(ctx context.Context, projectID string, body Upd
 	}
 	var out ProjectResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -196,7 +196,7 @@ func (s *ProjectsService) Delete(ctx context.Context, projectID string, params *
 	}
 	var out DeletedProject
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -227,7 +227,7 @@ func (s *ProjectsService) Generate(ctx context.Context, projectID string, body G
 	}
 	var out GenerationBatch
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }

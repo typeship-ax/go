@@ -105,7 +105,7 @@ func (s *DraftsService) Get(ctx context.Context, draftID string, opts ...Request
 	}
 	var out DraftResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -139,7 +139,7 @@ func (s *DraftsService) Update(ctx context.Context, draftID string, body DraftUp
 	}
 	var out DraftResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -209,7 +209,7 @@ func (s *DraftsService) Resolve(ctx context.Context, draftID string, body DraftR
 	}
 	var out DraftResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -230,7 +230,7 @@ func (s *DraftsService) Recover(ctx context.Context, draftID string, body DraftR
 	}
 	var out DraftResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }

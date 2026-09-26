@@ -42,7 +42,7 @@ func (s *FilesService) Get(ctx context.Context, fileID string, params *FilesGetP
 	}
 	var out FileResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }

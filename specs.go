@@ -41,7 +41,7 @@ func (s *SpecsService) Get(ctx context.Context, specID string, opts ...RequestOp
 	}
 	var out Spec
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -78,7 +78,7 @@ func (s *SpecsService) Update(ctx context.Context, specID string, body SpecUpdat
 	}
 	var out Spec
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -106,7 +106,7 @@ func (s *SpecsService) Refresh(ctx context.Context, specID string, params *Specs
 	}
 	var out Spec
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }

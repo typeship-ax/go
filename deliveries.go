@@ -69,7 +69,7 @@ func (s *DeliveriesService) Create(ctx context.Context, body DeliveryCreateReque
 	}
 	var out DeliveryResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -133,7 +133,7 @@ func (s *DeliveriesService) Get(ctx context.Context, deliveryID string, opts ...
 	}
 	var out DeliveryResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -167,7 +167,7 @@ func (s *DeliveriesService) Update(ctx context.Context, deliveryID string, body 
 	}
 	var out DeliveryResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
@@ -198,7 +198,7 @@ func (s *DeliveriesService) Delete(ctx context.Context, deliveryID string, param
 	}
 	var out DeletedDelivery
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }

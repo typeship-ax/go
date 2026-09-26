@@ -36,6 +36,8 @@
   - `error-schema-changed`: error 500.errors\[\].code enum value removed: "plan\_limit\_reached"
   - **breaking** `error-schema-changed`: error 500.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid", "feature\_not\_available", "input\_duplicate", "input\_format\_invalid", "input\_missing", "input\_too\_long", "input\_too\_short", "input\_type\_invalid", "input\_unknown", "quota\_exceeded"
 - `projects.create()`
+  - `body-field-type-changed`: request body.config.auth.credential\_parameters added: Record&lt;string, Record&lt;string, boolean&gt;&gt; \| null \(optional\)
+  - `body-field-type-changed`: request body.config.auth.credential\_variables added: Record&lt;string, string \| \{   username: string;   password: string; \}&gt; \| null \(optional\)
   - **breaking** `return-type-changed`: response type changed: Project -&gt; ProjectResponse
   - `return-type-changed`: response intersection added: Project
   - `return-type-changed`: response intersection added: ResponseMetadata
@@ -108,6 +110,8 @@
   - `error-schema-changed`: error 502.errors\[\].code enum value removed: "plan\_limit\_reached"
   - **breaking** `error-schema-changed`: error 502.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid", "feature\_not\_available", "input\_duplicate", "input\_format\_invalid", "input\_missing", "input\_too\_long", "input\_too\_short", "input\_type\_invalid", "input\_unknown", "quota\_exceeded"
 - `projects.update()`
+  - `body-field-type-changed`: request body.config.auth.credential\_parameters added: Record&lt;string, Record&lt;string, boolean&gt;&gt; \| null \(optional\)
+  - `body-field-type-changed`: request body.config.auth.credential\_variables added: Record&lt;string, string \| \{   username: string;   password: string; \}&gt; \| null \(optional\)
   - **breaking** `return-type-changed`: response type changed: Project -&gt; ProjectResponse
   - `return-type-changed`: response intersection added: Project
   - `return-type-changed`: response intersection added: ResponseMetadata
@@ -811,14 +815,31 @@
 - SDK declaration `API` added
 - SDK declaration `APIBreaking` added
 - SDK declaration `APICompatible` added
+- SDK declaration `APIError.RateLimit` added
 - SDK declaration `APIKey.Status` added
 - SDK declaration `APIKeyResponse.Status` added
 - SDK declaration `APIKeysListParams.Status` added
 - SDK declaration `APIKeysListParamsStatus` added
 - SDK declaration `APIKeysListParamsStatusActive` added
 - SDK declaration `APIKeysListParamsStatusRevoked` added
+- SDK declaration `APIResponse.ETag` added
+- SDK declaration `APIResponse.LastModified` added
+- SDK declaration `APIResponse.NotModified` added
 - SDK declaration `APIUnknown` added
+- SDK declaration `AuthenticationConfig.CredentialParameters` added
+- SDK declaration `AuthenticationConfig.CredentialVariables` added
+- SDK declaration `AuthenticationConfigCredentialVariablesValue` added
+- SDK declaration `AuthenticationConfigCredentialVariablesValueVariant2` added
+- SDK declaration `AuthenticationConfigParams.CredentialParameters` added
+- SDK declaration `AuthenticationConfigParams.CredentialVariables` added
+- SDK declaration `AuthenticationConfigParamsCredentialVariablesValue` added
+- SDK declaration `AuthenticationConfigParamsCredentialVariablesValueVariant2` added
+- SDK declaration `AuthenticationConfigResponse.CredentialParameters` added
+- SDK declaration `AuthenticationConfigResponse.CredentialVariables` added
+- SDK declaration `AuthenticationConfigResponseCredentialVariablesValue` added
+- SDK declaration `AuthenticationConfigResponseCredentialVariablesValueVariant2` added
 - SDK declaration `Client.Packages` added
+- SDK declaration `Client.WithCredentials` added
 - SDK declaration `DeletedDelivery` added
 - SDK declaration `DeliveriesCreateParams` added
 - SDK declaration `DeliveriesDeleteParams` added
@@ -866,6 +887,7 @@
 - SDK declaration `PackagesDownloadParams` added
 - SDK declaration `PackagesGenerateParams` added
 - SDK declaration `PackagesService` added
+- SDK declaration `PayloadError` added
 - SDK declaration `ProjectResponse` added
 - SDK declaration `Publication.Type` added
 - SDK declaration `PublicationType` added
@@ -874,6 +896,8 @@
 - SDK declaration `PublicationTypeMCP` added
 - SDK declaration `PublicationTypeNpm` added
 - SDK declaration `PublicationTypePypi` added
+- SDK declaration `RateLimit` added
+- SDK declaration `RateLimitError` added
 - SDK declaration `Release.ReleaseChannel` added
 - SDK declaration `Release.UpdatedAt` added
 - SDK declaration `ReleaseResponse.ReleaseChannel` added
@@ -885,6 +909,9 @@
 - SDK declaration `SpecRevisionsGetParamsFilter` added
 - SDK declaration `SpecRevisionsGetParamsFilterBlocking` added
 - SDK declaration `SpecRevisionsGetParamsFilterIntroduced` added
+- SDK declaration `WithBearerTokenFuncContext` added
+- SDK declaration `WithCredentialFuncContext` added
+- SDK declaration `WithMaxRetryWait` added
 ## 0.25.0 (2026-09-25) (59 breaking)
 
 ### Changed

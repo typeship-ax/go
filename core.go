@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -57,6 +58,41 @@ type APIResponse struct {
 	// Body preserves the raw response so fields and discriminator variants
 	// added after this SDK was generated remain recoverable.
 	Body []byte
+	// NotModified is true for a 304: a conditional request (If-None-Match,
+	// If-Modified-Since) matched, and the call returned no value and no error.
+	NotModified bool
+}
+
+// ETag is the response's ETag header, for a later If-None-Match.
+func (r *APIResponse) ETag() string { return r.Header.Get("ETag") }
+
+// LastModified is the response's Last-Modified header, for a later
+// If-Modified-Since.
+func (r *APIResponse) LastModified() string { return r.Header.Get("Last-Modified") }
+
+// errNotModified is how the core tells a generated method that a 304
+// answered a conditional request; the method returns a nil value and a nil
+// error, and WithAPIResponse reports NotModified.
+var errNotModified = errors.New("not modified")
+
+// notModified turns the core's 304 signal into "no value, no error".
+func notModified(err error) error {
+	if errors.Is(err, errNotModified) {
+		return nil
+	}
+	return err
+}
+
+// requestHeaderNames carry a request identifier, most specific first.
+var requestHeaderNames = []string{"Request-Id", "X-Request-Id", "X-Github-Request-Id", "Twilio-Request-Id", "X-Amzn-Requestid", "X-Slack-Req-Id", "Cf-Ray"}
+
+func requestIDFromHeader(header http.Header) string {
+	for _, name := range requestHeaderNames {
+		if value := header.Get(name); value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 // WithAPIResponse fills into with the metadata of the last HTTP response
@@ -100,21 +136,67 @@ type RetryPolicy struct {
 
 var defaultRetryStatuses = []int{408, 429, 500, 502, 503, 504}
 
+// authValue is one credential's wire value: a static string, or a callback
+// resolved with the request context before every send. invalidate, when
+// set, drops a cached token so the next resolve fetches a fresh one.
 type authValue struct {
-	static string
-	fn     func() (string, error)
+	static     string
+	fn         func(context.Context) (string, error)
+	invalidate func()
 }
 
-func (a authValue) resolve() (string, error) {
+// resolve returns the value to send. A callback's error is returned
+// unchanged, so errors.Is and errors.As see the caller's own error.
+func (a authValue) resolve(ctx context.Context) (string, error) {
 	if a.fn != nil {
-		return a.fn()
+		return a.fn(ctx)
 	}
 	return a.static, nil
+}
+
+// withPrefix prepends a scheme word such as "Bearer " to the value.
+func (a authValue) withPrefix(prefix string) authValue {
+	if a.fn == nil {
+		return authValue{static: prefix + a.static}
+	}
+	fn := a.fn
+	return authValue{invalidate: a.invalidate, fn: func(ctx context.Context) (string, error) {
+		value, err := fn(ctx)
+		if err != nil {
+			return "", err
+		}
+		return prefix + value, nil
+	}}
 }
 
 type securityCredential struct {
 	Headers map[string]authValue
 	Query   map[string]authValue
+}
+
+// refreshable reports whether any selected value comes from a callback or a
+// client-credentials grant: only those can change when a request is resent
+// after a 401. A static credential would send the same rejected value again.
+func (s securityCredential) refreshable() bool {
+	for _, source := range []map[string]authValue{s.Headers, s.Query} {
+		for _, value := range source {
+			if value.fn != nil {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// invalidate drops every cached token the selected values hold.
+func (s securityCredential) invalidate() {
+	for _, source := range []map[string]authValue{s.Headers, s.Query} {
+		for _, value := range source {
+			if value.invalidate != nil {
+				value.invalidate()
+			}
+		}
+	}
 }
 
 func selectSecurity(requirements []map[string][]string, credentials map[string]securityCredential) securityCredential {
@@ -170,13 +252,15 @@ type core struct {
 	userAgent          string
 	timeout            time.Duration
 	maxRetries         int
-	retry              RetryPolicy
-	debug              func(DebugEvent)
-	globalsVals        map[string]any
-	onRequest          func(*http.Request)
-	onResponse         func(*http.Response)
-	onError            func(error, string, string)
-	validate           ValidateMode
+	// maxRetryWait is the longest server-requested wait a retry honors.
+	maxRetryWait time.Duration
+	retry        RetryPolicy
+	debug        func(DebugEvent)
+	globalsVals  map[string]any
+	onRequest    func(*http.Request)
+	onResponse   func(*http.Response)
+	onError      func(error, string, string)
+	validate     ValidateMode
 }
 
 // Ptr returns a pointer to v, for the optional fields and parameters this
@@ -235,16 +319,19 @@ const (
 // request describes one API call. The generated service methods build it;
 // callers never see it.
 type request struct {
-	Security          []map[string][]string
-	Credentials       securityCredential
-	Method            string
-	Path              string
-	Query             map[string]any
-	Headers           map[string]string
-	Body              any
-	BodyKind          string
-	ContentType       string
-	Errors            map[string]func(int, []byte, string) error
+	Security    []map[string][]string
+	Credentials securityCredential
+	Method      string
+	Path        string
+	Query       map[string]any
+	Headers     map[string]string
+	Body        any
+	BodyKind    string
+	ContentType string
+	Errors      map[string]func(int, []byte, string) error
+	// FailureFlag names the success envelope's flag (ok, success): false
+	// there is a failure reported inside a 2xx response.
+	FailureFlag       string
 	Idempotent        bool
 	IdempotencyHeader string
 	Retry             *RetryPolicy
@@ -252,6 +339,11 @@ type request struct {
 }
 
 func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOption) error {
+	// Set only on a client derived by WithCredentials with invalid options;
+	// New reports the same error at construction.
+	if c.configurationError != nil {
+		return c.configurationError
+	}
 	req.Credentials = selectSecurity(req.Security, c.credentials)
 	cfg := &requestConfig{}
 	for _, opt := range opts {
@@ -320,8 +412,13 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 
 	var lastErr error
 	endpoint := ""
+	// sent counts HTTP attempts for debug events; attempt counts against the
+	// retry budget, which a 401 re-authentication does not spend.
+	sent := 0
+	reauthenticated := false
 	for attempt := 0; attempt <= attempts; attempt++ {
-		endpoint, err = c.buildURL(req.Path, req.Query, req.Credentials.Query)
+		sent++
+		endpoint, err = c.buildURL(ctx, req.Path, req.Query, req.Credentials.Query)
 		if err != nil {
 			return err
 		}
@@ -340,7 +437,7 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 			c.emitDebug(DebugEvent{
 				Method:     req.Method,
 				Path:       req.Path,
-				Attempt:    attempt + 1,
+				Attempt:    sent,
 				DurationMS: time.Since(started).Milliseconds(),
 				Err:        err,
 			})
@@ -359,19 +456,16 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 		readErr := err
 		requestID := requestIDFromBody(body)
 		if requestID == "" {
-			requestID = resp.Header.Get("Request-Id")
-		}
-		if requestID == "" {
-			requestID = resp.Header.Get("X-Request-Id")
+			requestID = requestIDFromHeader(resp.Header)
 		}
 		if cfg.response != nil {
-			*cfg.response = APIResponse{StatusCode: resp.StatusCode, Header: resp.Header.Clone(), RequestID: requestID, Body: append([]byte(nil), body...)}
+			*cfg.response = APIResponse{StatusCode: resp.StatusCode, Header: resp.Header.Clone(), RequestID: requestID, Body: append([]byte(nil), body...), NotModified: resp.StatusCode == http.StatusNotModified}
 		}
 		c.emitDebug(DebugEvent{
 			Method:     req.Method,
 			Path:       req.Path,
 			Status:     resp.StatusCode,
-			Attempt:    attempt + 1,
+			Attempt:    sent,
 			DurationMS: time.Since(started).Milliseconds(),
 			RequestID:  requestID,
 		})
@@ -386,7 +480,24 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 			return &TransportError{Code: "transport_error", Status: resp.StatusCode, RequestID: requestID, Body: body, Method: req.Method, URL: endpoint, Err: readErr}
 		}
 
+		// A conditional request matched: nothing changed, and nothing failed.
+		if resp.StatusCode == http.StatusNotModified {
+			return errNotModified
+		}
+
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			// Checked before validation: a failure body rarely matches the
+			// success schema, and the failure is the news.
+			if req.FailureFlag != "" && len(body) > 0 {
+				var probe map[string]json.RawMessage
+				if json.Unmarshal(body, &probe) == nil && string(bytes.TrimSpace(probe[req.FailureFlag])) == "false" {
+					payloadErr := newPayloadError(resp.StatusCode, body, requestID, "")
+					if c.onError != nil {
+						c.onError(payloadErr, req.Method, req.Path)
+					}
+					return payloadErr
+				}
+			}
 			if len(opSchema.Res) > 0 && len(body) > 0 {
 				if err := c.validateBody("response", req.Method, req.Path, body, opSchema.Res); err != nil {
 					return err
@@ -401,11 +512,32 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 			return nil
 		}
 
-		// 429 is safe to retry for any verb; other retryable statuses only
-		// when the call is idempotent.
-		if attempt < attempts && containsInt(statuses, resp.StatusCode) && (retryAllowed || resp.StatusCode == 429) {
-			wait := retryAfter(resp.Header.Get("Retry-After"))
-			if wait == 0 {
+		// A 401 against a callback or client-credentials token resends once
+		// with a freshly resolved credential, outside the retry budget. The
+		// payload is already buffered, so the resend carries the same body.
+		if resp.StatusCode == http.StatusUnauthorized && !reauthenticated && req.Credentials.refreshable() {
+			reauthenticated = true
+			req.Credentials.invalidate()
+			attempt--
+			continue
+		}
+
+		// 429 is safe to retry for any verb; other retryable statuses, and a
+		// rate-limited 403, only when the call is idempotent. A server-requested
+		// wait beyond the ceiling returns now, with the reset time in the
+		// error, rather than holding the caller.
+		limit := rateLimitInfo(resp.StatusCode, resp.Header, time.Now())
+		retryable := containsInt(statuses, resp.StatusCode) || (limit != nil && resp.StatusCode == http.StatusForbidden)
+		wait, requested := retryAfter(resp.Header.Get("Retry-After"))
+		if limit != nil && limit.RetryAfter != nil {
+			wait, requested = *limit.RetryAfter, true
+		}
+		ceiling := c.maxRetryWait
+		if ceiling <= 0 {
+			ceiling = time.Minute
+		}
+		if attempt < attempts && retryable && (retryAllowed || resp.StatusCode == 429) && (!requested || wait <= ceiling) {
+			if !requested {
 				wait = backoff(attempt, policy)
 			}
 			if sleepErr := sleepCtx(ctx, wait); sleepErr != nil {
@@ -414,7 +546,7 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 			continue
 		}
 
-		apiErr := apiError(resp.StatusCode, body, requestID, req.Errors)
+		apiErr := apiError(resp.StatusCode, body, requestID, resp.Header, req.Errors)
 		if c.onError != nil {
 			c.onError(apiErr, req.Method, req.Path)
 		}
@@ -461,7 +593,7 @@ func (c *core) newRequest(
 	// Credentials resolve per attempt so callback-based tokens can refresh.
 	for _, source := range []map[string]authValue{c.headers, req.Credentials.Headers} {
 		for name, value := range source {
-			resolved, err := value.resolve()
+			resolved, err := value.resolve(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -534,12 +666,12 @@ func (c *core) emitDebug(event DebugEvent) {
 	}
 }
 
-func (c *core) buildURL(path string, query map[string]any, authQuery ...map[string]authValue) (string, error) {
+func (c *core) buildURL(ctx context.Context, path string, query map[string]any, authQuery ...map[string]authValue) (string, error) {
 	endpoint := strings.TrimRight(c.baseURL, "/") + path
 	values := url.Values{}
 	for _, source := range append([]map[string]authValue{c.query}, authQuery...) {
 		for name, value := range source {
-			resolved, err := value.resolve()
+			resolved, err := value.resolve(ctx)
 			if err != nil {
 				return "", err
 			}
@@ -724,30 +856,35 @@ func backoff(attempt int, policy RetryPolicy) time.Duration {
 	return time.Duration(mathrand.Int63n(int64(cap) + 1))
 }
 
-func retryAfter(header string) time.Duration {
+// retryAfter reads Retry-After on a retryable status that is not a rate
+// limit (a 503). The bool is false when the header is absent or unreadable.
+func retryAfter(header string) (time.Duration, bool) {
 	if header == "" {
-		return 0
+		return 0, false
 	}
 	if seconds, err := strconv.ParseFloat(header, 64); err == nil {
 		if seconds < 0 {
-			return 0
+			return 0, true
 		}
-		if seconds > 60 {
-			seconds = 60
-		}
-		return time.Duration(seconds * float64(time.Second))
+		return time.Duration(seconds * float64(time.Second)), true
 	}
 	if when, err := http.ParseTime(header); err == nil {
 		wait := time.Until(when)
 		if wait < 0 {
-			return 0
+			return 0, true
 		}
-		if wait > time.Minute {
-			wait = time.Minute
-		}
-		return wait
+		return wait, true
 	}
-	return 0
+	return 0, false
+}
+
+func stringIn(haystack []string, needle string) bool {
+	for _, value := range haystack {
+		if value == needle {
+			return true
+		}
+	}
+	return false
 }
 
 func sleepCtx(ctx context.Context, d time.Duration) error {

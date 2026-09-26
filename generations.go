@@ -52,7 +52,7 @@ func (s *GenerationsService) Get(ctx context.Context, generationID string, opts 
 	}
 	var out GenerationResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
