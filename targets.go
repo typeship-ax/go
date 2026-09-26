@@ -13,6 +13,12 @@ type TargetsService struct {
 	core *core
 }
 
+// TargetsCreateParams are the inputs for TargetsService.Create.
+type TargetsCreateParams struct {
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	IdempotencyKey *string `json:"-"`
+}
+
 // TargetsListParams are the inputs for TargetsService.List.
 type TargetsListParams struct {
 	// Limit Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 input_invalid. List query parameters must appear only once; repeated or unrecognized parameters return 400 query_param_invalid.
@@ -23,10 +29,10 @@ type TargetsListParams struct {
 	ProjectID *ProjectID `json:"-"`
 }
 
-// TargetsCreateParams are the inputs for TargetsService.Create.
-type TargetsCreateParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
-	IdempotencyKey *string `json:"-"`
+// TargetsUpdateParams are the inputs for TargetsService.Update.
+type TargetsUpdateParams struct {
+	// IfMatch ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes.
+	IfMatch *string `json:"-"`
 }
 
 // TargetsDeleteParams are the inputs for TargetsService.Delete.
@@ -35,16 +41,39 @@ type TargetsDeleteParams struct {
 	IfMatch *string `json:"-"`
 }
 
-// TargetsUpdateParams are the inputs for TargetsService.Update.
-type TargetsUpdateParams struct {
-	// IfMatch ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes.
-	IfMatch *string `json:"-"`
-}
-
 // TargetsAdoptParams are the inputs for TargetsService.Adopt.
 type TargetsAdoptParams struct {
 	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
 	IdempotencyKey *string `json:"-"`
+}
+
+// Create a Target.
+//
+// Creates a Target with its own configuration, Deliveries, and release history. Multiple Targets can use the same generator.
+//
+// POST /targets
+func (s *TargetsService) Create(ctx context.Context, body TargetCreateRequest, params *TargetsCreateParams, opts ...RequestOption) (*TargetResponse, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IdempotencyKey != nil {
+			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
+		}
+	}
+	req := request{
+		Method:            "POST",
+		Path:              "/targets",
+		Headers:           headers,
+		Body:              body,
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:          []map[string][]string{{"apiKey": {}}},
+		SchemaKey:         "targets.create",
+		IdempotencyHeader: "Idempotency-Key",
+	}
+	var out TargetResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, notModified(err)
+	}
+	return &out, nil
 }
 
 // List Targets.
@@ -90,35 +119,6 @@ func (s *TargetsService) List(ctx context.Context, params *TargetsListParams, op
 	})
 }
 
-// Create an independently configured Target.
-//
-// Creates a Target with its own configuration, Deliveries, and release history. Multiple Targets can use the same generator.
-//
-// POST /targets
-func (s *TargetsService) Create(ctx context.Context, body TargetCreateRequest, params *TargetsCreateParams, opts ...RequestOption) (*TargetResponse, error) {
-	headers := map[string]string{}
-	if params != nil {
-		if params.IdempotencyKey != nil {
-			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
-		}
-	}
-	req := request{
-		Method:            "POST",
-		Path:              "/targets",
-		Headers:           headers,
-		Body:              body,
-		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:          []map[string][]string{{"apiKey": {}}},
-		SchemaKey:         "targets.create",
-		IdempotencyHeader: "Idempotency-Key",
-	}
-	var out TargetResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
 // Get a Target.
 //
 // GET /targets/{target_id}
@@ -133,45 +133,15 @@ func (s *TargetsService) Get(ctx context.Context, targetID string, opts ...Reque
 	}
 	var out TargetResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
 
-// Delete an unused Target.
+// Update a Target.
 //
-// Deletes a Target with no Generation history, release history, or active Draft. A `409 resource_has_dependencies` means one of those resources still depends on it. Retrieve the Target, disable it instead, or resolve the dependency before retrying.
-//
-// See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
-//
-// DELETE /targets/{target_id}
-func (s *TargetsService) Delete(ctx context.Context, targetID string, params *TargetsDeleteParams, opts ...RequestOption) (*DeletedTarget, error) {
-	headers := map[string]string{}
-	if params != nil {
-		if params.IfMatch != nil {
-			headers["If-Match"] = fmt.Sprint(*params.IfMatch)
-		}
-	}
-	req := request{
-		Method:     "DELETE",
-		Path:       fmt.Sprintf("/targets/%s", url.PathEscape(targetID)),
-		Headers:    headers,
-		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "412": newPreconditionFailedError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "targets.delete",
-		Idempotent: true,
-	}
-	var out DeletedTarget
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// Update a Target or its Deliveries.
-//
-// Omitted fields keep their current values. Supplied config, checks, and deliveries replace their complete stored values.
-// With Project auto_generate enabled, changing Target config, checks, or Deliveries queues that Target's Generation. A queued or running Target reuses that Generation.
+// Omitted fields keep their current values. Supplied config and checks replace their complete stored values. Change Deliveries with createDelivery, updateDelivery, and deleteDelivery.
+// With Project auto_generate enabled, changing Target config or checks queues that Target's Generation. A queued or running Target reuses that Generation.
 // Omitting If-Match applies the update to the current resource; with If-Match, a stale ETag returns 412 precondition_failed without saving.
 // Select the next version through PATCH /drafts/{draft_id} on the Target's draft_id.
 //
@@ -198,12 +168,42 @@ func (s *TargetsService) Update(ctx context.Context, targetID string, body Targe
 	}
 	var out TargetResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
 
-// Adopt a verified existing package as the latest release.
+// Delete a Target.
+//
+// Deletes a Target with no Generation history, release history, or active Draft. A `409 resource_has_dependencies` means one of those resources still depends on it. Retrieve the Target, disable it instead, or resolve the dependency before retrying.
+//
+// See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
+//
+// DELETE /targets/{target_id}
+func (s *TargetsService) Delete(ctx context.Context, targetID string, params *TargetsDeleteParams, opts ...RequestOption) (*DeletedTarget, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IfMatch != nil {
+			headers["If-Match"] = fmt.Sprint(*params.IfMatch)
+		}
+	}
+	req := request{
+		Method:     "DELETE",
+		Path:       fmt.Sprintf("/targets/%s", url.PathEscape(targetID)),
+		Headers:    headers,
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "412": newPreconditionFailedError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:   []map[string][]string{{"apiKey": {}}},
+		SchemaKey:  "targets.delete",
+		Idempotent: true,
+	}
+	var out DeletedTarget
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, notModified(err)
+	}
+	return &out, nil
+}
+
+// Adopt a package release.
 //
 // Checks the repository tag, package metadata, and registry artifact, then records the package as an Imported latest release. Opens the first Typeship Draft at the next major version; review it to establish the baseline for preserving existing code.
 //
@@ -227,7 +227,7 @@ func (s *TargetsService) Adopt(ctx context.Context, targetID string, body Target
 	}
 	var out ReleaseResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }

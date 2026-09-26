@@ -13,6 +13,12 @@ type ProjectsService struct {
 	core *core
 }
 
+// ProjectsCreateParams are the inputs for ProjectsService.Create.
+type ProjectsCreateParams struct {
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	IdempotencyKey *string `json:"-"`
+}
+
 // ProjectsListParams are the inputs for ProjectsService.List.
 type ProjectsListParams struct {
 	// Limit Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 input_invalid. List query parameters must appear only once; repeated or unrecognized parameters return 400 query_param_invalid.
@@ -21,20 +27,14 @@ type ProjectsListParams struct {
 	Cursor *string `json:"-"`
 }
 
-// ProjectsCreateParams are the inputs for ProjectsService.Create.
-type ProjectsCreateParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
-	IdempotencyKey *string `json:"-"`
-}
-
-// ProjectsDeleteParams are the inputs for ProjectsService.Delete.
-type ProjectsDeleteParams struct {
+// ProjectsUpdateParams are the inputs for ProjectsService.Update.
+type ProjectsUpdateParams struct {
 	// IfMatch ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes.
 	IfMatch *string `json:"-"`
 }
 
-// ProjectsUpdateParams are the inputs for ProjectsService.Update.
-type ProjectsUpdateParams struct {
+// ProjectsDeleteParams are the inputs for ProjectsService.Delete.
+type ProjectsDeleteParams struct {
 	// IfMatch ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes.
 	IfMatch *string `json:"-"`
 }
@@ -45,7 +45,39 @@ type ProjectsGenerateParams struct {
 	IdempotencyKey *string `json:"-"`
 }
 
-// List projects.
+// Create a Project.
+//
+// Creates a Project from a URL or GitHub Spec.
+// Automatic generation is enabled by default for a saved Project.
+//
+// Free includes one saved Project, all selected Targets, and the first 25 operations per Target, with regeneration, history, delivery pull requests, and previews. Pro supports additional Projects and all operations. One-shot generation does not use a Project slot.
+//
+// POST /projects
+func (s *ProjectsService) Create(ctx context.Context, body CreateProjectRequest, params *ProjectsCreateParams, opts ...RequestOption) (*ProjectResponse, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IdempotencyKey != nil {
+			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
+		}
+	}
+	req := request{
+		Method:            "POST",
+		Path:              "/projects",
+		Headers:           headers,
+		Body:              body,
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:          []map[string][]string{{"apiKey": {}}},
+		SchemaKey:         "projects.create",
+		IdempotencyHeader: "Idempotency-Key",
+	}
+	var out ProjectResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, notModified(err)
+	}
+	return &out, nil
+}
+
+// List Projects.
 //
 // GET /projects
 //
@@ -56,7 +88,7 @@ type ProjectsGenerateParams struct {
 //		item := it.Value()
 //	}
 //	if err := it.Err(); err != nil { ... }
-func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, opts ...RequestOption) *Iter[ProjectSummary] {
+func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, opts ...RequestOption) *Iter[Project] {
 	query := map[string]any{}
 	if params != nil {
 		if params.Limit != nil {
@@ -75,7 +107,7 @@ func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, 
 		SchemaKey:  "projects.list",
 		Idempotent: true,
 	}
-	return newIter[ProjectSummary](ctx, s.core, req, opts, pageConfig{
+	return newIter[Project](ctx, s.core, req, opts, pageConfig{
 		Style:           "cursor",
 		ItemsField:      "data",
 		CursorParam:     "cursor",
@@ -85,44 +117,12 @@ func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, 
 	})
 }
 
-// Create a project.
-//
-// Creates a Project from a URL or GitHub Spec.
-// Automatic generation is enabled by default for a saved Project.
-//
-// Free includes one saved Project, all selected Targets, and the first 25 operations per Target, with regeneration, history, delivery pull requests, and previews. Pro supports additional Projects and all operations. One-shot generation does not use a Project slot.
-//
-// POST /projects
-func (s *ProjectsService) Create(ctx context.Context, body CreateProjectRequest, params *ProjectsCreateParams, opts ...RequestOption) (*Project, error) {
-	headers := map[string]string{}
-	if params != nil {
-		if params.IdempotencyKey != nil {
-			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
-		}
-	}
-	req := request{
-		Method:            "POST",
-		Path:              "/projects",
-		Headers:           headers,
-		Body:              body,
-		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:          []map[string][]string{{"apiKey": {}}},
-		SchemaKey:         "projects.create",
-		IdempotencyHeader: "Idempotency-Key",
-	}
-	var out Project
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// Get a project.
+// Get a Project.
 //
 // Returns the Project's settings and Spec ID. List its Targets separately to retrieve Target configuration and Deliveries.
 //
 // GET /projects/{project_id}
-func (s *ProjectsService) Get(ctx context.Context, projectID string, opts ...RequestOption) (*Project, error) {
+func (s *ProjectsService) Get(ctx context.Context, projectID string, opts ...RequestOption) (*ProjectResponse, error) {
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
@@ -131,16 +131,50 @@ func (s *ProjectsService) Get(ctx context.Context, projectID string, opts ...Req
 		SchemaKey:  "projects.get",
 		Idempotent: true,
 	}
-	var out Project
+	var out ProjectResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
 
-// Delete a project.
+// Update a Project.
 //
-// A `502 repository_unavailable` means the Project was not deleted because its release pull requests could not be retired. Retry deletion to finish retiring the remaining reviews. Repeating a completed deletion returns `404`.
+// Omitted fields keep their current values. A supplied config replaces the entire stored object; null or an empty object clears it.
+// With auto_generate enabled, changing shared config queues a Generation for each Target whose effective config changes. A queued or running Target reuses that Generation.
+// Omitting If-Match applies the update to the current resource; with If-Match, a stale ETag returns 412 precondition_failed without saving.
+//
+// A `409 target_busy` means a Target is publishing. Retrieve the Project, wait for publishing to finish, reconcile your update, and retry.
+// A `502 follow_up_failed` means the Project was saved, but an obsolete Draft pull request could not be retired. Retrieve the Project and retry the same update to finish retiring reviews if that update is still desired.
+// See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
+//
+// PATCH /projects/{project_id}
+func (s *ProjectsService) Update(ctx context.Context, projectID string, body UpdateProjectRequest, params *ProjectsUpdateParams, opts ...RequestOption) (*ProjectResponse, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IfMatch != nil {
+			headers["If-Match"] = fmt.Sprint(*params.IfMatch)
+		}
+	}
+	req := request{
+		Method:    "PATCH",
+		Path:      fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
+		Headers:   headers,
+		Body:      body,
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "412": newPreconditionFailedError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
+		Security:  []map[string][]string{{"apiKey": {}}},
+		SchemaKey: "projects.update",
+	}
+	var out ProjectResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, notModified(err)
+	}
+	return &out, nil
+}
+
+// Delete a Project.
+//
+// A `502 repository_unavailable` means the Project was not deleted because its Draft pull requests could not be retired. Retry deletion to finish retiring the remaining reviews. Repeating a completed deletion returns `404`.
 // See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 //
 // DELETE /projects/{project_id}
@@ -162,46 +196,12 @@ func (s *ProjectsService) Delete(ctx context.Context, projectID string, params *
 	}
 	var out DeletedProject
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
 
-// Update a project.
-//
-// Omitted fields keep their current values. A supplied config replaces the entire stored object; null or an empty object clears it.
-// With auto_generate enabled, changing shared config queues a Generation for each Target whose effective config changes. A queued or running Target reuses that Generation.
-// Omitting If-Match applies the update to the current resource; with If-Match, a stale ETag returns 412 precondition_failed without saving.
-//
-// A `409 target_busy` means a Target is publishing. Retrieve the Project, wait for publishing to finish, reconcile your update, and retry.
-// A `502 follow_up_failed` means the Project was saved, but an obsolete release pull request could not be retired. Retrieve the Project and retry the same update to finish retiring reviews if that update is still desired.
-// See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
-//
-// PATCH /projects/{project_id}
-func (s *ProjectsService) Update(ctx context.Context, projectID string, body UpdateProjectRequest, params *ProjectsUpdateParams, opts ...RequestOption) (*Project, error) {
-	headers := map[string]string{}
-	if params != nil {
-		if params.IfMatch != nil {
-			headers["If-Match"] = fmt.Sprint(*params.IfMatch)
-		}
-	}
-	req := request{
-		Method:    "PATCH",
-		Path:      fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
-		Headers:   headers,
-		Body:      body,
-		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "412": newPreconditionFailedError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
-		Security:  []map[string][]string{{"apiKey": {}}},
-		SchemaKey: "projects.update",
-	}
-	var out Project
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// Generate — start generation for active Targets.
+// Generate a Project's Targets.
 //
 // Queues one Generation per active Target and returns their IDs. Retrieve each Generation until its status moves from `queued` to `running` and then `completed` or `failed`. `completed` means generated files are saved; check Delivery and Draft status separately for repository delivery and pull requests. A Target already queued or running is returned without starting another Generation. A `409 targets_inactive` means the Project has no active Target to generate. A matching Idempotency-Key replay returns the same Generations with their current statuses.
 //
@@ -227,7 +227,7 @@ func (s *ProjectsService) Generate(ctx context.Context, projectID string, body G
 	}
 	var out GenerationBatch
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }

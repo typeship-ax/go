@@ -27,6 +27,8 @@ type SpecRevisionsListParams struct {
 type SpecRevisionsGetParams struct {
 	// Include Add related data to the response. `diagnostics` adds the `diagnostics` and `patch_diagnostics` arrays.
 	Include *string `json:"-"`
+	// Filter Narrow the included Diagnostics to matching locations. Requires include=diagnostics. blocking: locations that fail the Diagnostic policy. introduced: locations new since the baseline. A Diagnostic with no matching location is omitted. diagnostic_summary always describes the complete revision.
+	Filter *SpecRevisionsGetParamsFilter `json:"-"`
 }
 
 // SpecRevisionsListFilesParams are the inputs for SpecRevisionsService.ListFiles.
@@ -84,7 +86,7 @@ func (s *SpecRevisionsService) List(ctx context.Context, params *SpecRevisionsLi
 
 // Get a Spec Revision.
 //
-// Returns metadata for a saved Spec Revision with a Diagnostics summary. Pass `include=diagnostics` to add every Diagnostic, evaluated with the Spec's current patches and Diagnostic policy. List its source files and resolved document with listSpecRevisionFiles.
+// Returns metadata for a saved Spec Revision with a Diagnostics summary. Pass `include=diagnostics` to add every Diagnostic, evaluated with the Spec's current patches and Diagnostic policy. Add `filter=blocking` to receive only the locations that fail the policy, which is what to fix when `diagnostic_summary.status` is blocked. List its source files and resolved document with listSpecRevisionFiles.
 //
 // GET /spec-revisions/{spec_revision_id}
 func (s *SpecRevisionsService) Get(ctx context.Context, specRevisionID string, params *SpecRevisionsGetParams, opts ...RequestOption) (*SpecRevisionResponse, error) {
@@ -92,6 +94,9 @@ func (s *SpecRevisionsService) Get(ctx context.Context, specRevisionID string, p
 	if params != nil {
 		if params.Include != nil {
 			query["include"] = *params.Include
+		}
+		if params.Filter != nil {
+			query["filter"] = *params.Filter
 		}
 	}
 	req := request{
@@ -105,7 +110,7 @@ func (s *SpecRevisionsService) Get(ctx context.Context, specRevisionID string, p
 	}
 	var out SpecRevisionResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }

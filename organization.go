@@ -11,7 +11,7 @@ type OrganizationService struct {
 	core *core
 }
 
-// Get — the organization behind the presented credentials.
+// Get the Organization.
 //
 // Returns the organization associated with your credential. The Typeship CLI uses this endpoint for `whoami`.
 //
@@ -27,7 +27,7 @@ func (s *OrganizationService) Get(ctx context.Context, opts ...RequestOption) (*
 	}
 	var out Organization
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }

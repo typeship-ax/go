@@ -91,7 +91,7 @@ func (s *DraftsService) List(ctx context.Context, params *DraftsListParams, opts
 
 // Get a Draft.
 //
-// Returns the Draft's status. An open Draft also reports its typed reason when action is required, next version and its source, readiness, checks, and conflict counts. The response carries an `ETag`; send it in `If-Match` when updating the Draft to avoid changing a newer version selection.
+// Returns the Draft's status. An open Draft also reports its typed reason when action is required, next version and its source, compatibility and version assessment, blocking errors, checks, and conflict counts. The response carries an `ETag`; send it in `If-Match` when updating the Draft to avoid changing a newer version selection.
 //
 // GET /drafts/{draft_id}
 func (s *DraftsService) Get(ctx context.Context, draftID string, opts ...RequestOption) (*DraftResponse, error) {
@@ -105,12 +105,12 @@ func (s *DraftsService) Get(ctx context.Context, draftID string, opts ...Request
 	}
 	var out DraftResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
 
-// Update — select an exact Draft version or return to automatic versioning.
+// Update a Draft.
 //
 // Checks your version choice against the required version bump, then regenerates the existing Draft pull request.
 //
@@ -139,12 +139,12 @@ func (s *DraftsService) Update(ctx context.Context, draftID string, body DraftUp
 	}
 	var out DraftResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
 
-// ListFiles — list customized and conflicted files on a Draft.
+// ListFiles — list a Draft's files.
 //
 // Lists the Draft's files that differ from the last merged package or need a conflict decision, ordered by path, without file content. Each conflict names its kind, the saved decision, and the sides you can read with getFile. With `filter=history`, lists files affected by a default-branch history rewrite; the list is empty when none is pending.
 //
@@ -191,7 +191,7 @@ func (s *DraftsService) ListFiles(ctx context.Context, draftID string, params *D
 	})
 }
 
-// Resolve selected Draft files.
+// Resolve Draft conflicts.
 //
 // Resolves conflicts on the Draft's head_sha: keep yours or generated, or supply final content as text or, for binary files, base64. Choosing generated for a customized path replaces it with the generated file, or deletes a Draft-only file.
 //
@@ -209,12 +209,12 @@ func (s *DraftsService) Resolve(ctx context.Context, draftID string, body DraftR
 	}
 	var out DraftResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
 
-// Recover — approve recovery from rewritten default-branch history.
+// Recover a Draft's history.
 //
 // When the Draft has status `action_required` and reason `history_rewritten`, review affected files with `listDraftFiles` and `filter=history`, then approve with the Draft's `history_recovery` revisions. Approval saves the recovery without changing Git and returns the Draft; the next generation rebuilds it from the rewritten default branch. The previous Draft branch stays available, and overlapping code comes back as conflicts to resolve. A rewritten Draft branch alone needs no approval.
 //
@@ -230,7 +230,7 @@ func (s *DraftsService) Recover(ctx context.Context, draftID string, body DraftR
 	}
 	var out DraftResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }

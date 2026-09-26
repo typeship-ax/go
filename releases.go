@@ -23,13 +23,13 @@ type ReleasesListParams struct {
 	TargetID *TargetID `json:"-"`
 }
 
-// ReleasesRepublishParams are the inputs for ReleasesService.Republish.
-type ReleasesRepublishParams struct {
+// ReleasesRetryParams are the inputs for ReleasesService.Retry.
+type ReleasesRetryParams struct {
 	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
 	IdempotencyKey *string `json:"-"`
 }
 
-// List releases.
+// List Releases.
 //
 // GET /releases
 //
@@ -72,7 +72,7 @@ func (s *ReleasesService) List(ctx context.Context, params *ReleasesListParams, 
 	})
 }
 
-// Get an immutable release.
+// Get a Release.
 //
 // GET /releases/{release_id}
 func (s *ReleasesService) Get(ctx context.Context, releaseID string, opts ...RequestOption) (*ReleaseResponse, error) {
@@ -86,19 +86,21 @@ func (s *ReleasesService) Get(ctx context.Context, releaseID string, opts ...Req
 	}
 	var out ReleaseResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }
 
-// Republish — retry publishing an exact release.
+// Retry publishing a Release.
 //
-// Retries publishing the specified release through its repository workflow. Uses that release's version and accepted commit, even if a newer Draft or release exists.
+// Queues every failed or queued Publication of the release and starts its repository publishing workflow again. Publishing uses that release's version and accepted commit, even if a newer Draft or release exists. Completed Publications are not repeated.
 //
-// A `502 repository_unavailable` means the repository publishing workflow could not be dispatched, and nothing was changed.
+// Returns `202` with the Release. Get the Release until each Publication reaches `completed` or `failed`.
 //
-// POST /releases/{release_id}/republish
-func (s *ReleasesService) Republish(ctx context.Context, releaseID string, params *ReleasesRepublishParams, opts ...RequestOption) (*ReleaseResponse, error) {
+// A `409 publication_not_retryable` means no Publication is queued or failed. A `502 repository_unavailable` means the repository publishing workflow could not be dispatched, and nothing was changed.
+//
+// POST /releases/{release_id}/retry
+func (s *ReleasesService) Retry(ctx context.Context, releaseID string, params *ReleasesRetryParams, opts ...RequestOption) (*ReleaseResponse, error) {
 	headers := map[string]string{}
 	if params != nil {
 		if params.IdempotencyKey != nil {
@@ -107,16 +109,16 @@ func (s *ReleasesService) Republish(ctx context.Context, releaseID string, param
 	}
 	req := request{
 		Method:            "POST",
-		Path:              fmt.Sprintf("/releases/%s/republish", url.PathEscape(releaseID)),
+		Path:              fmt.Sprintf("/releases/%s/retry", url.PathEscape(releaseID)),
 		Headers:           headers,
 		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
 		Security:          []map[string][]string{{"apiKey": {}}},
-		SchemaKey:         "releases.republish",
+		SchemaKey:         "releases.retry",
 		IdempotencyHeader: "Idempotency-Key",
 	}
 	var out ReleaseResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
 	}
 	return &out, nil
 }

@@ -13,6 +13,12 @@ type DeliveriesService struct {
 	core *core
 }
 
+// DeliveriesCreateParams are the inputs for DeliveriesService.Create.
+type DeliveriesCreateParams struct {
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	IdempotencyKey *string `json:"-"`
+}
+
 // DeliveriesListParams are the inputs for DeliveriesService.List.
 type DeliveriesListParams struct {
 	// Limit Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 input_invalid. List query parameters must appear only once; repeated or unrecognized parameters return 400 query_param_invalid.
@@ -21,6 +27,51 @@ type DeliveriesListParams struct {
 	Cursor *string `json:"-"`
 	// TargetID Only Deliveries of this Target.
 	TargetID *TargetID `json:"-"`
+}
+
+// DeliveriesUpdateParams are the inputs for DeliveriesService.Update.
+type DeliveriesUpdateParams struct {
+	// IfMatch ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes.
+	IfMatch *string `json:"-"`
+}
+
+// DeliveriesDeleteParams are the inputs for DeliveriesService.Delete.
+type DeliveriesDeleteParams struct {
+	// IfMatch ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes.
+	IfMatch *string `json:"-"`
+}
+
+// Create a Delivery.
+//
+// Adds a repository or hosted MCP Delivery to a Target. A Target has at most one Delivery of each type; a `409 delivery_exists` means it already has one, so update that Delivery instead.
+// With Project auto_generate enabled, adding a Delivery queues the Target's Generation. A queued or running Target reuses that Generation.
+//
+// A `409 delivery_conflict` means another Target owns the requested repository directory. A `409 target_busy` means the Target is publishing; wait for it to finish.
+// A `502 follow_up_failed` means the Delivery was saved, but retiring an obsolete review or regenerating the Target failed. Get the Delivery and follow the error's retryable and suggested_action fields.
+//
+// POST /deliveries
+func (s *DeliveriesService) Create(ctx context.Context, body DeliveryCreateRequest, params *DeliveriesCreateParams, opts ...RequestOption) (*DeliveryResponse, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IdempotencyKey != nil {
+			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
+		}
+	}
+	req := request{
+		Method:            "POST",
+		Path:              "/deliveries",
+		Headers:           headers,
+		Body:              body,
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
+		Security:          []map[string][]string{{"apiKey": {}}},
+		SchemaKey:         "deliveries.create",
+		IdempotencyHeader: "Idempotency-Key",
+	}
+	var out DeliveryResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, notModified(err)
+	}
+	return &out, nil
 }
 
 // List Deliveries.
@@ -82,7 +133,72 @@ func (s *DeliveriesService) Get(ctx context.Context, deliveryID string, opts ...
 	}
 	var out DeliveryResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
+		return nil, notModified(err)
+	}
+	return &out, nil
+}
+
+// Update a Delivery.
+//
+// Replaces a repository Delivery's settings. Omitted optional settings reset to their defaults. Hosted MCP Deliveries have no settings to update.
+// With Project auto_generate enabled, changing a Delivery queues the Target's Generation. A queued or running Target reuses that Generation.
+// Omitting If-Match applies the update to the current Delivery; with If-Match, a stale ETag returns 412 precondition_failed without saving.
+//
+// A `409 delivery_conflict` means another Target owns the requested repository directory. A `409 target_busy` means the Target is publishing; wait for it to finish.
+// A `502 follow_up_failed` means the Delivery was saved, but retiring an obsolete review or regenerating the Target failed. Get the Delivery and follow the error's retryable and suggested_action fields.
+// See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
+//
+// PATCH /deliveries/{delivery_id}
+func (s *DeliveriesService) Update(ctx context.Context, deliveryID string, body DeliveryUpdateRequest, params *DeliveriesUpdateParams, opts ...RequestOption) (*DeliveryResponse, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IfMatch != nil {
+			headers["If-Match"] = fmt.Sprint(*params.IfMatch)
+		}
+	}
+	req := request{
+		Method:    "PATCH",
+		Path:      fmt.Sprintf("/deliveries/%s", url.PathEscape(deliveryID)),
+		Headers:   headers,
+		Body:      body,
+		Errors:    map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "412": newPreconditionFailedError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
+		Security:  []map[string][]string{{"apiKey": {}}},
+		SchemaKey: "deliveries.update",
+	}
+	var out DeliveryResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, notModified(err)
+	}
+	return &out, nil
+}
+
+// Delete a Delivery.
+//
+// Removes a Delivery from its Target. Removing a repository Delivery retires the Target's open Draft pull request; removing a hosted MCP Delivery stops serving its URL. Recreating the type later allocates a new ID and, for hosted MCP, a new URL.
+//
+// A `409 target_busy` means the Target is publishing; wait for it to finish. A `502 follow_up_failed` means the Delivery was removed, but retiring an obsolete review or regenerating the Target failed.
+// See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
+//
+// DELETE /deliveries/{delivery_id}
+func (s *DeliveriesService) Delete(ctx context.Context, deliveryID string, params *DeliveriesDeleteParams, opts ...RequestOption) (*DeletedDelivery, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IfMatch != nil {
+			headers["If-Match"] = fmt.Sprint(*params.IfMatch)
+		}
+	}
+	req := request{
+		Method:     "DELETE",
+		Path:       fmt.Sprintf("/deliveries/%s", url.PathEscape(deliveryID)),
+		Headers:    headers,
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "409": newConflictError, "412": newPreconditionFailedError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
+		Security:   []map[string][]string{{"apiKey": {}}},
+		SchemaKey:  "deliveries.delete",
+		Idempotent: true,
+	}
+	var out DeletedDelivery
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, notModified(err)
 	}
 	return &out, nil
 }

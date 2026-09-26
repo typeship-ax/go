@@ -13,9 +13,9 @@ import (
 )
 
 // Version is this package's version, also sent as the User-Agent.
-const Version = "0.25.0"
+const Version = "0.26.0"
 
-const userAgent = "typeship/0.25.0"
+const userAgent = "typeship/0.26.0"
 
 // Option configures a Client at construction.
 type Option func(*core)
@@ -42,6 +42,13 @@ func WithTimeout(d time.Duration) Option {
 // WithMaxRetries sets retries after the first attempt. Default: 2.
 func WithMaxRetries(n int) Option {
 	return func(c *core) { c.maxRetries = n }
+}
+
+// WithMaxRetryWait caps the wait a server may request (Retry-After,
+// x-ratelimit-reset) that a retry honors; a longer one returns the error
+// at once, with RateLimit.RetryAt saying when to try again. Default: 1m.
+func WithMaxRetryWait(d time.Duration) Option {
+	return func(c *core) { c.maxRetryWait = d }
 }
 
 // WithRetryPolicy replaces the retry policy wholesale.
@@ -88,40 +95,59 @@ func WithBearerToken(token string) Option {
 }
 
 // WithBearerTokenFunc resolves a token before every attempt, for
-// credentials that expire.
+// credentials that expire. A 401 response resends the request once
+// with a freshly resolved token; an error from fn is returned as is.
 func WithBearerTokenFunc(fn func() (string, error)) Option {
-	return func(c *core) {
-		c.bearerCredential = &authValue{fn: func() (string, error) {
-			token, err := fn()
-			if err != nil {
-				return "", err
-			}
-			return "Bearer " + token, nil
-		}}
+	if fn == nil {
+		return WithBearerTokenFuncContext(nil)
 	}
+	return WithBearerTokenFuncContext(func(context.Context) (string, error) { return fn() })
 }
 
-// WithCredential supplies a token or API key for one named security scheme.
-func WithCredential(name, value string) Option {
-	return WithCredentialFunc(name, func() (string, error) { return value, nil })
-}
-
-// WithCredentialFunc resolves only when an operation selects this scheme.
-func WithCredentialFunc(name string, fn func() (string, error)) Option {
+// WithBearerTokenFuncContext is WithBearerTokenFunc with the request's
+// context, for token lookups that honour its deadline and cancellation.
+func WithBearerTokenFuncContext(fn func(ctx context.Context) (string, error)) Option {
 	return func(c *core) {
 		if fn == nil {
 			c.configurationError = errors.New("credential callback must not be nil")
 			return
 		}
+		value := rejectable(fn).withPrefix("Bearer ")
+		c.bearerCredential = &value
+	}
+}
+
+// WithCredential supplies a token or API key for one named security scheme.
+func WithCredential(name, value string) Option {
+	return schemeCredential(name, authValue{static: value})
+}
+
+// WithCredentialFunc resolves only when an operation selects this scheme,
+// before every attempt. A 401 response resends the request once with a
+// freshly resolved value; an error from fn is returned as is.
+func WithCredentialFunc(name string, fn func() (string, error)) Option {
+	if fn == nil {
+		return WithCredentialFuncContext(name, nil)
+	}
+	return WithCredentialFuncContext(name, func(context.Context) (string, error) { return fn() })
+}
+
+// WithCredentialFuncContext is WithCredentialFunc with the request's
+// context, for lookups that honour its deadline and cancellation.
+func WithCredentialFuncContext(name string, fn func(ctx context.Context) (string, error)) Option {
+	if fn == nil {
+		return func(c *core) { c.configurationError = errors.New("credential callback must not be nil") }
+	}
+	return schemeCredential(name, rejectable(fn))
+}
+
+// schemeCredential stores value as the credential of one named token or
+// API-key scheme, in the header or query parameter that scheme uses.
+func schemeCredential(name string, value authValue) Option {
+	return func(c *core) {
 		switch name {
 		case "apiKey":
-			c.credentials[name] = securityCredential{Headers: map[string]authValue{"Authorization": {fn: func() (string, error) {
-				value, err := fn()
-				if err != nil {
-					return "", err
-				}
-				return "Bearer " + value, nil
-			}}}}
+			c.credentials[name] = securityCredential{Headers: map[string]authValue{"Authorization": value.withPrefix("Bearer ")}}
 		default:
 			c.configurationError = errors.New("unknown token/API-key security scheme: " + name)
 		}
@@ -149,17 +175,16 @@ func firstCredential(values ...*authValue) *authValue {
 
 // Client is the entry point for typeship.
 type Client struct {
-	Generate      *GenerateService
 	Projects      *ProjectsService
 	Specs         *SpecsService
 	SpecRevisions *SpecRevisionsService
 	Targets       *TargetsService
+	Deliveries    *DeliveriesService
+	Generations   *GenerationsService
 	Drafts        *DraftsService
 	Releases      *ReleasesService
-	Deliveries    *DeliveriesService
-	Publications  *PublicationsService
-	Generations   *GenerationsService
 	Files         *FilesService
+	Packages      *PackagesService
 	Organization  *OrganizationService
 	APIKeys       *APIKeysService
 
@@ -167,7 +192,7 @@ type Client struct {
 }
 
 // New builds a client. Credentials fall back to environment variables
-// (TYPESHIP_TOKEN, TYPESHIP_BASE_URL) when no option supplies them.
+// (TYPESHIP_API_KEY, TYPESHIP_BASE_URL) when no option supplies them.
 func New(opts ...Option) (*Client, error) {
 	c := &core{
 		baseURL:     envOr("TYPESHIP_BASE_URL", "https://typeship.dev/api/v1"),
@@ -182,7 +207,9 @@ func New(opts ...Option) (*Client, error) {
 		maxRetries:  2,
 		globalsVals: map[string]any{},
 	}
-	if token := os.Getenv("TYPESHIP_TOKEN"); token != "" {
+	if token := os.Getenv("TYPESHIP_API_KEY"); token != "" {
+		c.bearerCredential = &authValue{static: "Bearer " + token}
+	} else if token := os.Getenv("TYPESHIP_TOKEN"); token != "" {
 		c.bearerCredential = &authValue{static: "Bearer " + token}
 	}
 	for _, opt := range opts {
@@ -191,31 +218,110 @@ func New(opts ...Option) (*Client, error) {
 	if c.configurationError != nil {
 		return nil, c.configurationError
 	}
-	if _, named := c.credentials["apiKey"]; !named {
-		if value := firstCredential(c.bearerCredential, c.oauthCredential); value != nil {
-			c.credentials["apiKey"] = securityCredential{Headers: map[string]authValue{"Authorization": *value}}
-		}
-	}
+	c.nameCredentials()
 	// Wraps whatever client the options left behind, ours or the caller's.
 	c.httpClient = withRedirectPolicy(c.httpClient)
 	if c.baseURL == "" {
 		return nil, errors.New("no base URL: pass WithBaseURL or set TYPESHIP_BASE_URL")
 	}
+	return newClient(c), nil
+}
+
+// newClient wires every service to one configured core.
+func newClient(c *core) *Client {
 	client := &Client{core: c}
-	client.Generate = &GenerateService{core: c}
 	client.Projects = &ProjectsService{core: c}
 	client.Specs = &SpecsService{core: c}
 	client.SpecRevisions = &SpecRevisionsService{core: c}
 	client.Targets = &TargetsService{core: c}
+	client.Deliveries = &DeliveriesService{core: c}
+	client.Generations = &GenerationsService{core: c}
 	client.Drafts = &DraftsService{core: c}
 	client.Releases = &ReleasesService{core: c}
-	client.Deliveries = &DeliveriesService{core: c}
-	client.Publications = &PublicationsService{core: c}
-	client.Generations = &GenerationsService{core: c}
 	client.Files = &FilesService{core: c}
+	client.Packages = &PackagesService{core: c}
 	client.Organization = &OrganizationService{core: c}
 	client.APIKeys = &APIKeysService{core: c}
-	return client, nil
+	return client
+}
+
+// nameCredentials files the convenience credentials (bearer, basic,
+// API key, client credentials) under the security scheme each one
+// unambiguously identifies. A credential named explicitly wins.
+func (c *core) nameCredentials() {
+	if _, named := c.credentials["apiKey"]; !named {
+		if value := firstCredential(c.bearerCredential, c.oauthCredential); value != nil {
+			c.credentials["apiKey"] = securityCredential{Headers: map[string]authValue{"Authorization": *value}}
+		}
+	}
+}
+
+// WithCredentials returns a client that authenticates with opts alone:
+// every credential this client holds is replaced, none is inherited, and
+// credential environment variables are not read again. The new client
+// shares this client's *http.Client and every other setting, so it is
+// cheap enough to derive per request or per tenant:
+//
+//	userClient := client.WithCredentials(WithBearerToken(userToken))
+//
+// opts accepts credential options only. Any other option, an unknown
+// scheme, or a nil callback makes every call on the returned client fail
+// with that configuration error.
+func (c *Client) WithCredentials(opts ...Option) *Client {
+	child := *c.core
+	child.credentials = map[string]securityCredential{}
+	child.authHeaders = map[string]authValue{}
+	child.authQuery = map[string]authValue{}
+	child.bearerCredential = nil
+	child.basicCredential = nil
+	child.oauthCredential = nil
+	child.configurationError = credentialOptionsOnly(opts)
+	if child.configurationError == nil {
+		for _, opt := range opts {
+			if opt != nil {
+				opt(&child)
+			}
+		}
+		child.nameCredentials()
+	}
+	return newClient(&child)
+}
+
+// credentialOptionsOnly applies opts to a scratch core whose other
+// settings hold sentinel values, and refuses any option that changed one:
+// WithCredentials must never quietly reconfigure the shared transport.
+// It also reports the configuration error a credential option recorded.
+func credentialOptionsOnly(opts []Option) error {
+	sentinelHTTPClient := &http.Client{}
+	probe := &core{
+		credentials:  map[string]securityCredential{},
+		authHeaders:  map[string]authValue{},
+		authQuery:    map[string]authValue{},
+		baseURL:      "\x00",
+		httpClient:   sentinelHTTPClient,
+		timeout:      -1,
+		maxRetries:   -1,
+		maxRetryWait: -1,
+		retry:        RetryPolicy{InitialDelay: -1},
+		globalsVals:  map[string]any{},
+		validate:     -1,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(probe)
+		}
+	}
+	changed := probe.baseURL != "\x00" || probe.httpClient != sentinelHTTPClient ||
+		probe.timeout != -1 || probe.maxRetries != -1 || probe.maxRetryWait != -1 ||
+		probe.retry.InitialDelay != -1 || probe.retry.MaxRetries != nil || len(probe.retry.Statuses) > 0 ||
+		probe.retry.MaxDelay != 0 || probe.retry.RetryNonIdempotent ||
+		probe.debug != nil || probe.onRequest != nil || probe.onResponse != nil || probe.onError != nil ||
+		len(probe.globalsVals) > 0 || len(probe.headers) > 0 || len(probe.query) > 0 || probe.userAgent != ""
+	changed = changed || probe.validate != -1
+	if changed {
+		return errors.New("WithCredentials accepts credential options only; configure other settings with New")
+	}
+	return probe.configurationError
 }
 
 // RawAuth selects the credentials one raw request carries. The nil
@@ -225,7 +331,9 @@ type RawAuth struct {
 	// Scheme names one security scheme this API declares, exactly as the
 	// spec named it; Raw sends that scheme's credential and no other.
 	Scheme string
-	// None sends the request unauthenticated.
+	// None sends the request unauthenticated. The request may then carry
+	// its own credential headers and API-key query parameters, for a
+	// scheme the client does not configure.
 	None bool
 }
 
@@ -236,8 +344,9 @@ type RawQueryValue struct {
 	Value string
 }
 
-// RawHeader is one caller-supplied header. Credential, cookie, and
-// transport-owned headers are rejected by Raw rather than forwarded.
+// RawHeader is one caller-supplied header. Transport-owned headers are
+// always rejected; credential and cookie headers are rejected unless
+// the request sets RawAuth{None: true}.
 type RawHeader struct {
 	Name  string
 	Value string
@@ -273,10 +382,14 @@ var rawDefaultSecurity []map[string][]string
 // requirement that selects exactly that scheme's credential.
 var rawSchemeSecurity = map[string][]map[string][]string{"apiKey": {{"apiKey": {}}}}
 
-// rawCredentialHeaders are the header names a raw caller may never
-// inject, lowercased for comparison: standard credentials and cookies,
-// and the transport-owned names.
-var rawCredentialHeaders = []string{"authorization", "cookie", "cookie2", "proxy-authorization", "www-authenticate", "host", "content-type", "content-length", "transfer-encoding", "connection"}
+// rawCredentialHeaders are the header names a raw caller may set only on
+// an unauthenticated request, lowercased for comparison: standard
+// credentials and cookies.
+var rawCredentialHeaders = []string{"authorization", "cookie", "cookie2", "proxy-authorization", "www-authenticate"}
+
+// rawTransportHeaders are the names the transport owns; a raw caller may
+// never set them.
+var rawTransportHeaders = []string{"host", "content-type", "content-length", "transfer-encoding", "connection"}
 
 var rawCredentialQuery []string
 
@@ -287,6 +400,12 @@ var rawCredentialQuery []string
 // fragments, control characters, backslashes, and traversal or
 // separator escapes are rejected before anything is sent. Non-2xx
 // responses return the same typed *APIError a typed method would.
+//
+// Credential headers (Authorization, Cookie, this API's API-key headers)
+// and API-key query parameters are rejected, in RawRequest and in
+// per-call options alike, unless Auth is RawAuth{None: true}: then the
+// client sends none of its own credentials and the request carries
+// exactly the ones the caller supplies.
 func (c *Client) Raw(ctx context.Context, req RawRequest, opts ...RequestOption) (*APIResponse, error) {
 	method := strings.ToUpper(strings.TrimSpace(req.Method))
 	if !rawAPIMethods[method] {
@@ -295,7 +414,8 @@ func (c *Client) Raw(ctx context.Context, req RawRequest, opts ...RequestOption)
 	if err := validateRawPath(req.Path); err != nil {
 		return nil, err
 	}
-	headers, err := validateRawHeaders(req.Headers)
+	manual := req.Auth != nil && req.Auth.None
+	headers, err := validateRawHeaders(req.Headers, manual)
 	if err != nil {
 		return nil, err
 	}
@@ -308,15 +428,19 @@ func (c *Client) Raw(ctx context.Context, req RawRequest, opts ...RequestOption)
 		opt(probe)
 	}
 	for name := range probe.headers {
-		if containsRawName(rawCredentialHeaders, strings.ToLower(name)) {
-			return nil, fmt.Errorf("raw: request options may not carry %s; credentials come from the configured authentication", name)
+		lower := strings.ToLower(name)
+		if containsRawName(rawTransportHeaders, lower) {
+			return nil, fmt.Errorf("raw: request options may not carry %s; the transport sets it", name)
+		}
+		if !manual && containsRawName(rawCredentialHeaders, lower) {
+			return nil, fmt.Errorf("raw: request options may not carry %s; credentials come from the configured authentication, or set RawAuth{None: true} to supply your own", name)
 		}
 	}
-	query, err := validateRawQuery(req.Query)
+	query, err := validateRawQuery(req.Query, manual)
 	if err != nil {
 		return nil, err
 	}
-	security, err := c.rawSecurityFor(req.Auth)
+	security, err := c.rawSecurityFor(ctx, req.Auth)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +459,7 @@ func (c *Client) Raw(ctx context.Context, req RawRequest, opts ...RequestOption)
 	}
 	response := &APIResponse{}
 	callOpts := append(append([]RequestOption{}, opts...), WithAPIResponse(response))
-	if err := c.core.do(ctx, call, nil, callOpts...); err != nil {
+	if err := notModified(c.core.do(ctx, call, nil, callOpts...)); err != nil {
 		return nil, err
 	}
 	return response, nil
@@ -419,9 +543,10 @@ func rawUnhex(hi, lo byte) byte {
 	return value
 }
 
-// validateRawHeaders rejects the credential, cookie, and transport-owned
-// headers this client owns, then returns the caller's headers verbatim.
-func validateRawHeaders(headers []RawHeader) (map[string]string, error) {
+// validateRawHeaders rejects the transport-owned headers, and the
+// credential and cookie headers unless the caller authenticates the
+// request manually, then returns the caller's headers verbatim.
+func validateRawHeaders(headers []RawHeader, manual bool) (map[string]string, error) {
 	out := map[string]string{}
 	for _, header := range headers {
 		name := strings.TrimSpace(header.Name)
@@ -433,8 +558,11 @@ func validateRawHeaders(headers []RawHeader) (map[string]string, error) {
 				return nil, fmt.Errorf("raw header name must not contain control characters: %q", header.Name)
 			}
 		}
-		if containsRawName(rawCredentialHeaders, strings.ToLower(name)) {
-			return nil, fmt.Errorf("raw headers may not carry %s; credentials come from the configured authentication", name)
+		if containsRawName(rawTransportHeaders, strings.ToLower(name)) {
+			return nil, fmt.Errorf("raw headers may not carry %s; the transport sets it", name)
+		}
+		if !manual && containsRawName(rawCredentialHeaders, strings.ToLower(name)) {
+			return nil, fmt.Errorf("raw headers may not carry %s; credentials come from the configured authentication, or set RawAuth{None: true} to supply your own", name)
 		}
 		for _, r := range header.Value {
 			if (r < 0x20 && r != '\t') || r == 0x7f {
@@ -456,8 +584,9 @@ func containsRawName(names []string, lower string) bool {
 }
 
 // validateRawQuery keeps repeated and empty values and rejects the query
-// destinations this API's credentials use.
-func validateRawQuery(query []RawQueryValue) (map[string]any, error) {
+// destinations this API's credentials use unless the caller
+// authenticates the request manually.
+func validateRawQuery(query []RawQueryValue, manual bool) (map[string]any, error) {
 	out := map[string]any{}
 	for _, pair := range query {
 		if pair.Name == "" {
@@ -468,8 +597,8 @@ func validateRawQuery(query []RawQueryValue) (map[string]any, error) {
 				return nil, fmt.Errorf("raw query names must not contain control characters: %q", pair.Name)
 			}
 		}
-		if containsRawName(rawCredentialQuery, strings.ToLower(pair.Name)) {
-			return nil, fmt.Errorf("raw query may not carry %s; credentials come from the configured authentication", pair.Name)
+		if !manual && containsRawName(rawCredentialQuery, strings.ToLower(pair.Name)) {
+			return nil, fmt.Errorf("raw query may not carry %s; credentials come from the configured authentication, or set RawAuth{None: true} to supply your own", pair.Name)
 		}
 		if existing, ok := out[pair.Name]; ok {
 			switch values := existing.(type) {
@@ -489,7 +618,7 @@ func validateRawQuery(query []RawQueryValue) (map[string]any, error) {
 // Naming a scheme is a promise to send that scheme's credential, so a
 // selection with no configured credential is an error rather than a
 // silently unauthenticated request.
-func (c *Client) rawSecurityFor(auth *RawAuth) ([]map[string][]string, error) {
+func (c *Client) rawSecurityFor(ctx context.Context, auth *RawAuth) ([]map[string][]string, error) {
 	if auth == nil {
 		return rawDefaultSecurity, nil
 	}
@@ -509,7 +638,7 @@ func (c *Client) rawSecurityFor(auth *RawAuth) ([]map[string][]string, error) {
 			// callback may legally return "", and the transport would then
 			// omit the header or query while this explicit selection claims
 			// to send it.
-			if err := rawCredentialSendsValue(credential); err != nil {
+			if err := rawCredentialSendsValue(ctx, credential); err != nil {
 				return nil, fmt.Errorf("raw: scheme %q would send no credential: %w", auth.Scheme, err)
 			}
 			return security, nil
@@ -522,10 +651,10 @@ func (c *Client) rawSecurityFor(auth *RawAuth) ([]map[string][]string, error) {
 // rawCredentialSendsValue reports whether a selected scheme's credential
 // resolves to at least one non-empty wire value, so an explicit raw
 // selection can never go out unauthenticated by accident.
-func rawCredentialSendsValue(credential securityCredential) error {
+func rawCredentialSendsValue(ctx context.Context, credential securityCredential) error {
 	empty := true
 	for _, value := range credential.Headers {
-		resolved, err := value.resolve()
+		resolved, err := value.resolve(ctx)
 		if err != nil {
 			return err
 		}
@@ -534,7 +663,7 @@ func rawCredentialSendsValue(credential securityCredential) error {
 		}
 	}
 	for _, value := range credential.Query {
-		resolved, err := value.resolve()
+		resolved, err := value.resolve(ctx)
 		if err != nil {
 			return err
 		}

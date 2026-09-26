@@ -5,6 +5,11 @@ package typeship
 import (
 	"encoding/json"
 	"fmt"
+	"math"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // APIError is any error response from the API. Every generated per-status
@@ -21,17 +26,141 @@ type APIError struct {
 	Body      []byte
 	RequestID string
 	Message   string
+	// RateLimit is set when the API said the call was rate limited (a 429,
+	// or a 403 whose headers say the quota is spent): when to retry.
+	RateLimit *RateLimit
 }
 
 func (e *APIError) Error() string {
 	msg := fmt.Sprintf("http %d", e.Status)
 	if e.Message != "" {
-		msg += ": " + e.Message
+		// An API message usually ends its own sentence; do not double it.
+		msg += ": " + strings.TrimRight(e.Message, ".!?")
 	}
 	if e.RequestID != "" {
 		msg += " (request " + e.RequestID + ")"
 	}
+	if e.RateLimit != nil {
+		return msg + ". " + e.RateLimit.step()
+	}
 	return msg + ". " + nextStep(e.Status)
+}
+
+// apiErr exposes the embedded *APIError of every generated error type.
+func (e *APIError) apiErr() *APIError { return e }
+
+// RateLimit says when a rate-limited call can be retried. RetryAt and
+// RetryAfter are nil when the API did not say.
+type RateLimit struct {
+	// RetryAt is when the limit resets (Retry-After or x-ratelimit-reset).
+	RetryAt *time.Time
+	// RetryAfter is the wait from when the response arrived until RetryAt.
+	RetryAfter *time.Duration
+}
+
+func (r *RateLimit) step() string {
+	if r.RetryAt == nil {
+		return "Rate limited: wait before retrying."
+	}
+	// Round up to the second so "wait until" is never early.
+	at := r.RetryAt.UTC()
+	if at.Nanosecond() > 0 {
+		at = at.Truncate(time.Second).Add(time.Second)
+	}
+	return "Rate limited: wait until " + at.Format("2006-01-02T15:04:05Z") + ", then retry."
+}
+
+// rateLimitInfo reports whether a response is a rate limit, and when to
+// retry. A 429 always is; a 403 is when it says the quota is spent
+// (x-ratelimit-remaining: 0) or asks the caller to wait (Retry-After), which
+// is how GitHub signals its limits. Nil for every other response.
+func rateLimitInfo(status int, header http.Header, now time.Time) *RateLimit {
+	retryAfter := strings.TrimSpace(header.Get("Retry-After"))
+	remaining := header.Get("X-Ratelimit-Remaining")
+	if remaining == "" {
+		remaining = header.Get("Ratelimit-Remaining")
+	}
+	limited := status == 429 || (status == 403 && (header.Get("Retry-After") != "" || strings.TrimSpace(remaining) == "0"))
+	if !limited {
+		return nil
+	}
+	var wait *time.Duration
+	if retryAfter != "" {
+		if seconds, err := strconv.ParseFloat(retryAfter, 64); err == nil {
+			d := time.Duration(math.Max(seconds, 0) * float64(time.Second))
+			wait = &d
+		} else if when, err := http.ParseTime(retryAfter); err == nil {
+			d := when.Sub(now)
+			if d < 0 {
+				d = 0
+			}
+			wait = &d
+		}
+	}
+	reset := strings.TrimSpace(header.Get("X-Ratelimit-Reset"))
+	if reset == "" {
+		reset = strings.TrimSpace(header.Get("Ratelimit-Reset"))
+	}
+	if wait == nil && reset != "" {
+		if value, err := strconv.ParseFloat(reset, 64); err == nil {
+			// An epoch timestamp (GitHub) or seconds until the reset (IETF).
+			var d time.Duration
+			if value > 1e9 {
+				d = time.Unix(0, int64(value*float64(time.Second))).Sub(now)
+			} else {
+				d = time.Duration(value * float64(time.Second))
+			}
+			if d < 0 {
+				d = 0
+			}
+			wait = &d
+		}
+	}
+	if wait == nil {
+		return &RateLimit{}
+	}
+	at := now.Add(*wait)
+	return &RateLimit{RetryAt: &at, RetryAfter: wait}
+}
+
+// RateLimitError is a rate-limited call: a 403 whose headers say the quota
+// is spent, or a 429 the spec did not document. RateLimit.RetryAt says when
+// to try again; every APIError carries RateLimit when it applies.
+type RateLimitError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *RateLimitError) Unwrap() error { return &e.APIError }
+
+// PayloadError is a 2xx response whose payload reported a failure: a
+// declared envelope flag set to false ({"ok": false}, {"success": false}),
+// or a GraphQL result that is one of the schema's error types (Typename).
+type PayloadError struct {
+	APIError
+	// Typename is the GraphQL error type the result resolved to, if any.
+	Typename string
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *PayloadError) Unwrap() error { return &e.APIError }
+
+func (e *PayloadError) Error() string {
+	msg := "the API reported a failure"
+	if e.Typename != "" {
+		msg = "the operation returned " + e.Typename
+	}
+	if e.Message != "" {
+		msg += ": " + strings.TrimRight(e.Message, ".!?")
+	}
+	if e.RequestID != "" {
+		msg += " (request " + e.RequestID + ")"
+	}
+	return msg + ". It arrived in a successful HTTP response; the body says why."
+}
+
+func newPayloadError(status int, body []byte, requestID string, typename string) error {
+	return &PayloadError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}, Typename: typename}
 }
 
 func nextStep(status int) string {
@@ -66,10 +195,29 @@ func codeFromBody(body []byte, status int) string {
 				if code, ok := first["code"].(string); ok && code != "" {
 					return code
 				}
+				if code, ok := first["code"].(float64); ok {
+					return strconv.FormatFloat(code, 'f', -1, 64)
+				}
 			}
+		}
+		// Slack-style {"ok": false, "error": "invalid_auth"}: the error is a code.
+		if code, ok := probe["error"].(string); ok && looksLikeCode(code) {
+			return code
 		}
 	}
 	return fmt.Sprintf("http_%d", status)
+}
+
+func looksLikeCode(value string) bool {
+	if value == "" || len(value) > 64 || !((value[0] >= 'a' && value[0] <= 'z') || (value[0] >= 'A' && value[0] <= 'Z')) {
+		return false
+	}
+	for _, r := range value {
+		if !(r == '_' || r == '.' || r == '-' || (r >= '0' && r <= '9') || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')) {
+			return false
+		}
+	}
+	return true
 }
 
 // Decode unmarshals the raw error body into v.

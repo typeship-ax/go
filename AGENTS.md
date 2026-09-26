@@ -1,6 +1,6 @@
 # typeship — agent context
 
-This package contains the generated Go SDK for **typeship** (API v1.0.0, package v0.25.0).
+This package contains the generated Go SDK for **typeship** (API v1.0.0, package v0.26.0).
 
 Resolve an OpenAPI or GraphQL Spec, diagnose it, and keep every
 selected CLI, MCP, and SDK Target current.
@@ -25,7 +25,7 @@ petstore Spec is a runnable sample.
 - Start with the local build or installation instructions in `README.md`. Generation does not publish a registry package.
 
 ## Authentication
-- Bearer token: `TYPESHIP_TOKEN` env var, or the `WithBearerToken` option.
+- Bearer token: `TYPESHIP_API_KEY` env var, or the `WithBearerToken` option.
 
 ## Using the SDK
 ```go

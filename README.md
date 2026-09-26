@@ -26,7 +26,7 @@ To run the quickstart against this local module, save it as `cmd/example/main.go
 Generation does not publish a Go module. Set `go.mod` to a repository path you control, publish the module and tag its release, then use that module path and version with `go get`:
 
 ```sh
-go get github.com/typeship-ax/go@v0.25.0
+go get github.com/typeship-ax/go@v0.26.0
 ```
 
 ## Quickstart
@@ -44,7 +44,7 @@ import (
 )
 
 func main() {
-	client, err := typeship.New(typeship.WithBearerToken(os.Getenv("TYPESHIP_TOKEN")))
+	client, err := typeship.New(typeship.WithBearerToken(os.Getenv("TYPESHIP_API_KEY")))
 	if err != nil {
 		panic(err)
 	}
@@ -73,6 +73,8 @@ func main() {
 ## Authentication
 
 - **Bearer token** — `typeship.WithBearerToken` (or `WithBearerTokenFunc` for tokens that expire), sent as `Authorization: Bearer <token>`.
+
+`client.WithCredentials(...)` returns a client with different credentials that shares this client's HTTP client and settings, for per-user or per-tenant calls.
 
 `typeship.WithOnRequest` sees every request before it is sent, for headers every call needs (API version headers, tenant ids).
 
@@ -137,6 +139,6 @@ client, err := typeship.New(
 )
 ```
 
-Configuration also reads from the environment (`TYPESHIP_BASE_URL`, `TYPESHIP_TOKEN`).
+Configuration also reads from the environment (`TYPESHIP_BASE_URL`, `TYPESHIP_API_KEY`).
 
 Timeouts apply to each attempt. By default, the client makes up to two retries for `408`, `429`, `500`, `502`, `503`, and `504`; non-idempotent calls retry only on `429`, when the operation declares an idempotency key, or when explicitly enabled. `Retry-After` takes precedence over exponential backoff.

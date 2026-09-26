@@ -36,7 +36,28 @@ type GenerationsListFilesParams struct {
 	Cursor *string `json:"-"`
 }
 
-// List generations.
+// Get a Generation.
+//
+// Returns the status of that Generation. `queued` and `running` mean generation is still in progress. `completed` means generated files are saved, not that repository delivery or a Draft is complete. List its files with listGenerationFiles and read each with getFile.
+//
+// GET /generations/{generation_id}
+func (s *GenerationsService) Get(ctx context.Context, generationID string, opts ...RequestOption) (*GenerationResponse, error) {
+	req := request{
+		Method:     "GET",
+		Path:       fmt.Sprintf("/generations/%s", url.PathEscape(generationID)),
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:   []map[string][]string{{"apiKey": {}}},
+		SchemaKey:  "generations.get",
+		Idempotent: true,
+	}
+	var out GenerationResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, notModified(err)
+	}
+	return &out, nil
+}
+
+// List Generations.
 //
 // GET /generations
 //
@@ -47,7 +68,7 @@ type GenerationsListFilesParams struct {
 //		item := it.Value()
 //	}
 //	if err := it.Err(); err != nil { ... }
-func (s *GenerationsService) List(ctx context.Context, params *GenerationsListParams, opts ...RequestOption) *Iter[GenerationSummary] {
+func (s *GenerationsService) List(ctx context.Context, params *GenerationsListParams, opts ...RequestOption) *Iter[Generation] {
 	query := map[string]any{}
 	if params != nil {
 		if params.Limit != nil {
@@ -75,7 +96,7 @@ func (s *GenerationsService) List(ctx context.Context, params *GenerationsListPa
 		SchemaKey:  "generations.list",
 		Idempotent: true,
 	}
-	return newIter[GenerationSummary](ctx, s.core, req, opts, pageConfig{
+	return newIter[Generation](ctx, s.core, req, opts, pageConfig{
 		Style:           "cursor",
 		ItemsField:      "data",
 		CursorParam:     "cursor",
@@ -83,27 +104,6 @@ func (s *GenerationsService) List(ctx context.Context, params *GenerationsListPa
 		HasMoreField:    "has_more",
 		LimitParam:      "limit",
 	})
-}
-
-// Get a generation.
-//
-// Returns the status of that Generation. `queued` and `running` mean generation is still in progress. `completed` means generated files are saved, not that repository delivery or a Draft is complete. List its files with listGenerationFiles and read each with getFile.
-//
-// GET /generations/{generation_id}
-func (s *GenerationsService) Get(ctx context.Context, generationID string, opts ...RequestOption) (*GenerationResponse, error) {
-	req := request{
-		Method:     "GET",
-		Path:       fmt.Sprintf("/generations/%s", url.PathEscape(generationID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "generations.get",
-		Idempotent: true,
-	}
-	var out GenerationResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
 }
 
 // ListFiles — list a Generation's files.
