@@ -157,7 +157,6 @@ type Client struct {
 	Generations   *GenerationsService
 	Drafts        *DraftsService
 	Releases      *ReleasesService
-	Publications  *PublicationsService
 	Files         *FilesService
 	Generate      *GenerateService
 	Organization  *OrganizationService
@@ -210,7 +209,6 @@ func New(opts ...Option) (*Client, error) {
 	client.Generations = &GenerationsService{core: c}
 	client.Drafts = &DraftsService{core: c}
 	client.Releases = &ReleasesService{core: c}
-	client.Publications = &PublicationsService{core: c}
 	client.Files = &FilesService{core: c}
 	client.Generate = &GenerateService{core: c}
 	client.Organization = &OrganizationService{core: c}

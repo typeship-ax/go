@@ -3012,14 +3012,11 @@ type ReleaseResponseImportProvenance struct {
 	ImportedAt *string `json:"imported_at"`
 }
 
-// Publication is an API model.
+// Publication is an API model. One destination's publishing progress for its Release. It has no ID; read it on the Release.
 type Publication struct {
-	ID        PublicationID `json:"id"`
-	Object    string        `json:"object"`
-	ReleaseID ReleaseID     `json:"release_id"`
 	// Type Where the release is published. github is the repository's GitHub Release; the others are package registries.
 	Type PublicationType `json:"type"`
-	// Status queued: the repository workflow has not started this destination; get the Publication or its Release again. running: the workflow is publishing; get it again. completed: the package is published at registry_url. failed: read errors, correct the cause, then call retryRelease on release_id. Lifecycle events are publication.running, publication.completed, and publication.failed.
+	// Status queued: the repository workflow has not started this destination; get the Publication or its Release again. running: the workflow is publishing; get it again. completed: the package is published at registry_url. failed: read errors, correct the cause, then retry the Release. Lifecycle events are publication.running, publication.completed, and publication.failed.
 	Status         GenerationStatus `json:"status"`
 	Attempt        int64            `json:"attempt"`
 	RunURL         *string          `json:"run_url"`
@@ -3034,9 +3031,6 @@ type Publication struct {
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
 }
-
-// PublicationID is a generated API type.
-type PublicationID string
 
 // PublicationType is one of "github", "npm", "pypi", "go", "mcp". Where the release is published. github is the repository's GitHub Release; the others are package registries.
 type PublicationType string
@@ -3773,39 +3767,6 @@ type ReleaseImportProvenance struct {
 	ArtifactDigest *string `json:"artifact_digest"`
 	// ImportedAt When Typeship recorded the adopted package.
 	ImportedAt *string `json:"imported_at"`
-}
-
-// PublicationResponse is an API model.
-type PublicationResponse struct {
-	ID        PublicationID `json:"id"`
-	Object    string        `json:"object"`
-	ReleaseID ReleaseID     `json:"release_id"`
-	// Type Where the release is published. github is the repository's GitHub Release; the others are package registries.
-	Type PublicationType `json:"type"`
-	// Status queued: the repository workflow has not started this destination; get the Publication or its Release again. running: the workflow is publishing; get it again. completed: the package is published at registry_url. failed: read errors, correct the cause, then call retryRelease on release_id. Lifecycle events are publication.running, publication.completed, and publication.failed.
-	Status         GenerationStatus `json:"status"`
-	Attempt        int64            `json:"attempt"`
-	RunURL         *string          `json:"run_url"`
-	RegistryURL    *string          `json:"registry_url"`
-	ArtifactDigest *string          `json:"artifact_digest"`
-	// Errors Recorded failures. Empty when this resource has no recorded failure.
-	Errors     []DomainError `json:"errors"`
-	StartedAt  *string       `json:"started_at"`
-	FinishedAt *string       `json:"finished_at"`
-	// RuntimeMs Milliseconds from started_at to finished_at; null until the attempt finishes.
-	RuntimeMs *int64    `json:"runtime_ms"`
-	CreatedAt string    `json:"created_at"`
-	UpdatedAt string    `json:"updated_at"`
-	RequestID RequestID `json:"request_id"`
-}
-
-// PublicationList is an API model.
-type PublicationList struct {
-	Object     ListObject    `json:"object"`
-	Data       []Publication `json:"data"`
-	HasMore    bool          `json:"has_more"`
-	NextCursor *string       `json:"next_cursor"`
-	RequestID  RequestID     `json:"request_id"`
 }
 
 // FileResponse is an API model.
