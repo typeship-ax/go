@@ -2253,11 +2253,18 @@ const (
 	ErrorTypeAPI          ErrorType = "api"
 )
 
-// ErrorCode is one of "input_invalid", "query_param_invalid", "cursor_invalid", "method_not_allowed", "resource_not_found", "idempotency_key_invalid", "idempotency_key_reused", "idempotency_key_in_use", "auth_required", "api_key_invalid", "token_invalid", "organization_required", "insufficient_scope", "role_insufficient", "rate_limit_exceeded", "plan_limit_reached", "spec_invalid", "spec_too_large", "spec_unreachable", "repository_provider_unsupported", "repository_disconnected", "repository_unavailable", "target_busy", "targets_inactive", "no_draft", "draft_merged", "resource_changed", "precondition_failed", "version_invalid", "version_occupied", "version_too_low", "target_already_released", "adoption_unverified", "publication_disabled", "publication_not_retryable", "publication_recovery_unavailable", "publication_failed", "delivery_conflict", "delivery_exists", "resource_has_dependencies", "customization_conflict", "checks_failed", "draft_title_invalid", "history_recovery_required", "checks_unavailable", "dependency_missing", "dependency_not_found", "dependency_self", "dependency_cycle", "dependency_cross_project", "dependency_cross_lineage", "dependency_wrong_generator", "dependency_disabled", "dependency_module_path_missing", "dependency_unreleased", "dependency_revision_mismatch", "regeneration_failed", "follow_up_failed", "api_error". Stable programmatic identifier. Do not branch on message.
+// ErrorCode is one of "input_invalid", "input_missing", "input_type_invalid", "input_format_invalid", "input_too_long", "input_too_short", "input_duplicate", "input_unknown", "query_param_invalid", "cursor_invalid", "method_not_allowed", "resource_not_found", "idempotency_key_invalid", "idempotency_key_reused", "idempotency_key_in_use", "auth_required", "api_key_invalid", "token_invalid", "organization_required", "insufficient_scope", "role_insufficient", "rate_limit_exceeded", "feature_not_available", "quota_exceeded", "spec_invalid", "spec_too_large", "spec_unreachable", "repository_provider_unsupported", "repository_disconnected", "repository_unavailable", "target_busy", "targets_inactive", "no_draft", "draft_merged", "resource_changed", "precondition_failed", "version_invalid", "version_occupied", "version_too_low", "target_already_released", "adoption_unverified", "publication_disabled", "publication_not_retryable", "publication_recovery_unavailable", "publication_failed", "delivery_conflict", "delivery_exists", "resource_has_dependencies", "customization_conflict", "checks_failed", "draft_title_invalid", "history_recovery_required", "checks_unavailable", "dependency_missing", "dependency_not_found", "dependency_self", "dependency_cycle", "dependency_cross_project", "dependency_cross_lineage", "dependency_wrong_generator", "dependency_disabled", "dependency_module_path_missing", "dependency_unreleased", "dependency_revision_mismatch", "regeneration_failed", "follow_up_failed", "api_error". Stable programmatic identifier. Do not branch on message.
 type ErrorCode string
 
 const (
 	ErrorCodeInputInvalid                   ErrorCode = "input_invalid"
+	ErrorCodeInputMissing                   ErrorCode = "input_missing"
+	ErrorCodeInputTypeInvalid               ErrorCode = "input_type_invalid"
+	ErrorCodeInputFormatInvalid             ErrorCode = "input_format_invalid"
+	ErrorCodeInputTooLong                   ErrorCode = "input_too_long"
+	ErrorCodeInputTooShort                  ErrorCode = "input_too_short"
+	ErrorCodeInputDuplicate                 ErrorCode = "input_duplicate"
+	ErrorCodeInputUnknown                   ErrorCode = "input_unknown"
 	ErrorCodeQueryParamInvalid              ErrorCode = "query_param_invalid"
 	ErrorCodeCursorInvalid                  ErrorCode = "cursor_invalid"
 	ErrorCodeMethodNotAllowed               ErrorCode = "method_not_allowed"
@@ -2272,7 +2279,8 @@ const (
 	ErrorCodeInsufficientScope              ErrorCode = "insufficient_scope"
 	ErrorCodeRoleInsufficient               ErrorCode = "role_insufficient"
 	ErrorCodeRateLimitExceeded              ErrorCode = "rate_limit_exceeded"
-	ErrorCodePlanLimitReached               ErrorCode = "plan_limit_reached"
+	ErrorCodeFeatureNotAvailable            ErrorCode = "feature_not_available"
+	ErrorCodeQuotaExceeded                  ErrorCode = "quota_exceeded"
 	ErrorCodeSpecInvalid                    ErrorCode = "spec_invalid"
 	ErrorCodeSpecTooLarge                   ErrorCode = "spec_too_large"
 	ErrorCodeSpecUnreachable                ErrorCode = "spec_unreachable"
