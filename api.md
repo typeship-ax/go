@@ -10,7 +10,7 @@ For complete input and output schemas, use [`api.json`](./api.json), the machine
 
 ### `client.Generate.Run(ctx, body, params)`
 
-Generate a package from a Spec
+Generate a package
 
 `POST /generate`
 
@@ -85,7 +85,7 @@ Errors: `*BadRequestError` (400), `*NotFoundError` (404), `*RateLimitedError` (4
 
 ### `client.Projects.List(ctx, params)`
 
-List projects
+List Projects
 
 `GET /projects`
 
@@ -96,7 +96,7 @@ Safety: **read** · Authentication: **required**
 | `params.Limit` | query | `*int64` | no | Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 input_invalid. List query parameters must appear only once; repeated or unrecognized parameters return 400 query_param_invalid. |
 | `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. Valid only for the same organization, operation, filters, and ordering that issued it. Omit to start at the first page. Empty or malformed cursors, and cursors issued for different filters, return 400 cursor_invalid; start again from the first page. Repeated cursors return 400 query_param_invalid. The page limit may change between requests. |
 
-Returns: `*Iter[ProjectSummary]` — auto-paginating (`for it.Next()` walks every page)
+Returns: `*Iter[Project]` — auto-paginating (`for it.Next()` walks every page)
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*RateLimitedError` (429), `*InternalServerError` (500)
 
 <details>
@@ -110,7 +110,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ### `client.Projects.Create(ctx, body, params)`
 
-Create a project
+Create a Project
 
 `POST /projects`
 
@@ -127,7 +127,7 @@ Safety: **write** · Authentication: **required**
 
 Body: `CreateProjectRequest` (required)
 
-Returns: `(*Project, error)`
+Returns: `(*ProjectResponse, error)`
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredError` (402), `*ForbiddenError` (403), `*ConflictError` (409), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500)
 
 <details>
@@ -168,7 +168,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredE
 
 ### `client.Projects.Get(ctx, projectID)`
 
-Get a project
+Get a Project
 
 `GET /projects/{project_id}`
 
@@ -180,7 +180,7 @@ Safety: **read** · Authentication: **required**
 | --- | --- | --- | --- | --- |
 | `projectID` | path | `string` | yes | — |
 
-Returns: `(*Project, error)`
+Returns: `(*ProjectResponse, error)`
 Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
 
 <details>
@@ -196,7 +196,7 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 
 ### `client.Projects.Delete(ctx, projectID, params)`
 
-Delete a project
+Delete a Project
 
 `DELETE /projects/{project_id}`
 
@@ -226,7 +226,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ### `client.Projects.Update(ctx, projectID, body, params)`
 
-Update a project
+Update a Project
 
 `PATCH /projects/{project_id}`
 
@@ -247,7 +247,7 @@ Safety: **write** · Authentication: **required**
 
 Body: `UpdateProjectRequest` (required)
 
-Returns: `(*Project, error)`
+Returns: `(*ProjectResponse, error)`
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredError` (402), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*PreconditionFailedError` (412), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
 
 <details>
@@ -264,7 +264,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredE
 
 ### `client.Projects.Generate(ctx, projectID, body, params)`
 
-Start generation for active Targets
+Generate a Project's Targets
 
 `POST /projects/{project_id}/generate`
 
@@ -326,7 +326,7 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 
 ### `client.Specs.Update(ctx, specID, body, params)`
 
-Update and resolve a Spec
+Update a Spec
 
 `PATCH /specs/{spec_id}`
 
@@ -369,7 +369,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ### `client.Specs.Refresh(ctx, specID, params)`
 
-Refresh a Spec from its configured source
+Refresh a Spec
 
 `POST /specs/{spec_id}/refresh`
 
@@ -515,7 +515,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ### `client.Targets.Create(ctx, body, params)`
 
-Create an independently configured Target
+Create a Target
 
 `POST /targets`
 
@@ -539,7 +539,6 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredE
 {
   "project_id": "prj_4f8k2m7x9q1v6b3n",
   "name": "Parcel CLI",
-  "spec_id": "spec_2p8m4q7k1v9d6h3c",
   "type": "cli",
   "config": {
     "cli": {
@@ -590,7 +589,7 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 
 ### `client.Targets.Delete(ctx, targetID, params)`
 
-Delete an unused Target
+Delete a Target
 
 `DELETE /targets/{target_id}`
 
@@ -660,7 +659,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*PaymentRequiredE
 
 ### `client.Targets.Adopt(ctx, targetID, body, params)`
 
-Adopt a verified existing package as the latest release
+Adopt a package release
 
 `POST /targets/{target_id}/adopt`
 
@@ -752,7 +751,7 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 
 ### `client.Drafts.Update(ctx, draftID, body, params)`
 
-Select an exact Draft version or return to automatic versioning
+Update a Draft
 
 `PATCH /drafts/{draft_id}`
 
@@ -790,7 +789,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ### `client.Drafts.ListFiles(ctx, draftID, params)`
 
-List customized and conflicted files on a Draft
+List a Draft's files
 
 `GET /drafts/{draft_id}/files`
 
@@ -823,7 +822,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ### `client.Drafts.Resolve(ctx, draftID, body)`
 
-Resolve selected Draft files
+Resolve Draft conflicts
 
 `POST /drafts/{draft_id}/resolve`
 
@@ -864,7 +863,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ### `client.Drafts.Recover(ctx, draftID, body)`
 
-Approve recovery from rewritten default-branch history
+Recover a Draft's history
 
 `POST /drafts/{draft_id}/recover`
 
@@ -898,7 +897,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ### `client.Releases.List(ctx, params)`
 
-List releases
+List Releases
 
 `GET /releases`
 
@@ -924,7 +923,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ### `client.Releases.Get(ctx, releaseID)`
 
-Get a release
+Get a Release
 
 `GET /releases/{release_id}`
 
@@ -950,7 +949,7 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 
 ### `client.Releases.Retry(ctx, releaseID, params)`
 
-Retry publishing a release
+Retry publishing a Release
 
 `POST /releases/{release_id}/retry`
 
@@ -1159,7 +1158,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ### `client.Publications.List(ctx, params)`
 
-List publications
+List Publications
 
 `GET /publications`
 
@@ -1186,7 +1185,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ### `client.Publications.Get(ctx, publicationID)`
 
-Get a publication
+Get a Publication
 
 `GET /publications/{publication_id}`
 
@@ -1216,7 +1215,7 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 
 ### `client.Generations.List(ctx, params)`
 
-List generations
+List Generations
 
 `GET /generations`
 
@@ -1230,7 +1229,7 @@ Safety: **read** · Authentication: **required**
 | `params.TargetID` | query | `*TargetID` | no | Only Generations of this Target. |
 | `params.Status` | query | `*GenerationStatus` | no | Only Generations with this status. |
 
-Returns: `*Iter[GenerationSummary]` — auto-paginating (`for it.Next()` walks every page)
+Returns: `*Iter[Generation]` — auto-paginating (`for it.Next()` walks every page)
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
 
 <details>
@@ -1244,7 +1243,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ### `client.Generations.Get(ctx, generationID)`
 
-Get a generation
+Get a Generation
 
 `GET /generations/{generation_id}`
 
@@ -1304,7 +1303,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ### `client.Files.Get(ctx, fileID, params)`
 
-Get a file
+Get a File
 
 `GET /files/{file_id}`
 
@@ -1335,7 +1334,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ### `client.Organization.Get(ctx)`
 
-The organization behind the presented credentials
+Get the Organization
 
 `GET /organization`
 

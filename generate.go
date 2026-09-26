@@ -24,7 +24,7 @@ type GenerateDownloadPackageParams struct {
 	Token string `json:"-"`
 }
 
-// Run — generate a package from a Spec.
+// Run — generate a package.
 //
 // Returns one generated package without creating a Project.
 //

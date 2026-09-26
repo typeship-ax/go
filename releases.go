@@ -29,7 +29,7 @@ type ReleasesRetryParams struct {
 	IdempotencyKey *string `json:"-"`
 }
 
-// List releases.
+// List Releases.
 //
 // GET /releases
 //
@@ -72,7 +72,7 @@ func (s *ReleasesService) List(ctx context.Context, params *ReleasesListParams, 
 	})
 }
 
-// Get a release.
+// Get a Release.
 //
 // GET /releases/{release_id}
 func (s *ReleasesService) Get(ctx context.Context, releaseID string, opts ...RequestOption) (*ReleaseResponse, error) {
@@ -91,7 +91,7 @@ func (s *ReleasesService) Get(ctx context.Context, releaseID string, opts ...Req
 	return &out, nil
 }
 
-// Retry publishing a release.
+// Retry publishing a Release.
 //
 // Queues every failed or queued Publication of the release and starts its repository publishing workflow again. Publishing uses that release's version and accepted commit, even if a newer Draft or release exists. Completed Publications are not repeated.
 //

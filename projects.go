@@ -45,7 +45,7 @@ type ProjectsGenerateParams struct {
 	IdempotencyKey *string `json:"-"`
 }
 
-// List projects.
+// List Projects.
 //
 // GET /projects
 //
@@ -56,7 +56,7 @@ type ProjectsGenerateParams struct {
 //		item := it.Value()
 //	}
 //	if err := it.Err(); err != nil { ... }
-func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, opts ...RequestOption) *Iter[ProjectSummary] {
+func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, opts ...RequestOption) *Iter[Project] {
 	query := map[string]any{}
 	if params != nil {
 		if params.Limit != nil {
@@ -75,7 +75,7 @@ func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, 
 		SchemaKey:  "projects.list",
 		Idempotent: true,
 	}
-	return newIter[ProjectSummary](ctx, s.core, req, opts, pageConfig{
+	return newIter[Project](ctx, s.core, req, opts, pageConfig{
 		Style:           "cursor",
 		ItemsField:      "data",
 		CursorParam:     "cursor",
@@ -85,7 +85,7 @@ func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, 
 	})
 }
 
-// Create a project.
+// Create a Project.
 //
 // Creates a Project from a URL or GitHub Spec.
 // Automatic generation is enabled by default for a saved Project.
@@ -93,7 +93,7 @@ func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, 
 // Free includes one saved Project, all selected Targets, and the first 25 operations per Target, with regeneration, history, delivery pull requests, and previews. Pro supports additional Projects and all operations. One-shot generation does not use a Project slot.
 //
 // POST /projects
-func (s *ProjectsService) Create(ctx context.Context, body CreateProjectRequest, params *ProjectsCreateParams, opts ...RequestOption) (*Project, error) {
+func (s *ProjectsService) Create(ctx context.Context, body CreateProjectRequest, params *ProjectsCreateParams, opts ...RequestOption) (*ProjectResponse, error) {
 	headers := map[string]string{}
 	if params != nil {
 		if params.IdempotencyKey != nil {
@@ -110,19 +110,19 @@ func (s *ProjectsService) Create(ctx context.Context, body CreateProjectRequest,
 		SchemaKey:         "projects.create",
 		IdempotencyHeader: "Idempotency-Key",
 	}
-	var out Project
+	var out ProjectResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}
 	return &out, nil
 }
 
-// Get a project.
+// Get a Project.
 //
 // Returns the Project's settings and Spec ID. List its Targets separately to retrieve Target configuration and Deliveries.
 //
 // GET /projects/{project_id}
-func (s *ProjectsService) Get(ctx context.Context, projectID string, opts ...RequestOption) (*Project, error) {
+func (s *ProjectsService) Get(ctx context.Context, projectID string, opts ...RequestOption) (*ProjectResponse, error) {
 	req := request{
 		Method:     "GET",
 		Path:       fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
@@ -131,14 +131,14 @@ func (s *ProjectsService) Get(ctx context.Context, projectID string, opts ...Req
 		SchemaKey:  "projects.get",
 		Idempotent: true,
 	}
-	var out Project
+	var out ProjectResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}
 	return &out, nil
 }
 
-// Delete a project.
+// Delete a Project.
 //
 // A `502 repository_unavailable` means the Project was not deleted because its release pull requests could not be retired. Retry deletion to finish retiring the remaining reviews. Repeating a completed deletion returns `404`.
 // See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
@@ -167,7 +167,7 @@ func (s *ProjectsService) Delete(ctx context.Context, projectID string, params *
 	return &out, nil
 }
 
-// Update a project.
+// Update a Project.
 //
 // Omitted fields keep their current values. A supplied config replaces the entire stored object; null or an empty object clears it.
 // With auto_generate enabled, changing shared config queues a Generation for each Target whose effective config changes. A queued or running Target reuses that Generation.
@@ -178,7 +178,7 @@ func (s *ProjectsService) Delete(ctx context.Context, projectID string, params *
 // See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
 //
 // PATCH /projects/{project_id}
-func (s *ProjectsService) Update(ctx context.Context, projectID string, body UpdateProjectRequest, params *ProjectsUpdateParams, opts ...RequestOption) (*Project, error) {
+func (s *ProjectsService) Update(ctx context.Context, projectID string, body UpdateProjectRequest, params *ProjectsUpdateParams, opts ...RequestOption) (*ProjectResponse, error) {
 	headers := map[string]string{}
 	if params != nil {
 		if params.IfMatch != nil {
@@ -194,14 +194,14 @@ func (s *ProjectsService) Update(ctx context.Context, projectID string, body Upd
 		Security:  []map[string][]string{{"apiKey": {}}},
 		SchemaKey: "projects.update",
 	}
-	var out Project
+	var out ProjectResponse
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}
 	return &out, nil
 }
 
-// Generate — start generation for active Targets.
+// Generate a Project's Targets.
 //
 // Queues one Generation per active Target and returns their IDs. Retrieve each Generation until its status moves from `queued` to `running` and then `completed` or `failed`. `completed` means generated files are saved; check Delivery and Draft status separately for repository delivery and pull requests. A Target already queued or running is returned without starting another Generation. A `409 targets_inactive` means the Project has no active Target to generate. A matching Idempotency-Key replay returns the same Generations with their current statuses.
 //

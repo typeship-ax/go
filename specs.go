@@ -46,7 +46,7 @@ func (s *SpecsService) Get(ctx context.Context, specID string, opts ...RequestOp
 	return &out, nil
 }
 
-// Update and resolve a Spec.
+// Update a Spec.
 //
 // Resolves the source files before saving the update and records a new Spec Revision when the source changes.
 // Omitted fields remain unchanged; supplied objects and arrays replace the whole field.
@@ -83,7 +83,7 @@ func (s *SpecsService) Update(ctx context.Context, specID string, body SpecUpdat
 	return &out, nil
 }
 
-// Refresh a Spec from its configured source.
+// Refresh a Spec.
 //
 // Fetches the configured source now and creates a new Spec Revision only when its content changes. Diagnostics then reads that revision. If automatic generation is enabled, refresh queues generation for active Targets even when the source is unchanged. A `502 follow_up_failed` means the new Spec Revision was recorded but generation could not be queued.
 //

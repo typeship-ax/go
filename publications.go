@@ -25,7 +25,7 @@ type PublicationsListParams struct {
 	Status *GenerationStatus `json:"-"`
 }
 
-// List publications.
+// List Publications.
 //
 // GET /publications
 //
@@ -71,7 +71,7 @@ func (s *PublicationsService) List(ctx context.Context, params *PublicationsList
 	})
 }
 
-// Get a publication.
+// Get a Publication.
 //
 // Returns the registry publishing status for a release. A status in another organization returns 404 resource_not_found.
 //

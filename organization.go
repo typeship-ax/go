@@ -11,7 +11,7 @@ type OrganizationService struct {
 	core *core
 }
 
-// Get — the organization behind the presented credentials.
+// Get the Organization.
 //
 // Returns the organization associated with your credential. The Typeship CLI uses this endpoint for `whoami`.
 //

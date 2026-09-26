@@ -36,7 +36,7 @@ type GenerationsListFilesParams struct {
 	Cursor *string `json:"-"`
 }
 
-// List generations.
+// List Generations.
 //
 // GET /generations
 //
@@ -47,7 +47,7 @@ type GenerationsListFilesParams struct {
 //		item := it.Value()
 //	}
 //	if err := it.Err(); err != nil { ... }
-func (s *GenerationsService) List(ctx context.Context, params *GenerationsListParams, opts ...RequestOption) *Iter[GenerationSummary] {
+func (s *GenerationsService) List(ctx context.Context, params *GenerationsListParams, opts ...RequestOption) *Iter[Generation] {
 	query := map[string]any{}
 	if params != nil {
 		if params.Limit != nil {
@@ -75,7 +75,7 @@ func (s *GenerationsService) List(ctx context.Context, params *GenerationsListPa
 		SchemaKey:  "generations.list",
 		Idempotent: true,
 	}
-	return newIter[GenerationSummary](ctx, s.core, req, opts, pageConfig{
+	return newIter[Generation](ctx, s.core, req, opts, pageConfig{
 		Style:           "cursor",
 		ItemsField:      "data",
 		CursorParam:     "cursor",
@@ -85,7 +85,7 @@ func (s *GenerationsService) List(ctx context.Context, params *GenerationsListPa
 	})
 }
 
-// Get a generation.
+// Get a Generation.
 //
 // Returns the status of that Generation. `queued` and `running` mean generation is still in progress. `completed` means generated files are saved, not that repository delivery or a Draft is complete. List its files with listGenerationFiles and read each with getFile.
 //
