@@ -13,6 +13,12 @@ type ProjectsService struct {
 	core *core
 }
 
+// ProjectsCreateParams are the inputs for ProjectsService.Create.
+type ProjectsCreateParams struct {
+	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
+	IdempotencyKey *string `json:"-"`
+}
+
 // ProjectsListParams are the inputs for ProjectsService.List.
 type ProjectsListParams struct {
 	// Limit Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 input_invalid. List query parameters must appear only once; repeated or unrecognized parameters return 400 query_param_invalid.
@@ -21,10 +27,10 @@ type ProjectsListParams struct {
 	Cursor *string `json:"-"`
 }
 
-// ProjectsCreateParams are the inputs for ProjectsService.Create.
-type ProjectsCreateParams struct {
-	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
-	IdempotencyKey *string `json:"-"`
+// ProjectsUpdateParams are the inputs for ProjectsService.Update.
+type ProjectsUpdateParams struct {
+	// IfMatch ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes.
+	IfMatch *string `json:"-"`
 }
 
 // ProjectsDeleteParams are the inputs for ProjectsService.Delete.
@@ -33,16 +39,42 @@ type ProjectsDeleteParams struct {
 	IfMatch *string `json:"-"`
 }
 
-// ProjectsUpdateParams are the inputs for ProjectsService.Update.
-type ProjectsUpdateParams struct {
-	// IfMatch ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes.
-	IfMatch *string `json:"-"`
-}
-
 // ProjectsGenerateParams are the inputs for ProjectsService.Generate.
 type ProjectsGenerateParams struct {
 	// IdempotencyKey Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write.
 	IdempotencyKey *string `json:"-"`
+}
+
+// Create a Project.
+//
+// Creates a Project from a URL or GitHub Spec.
+// Automatic generation is enabled by default for a saved Project.
+//
+// Free includes one saved Project, all selected Targets, and the first 25 operations per Target, with regeneration, history, delivery pull requests, and previews. Pro supports additional Projects and all operations. One-shot generation does not use a Project slot.
+//
+// POST /projects
+func (s *ProjectsService) Create(ctx context.Context, body CreateProjectRequest, params *ProjectsCreateParams, opts ...RequestOption) (*ProjectResponse, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IdempotencyKey != nil {
+			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
+		}
+	}
+	req := request{
+		Method:            "POST",
+		Path:              "/projects",
+		Headers:           headers,
+		Body:              body,
+		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:          []map[string][]string{{"apiKey": {}}},
+		SchemaKey:         "projects.create",
+		IdempotencyHeader: "Idempotency-Key",
+	}
+	var out ProjectResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 // List Projects.
@@ -85,38 +117,6 @@ func (s *ProjectsService) List(ctx context.Context, params *ProjectsListParams, 
 	})
 }
 
-// Create a Project.
-//
-// Creates a Project from a URL or GitHub Spec.
-// Automatic generation is enabled by default for a saved Project.
-//
-// Free includes one saved Project, all selected Targets, and the first 25 operations per Target, with regeneration, history, delivery pull requests, and previews. Pro supports additional Projects and all operations. One-shot generation does not use a Project slot.
-//
-// POST /projects
-func (s *ProjectsService) Create(ctx context.Context, body CreateProjectRequest, params *ProjectsCreateParams, opts ...RequestOption) (*ProjectResponse, error) {
-	headers := map[string]string{}
-	if params != nil {
-		if params.IdempotencyKey != nil {
-			headers["Idempotency-Key"] = fmt.Sprint(*params.IdempotencyKey)
-		}
-	}
-	req := request{
-		Method:            "POST",
-		Path:              "/projects",
-		Headers:           headers,
-		Body:              body,
-		Errors:            map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "402": newPaymentRequiredError, "403": newForbiddenError, "409": newConflictError, "422": newUnprocessableEntityError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:          []map[string][]string{{"apiKey": {}}},
-		SchemaKey:         "projects.create",
-		IdempotencyHeader: "Idempotency-Key",
-	}
-	var out ProjectResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
 // Get a Project.
 //
 // Returns the Project's settings and Spec ID. List its Targets separately to retrieve Target configuration and Deliveries.
@@ -132,35 +132,6 @@ func (s *ProjectsService) Get(ctx context.Context, projectID string, opts ...Req
 		Idempotent: true,
 	}
 	var out ProjectResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// Delete a Project.
-//
-// A `502 repository_unavailable` means the Project was not deleted because its release pull requests could not be retired. Retry deletion to finish retiring the remaining reviews. Repeating a completed deletion returns `404`.
-// See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
-//
-// DELETE /projects/{project_id}
-func (s *ProjectsService) Delete(ctx context.Context, projectID string, params *ProjectsDeleteParams, opts ...RequestOption) (*DeletedProject, error) {
-	headers := map[string]string{}
-	if params != nil {
-		if params.IfMatch != nil {
-			headers["If-Match"] = fmt.Sprint(*params.IfMatch)
-		}
-	}
-	req := request{
-		Method:     "DELETE",
-		Path:       fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
-		Headers:    headers,
-		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "412": newPreconditionFailedError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
-		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "projects.delete",
-		Idempotent: true,
-	}
-	var out DeletedProject
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}
@@ -195,6 +166,35 @@ func (s *ProjectsService) Update(ctx context.Context, projectID string, body Upd
 		SchemaKey: "projects.update",
 	}
 	var out ProjectResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// Delete a Project.
+//
+// A `502 repository_unavailable` means the Project was not deleted because its release pull requests could not be retired. Retry deletion to finish retiring the remaining reviews. Repeating a completed deletion returns `404`.
+// See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
+//
+// DELETE /projects/{project_id}
+func (s *ProjectsService) Delete(ctx context.Context, projectID string, params *ProjectsDeleteParams, opts ...RequestOption) (*DeletedProject, error) {
+	headers := map[string]string{}
+	if params != nil {
+		if params.IfMatch != nil {
+			headers["If-Match"] = fmt.Sprint(*params.IfMatch)
+		}
+	}
+	req := request{
+		Method:     "DELETE",
+		Path:       fmt.Sprintf("/projects/%s", url.PathEscape(projectID)),
+		Headers:    headers,
+		Errors:     map[string]func(int, []byte, string) error{"400": newBadRequestError, "401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "412": newPreconditionFailedError, "429": newRateLimitedError, "500": newInternalServerError, "502": newBadGatewayError},
+		Security:   []map[string][]string{{"apiKey": {}}},
+		SchemaKey:  "projects.delete",
+		Idempotent: true,
+	}
+	var out DeletedProject
 	if err := s.core.do(ctx, req, &out, opts...); err != nil {
 		return nil, err
 	}

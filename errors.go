@@ -4,7 +4,7 @@ package typeship
 
 import "fmt"
 
-// BadRequestError is returned for 400 responses. A list query parameter is unknown, repeated, empty, or invalid, or the cursor is not for this list.
+// BadRequestError is returned for 400 responses. Invalid name, Spec source, or field value.
 type BadRequestError struct {
 	APIError
 }
@@ -20,30 +20,6 @@ type UnauthorizedError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *UnauthorizedError) Unwrap() error { return &e.APIError }
 
-// ForbiddenError is returned for 403 responses. The credentials are valid but cannot act on the requested organization.
-type ForbiddenError struct {
-	APIError
-}
-
-// Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *ForbiddenError) Unwrap() error { return &e.APIError }
-
-// RateLimitedError is returned for 429 responses. Too many requests, or an identical write is still in progress. Wait for Retry-After before retrying.
-type RateLimitedError struct {
-	APIError
-}
-
-// Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *RateLimitedError) Unwrap() error { return &e.APIError }
-
-// InternalServerError is returned for 500 responses. An unexpected error prevented the request from completing.
-type InternalServerError struct {
-	APIError
-}
-
-// Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *InternalServerError) Unwrap() error { return &e.APIError }
-
 // PaymentRequiredError is returned for 402 responses. The plan does not include another project or the requested target configuration.
 type PaymentRequiredError struct {
 	APIError
@@ -51,6 +27,14 @@ type PaymentRequiredError struct {
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *PaymentRequiredError) Unwrap() error { return &e.APIError }
+
+// ForbiddenError is returned for 403 responses. The credentials are valid but cannot act on the requested organization.
+type ForbiddenError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *ForbiddenError) Unwrap() error { return &e.APIError }
 
 // ConflictError is returned for 409 responses. A Delivery conflicts, or the key identifies changed intent.
 type ConflictError struct {
@@ -67,6 +51,22 @@ type UnprocessableEntityError struct {
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *UnprocessableEntityError) Unwrap() error { return &e.APIError }
+
+// RateLimitedError is returned for 429 responses. Too many requests, or an identical write is still in progress. Wait for Retry-After before retrying.
+type RateLimitedError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *RateLimitedError) Unwrap() error { return &e.APIError }
+
+// InternalServerError is returned for 500 responses. Project setup failed unexpectedly; the key reservation is released.
+type InternalServerError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *InternalServerError) Unwrap() error { return &e.APIError }
 
 // NotFoundError is returned for 404 responses. No such resource in this organization.
 type NotFoundError struct {
@@ -130,20 +130,12 @@ func newUnauthorizedError(status int, body []byte, requestID string) error {
 	return &UnauthorizedError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
-func newForbiddenError(status int, body []byte, requestID string) error {
-	return &ForbiddenError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
-}
-
-func newRateLimitedError(status int, body []byte, requestID string) error {
-	return &RateLimitedError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
-}
-
-func newInternalServerError(status int, body []byte, requestID string) error {
-	return &InternalServerError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
-}
-
 func newPaymentRequiredError(status int, body []byte, requestID string) error {
 	return &PaymentRequiredError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+}
+
+func newForbiddenError(status int, body []byte, requestID string) error {
+	return &ForbiddenError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
 func newConflictError(status int, body []byte, requestID string) error {
@@ -152,6 +144,14 @@ func newConflictError(status int, body []byte, requestID string) error {
 
 func newUnprocessableEntityError(status int, body []byte, requestID string) error {
 	return &UnprocessableEntityError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+}
+
+func newRateLimitedError(status int, body []byte, requestID string) error {
+	return &RateLimitedError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+}
+
+func newInternalServerError(status int, body []byte, requestID string) error {
+	return &InternalServerError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
 func newNotFoundError(status int, body []byte, requestID string) error {
