@@ -2246,7 +2246,7 @@ const (
 	ErrorTypeAPI          ErrorType = "api"
 )
 
-// ErrorCode is one of "input_invalid", "query_param_invalid", "cursor_invalid", "method_not_allowed", "resource_not_found", "idempotency_key_invalid", "idempotency_key_reused", "idempotency_key_in_use", "auth_required", "api_key_invalid", "token_invalid", "organization_required", "insufficient_scope", "role_insufficient", "rate_limit_exceeded", "plan_limit_reached", "spec_invalid", "spec_too_large", "spec_unreachable", "repository_provider_unsupported", "repository_disconnected", "repository_unavailable", "target_busy", "targets_inactive", "no_draft", "draft_merged", "resource_changed", "precondition_failed", "version_invalid", "version_occupied", "version_too_low", "target_already_released", "adoption_unverified", "publication_disabled", "publication_not_retryable", "publication_recovery_unavailable", "publication_failed", "delivery_conflict", "delivery_exists", "resource_has_dependencies", "customization_conflict", "history_recovery_required", "checks_unavailable", "dependency_missing", "dependency_not_found", "dependency_self", "dependency_cycle", "dependency_cross_project", "dependency_cross_lineage", "dependency_wrong_generator", "dependency_disabled", "dependency_module_path_missing", "dependency_unreleased", "dependency_revision_mismatch", "regeneration_failed", "follow_up_failed", "api_error". Stable programmatic identifier. Do not branch on message.
+// ErrorCode is one of "input_invalid", "query_param_invalid", "cursor_invalid", "method_not_allowed", "resource_not_found", "idempotency_key_invalid", "idempotency_key_reused", "idempotency_key_in_use", "auth_required", "api_key_invalid", "token_invalid", "organization_required", "insufficient_scope", "role_insufficient", "rate_limit_exceeded", "plan_limit_reached", "spec_invalid", "spec_too_large", "spec_unreachable", "repository_provider_unsupported", "repository_disconnected", "repository_unavailable", "target_busy", "targets_inactive", "no_draft", "draft_merged", "resource_changed", "precondition_failed", "version_invalid", "version_occupied", "version_too_low", "target_already_released", "adoption_unverified", "publication_disabled", "publication_not_retryable", "publication_recovery_unavailable", "publication_failed", "delivery_conflict", "delivery_exists", "resource_has_dependencies", "customization_conflict", "checks_failed", "draft_title_invalid", "history_recovery_required", "checks_unavailable", "dependency_missing", "dependency_not_found", "dependency_self", "dependency_cycle", "dependency_cross_project", "dependency_cross_lineage", "dependency_wrong_generator", "dependency_disabled", "dependency_module_path_missing", "dependency_unreleased", "dependency_revision_mismatch", "regeneration_failed", "follow_up_failed", "api_error". Stable programmatic identifier. Do not branch on message.
 type ErrorCode string
 
 const (
@@ -2291,6 +2291,8 @@ const (
 	ErrorCodeDeliveryExists                 ErrorCode = "delivery_exists"
 	ErrorCodeResourceHasDependencies        ErrorCode = "resource_has_dependencies"
 	ErrorCodeCustomizationConflict          ErrorCode = "customization_conflict"
+	ErrorCodeChecksFailed                   ErrorCode = "checks_failed"
+	ErrorCodeDraftTitleInvalid              ErrorCode = "draft_title_invalid"
 	ErrorCodeHistoryRecoveryRequired        ErrorCode = "history_recovery_required"
 	ErrorCodeChecksUnavailable              ErrorCode = "checks_unavailable"
 	ErrorCodeDependencyMissing              ErrorCode = "dependency_missing"
@@ -3467,11 +3469,11 @@ const (
 	PublicationTypeMCP    PublicationType = "mcp"
 )
 
-// DraftStatus is one of "none", "working", "action_required", "ready", "merged". none: the open Draft has no pending change; generate the Target to start one. working: Typeship is generating, carrying repository edits forward, applying decisions, or checking the Draft; retrieve it again. action_required: use the typed reason to find the customer's next action. ready: required checks passed on head_sha; merge the pull request. merged: the pull request merged and the Draft is final; retrieve the Target for the draft_id of its next Draft.
+// DraftStatus is one of "idle", "working", "action_required", "ready", "merged". idle: the open Draft has no pending change; generate the Target to start one. working: Typeship is generating, carrying repository edits forward, applying decisions, or checking the Draft; retrieve it again. action_required: use the typed reason to find the customer's next action. ready: required checks passed on head_sha; merge the pull request. merged: the pull request merged and the Draft is final; retrieve the Target for the draft_id of its next Draft.
 type DraftStatus string
 
 const (
-	DraftStatusNone           DraftStatus = "none"
+	DraftStatusIdle           DraftStatus = "idle"
 	DraftStatusWorking        DraftStatus = "working"
 	DraftStatusActionRequired DraftStatus = "action_required"
 	DraftStatusReady          DraftStatus = "ready"
@@ -3500,9 +3502,14 @@ type Draft struct {
 	VersionNext *string `json:"version_next"`
 	// VersionSource Where version_next was selected; null once the Draft merged.
 	VersionSource *DraftVersionSource `json:"version_source"`
-	Readiness     *DraftReadiness     `json:"readiness"`
-	Changes       *DraftChanges       `json:"changes"`
-	// HeadSha Draft commit that readiness, checks, and conflicts describe. Send it as expected_head_sha when resolving or discarding.
+	// Compatibility Null until the Draft has a generated change, and on a merged Draft.
+	Compatibility *DraftCompatibility `json:"compatibility"`
+	// Version Null until the Draft has a generated change, and on a merged Draft.
+	Version *DraftVersion `json:"version"`
+	// Errors What blocks the Draft, one entry per finding, each with a code and suggested_action. Empty unless status is action_required.
+	Errors  []ErrorDetail `json:"errors"`
+	Changes *DraftChanges `json:"changes"`
+	// HeadSha Draft commit that compatibility, version, checks, and conflicts describe. Send it as expected_head_sha when resolving or discarding.
 	HeadSha *string `json:"head_sha"`
 	// PullRequest The Draft pull request in the destination repository, or null before one is opened.
 	PullRequest *DraftPullRequest `json:"pull_request"`
@@ -3523,7 +3530,7 @@ type Draft struct {
 	Checks          []PackageCheck        `json:"checks"`
 }
 
-// DraftActionReason is one of "conflict", "checks_failed", "review_failed", "checks_unavailable", "history_rewritten". conflict: resolve the listed files. checks_failed: correct failed package checks. review_failed: correct the Draft title, version, or other readiness finding. checks_unavailable: restore a required check. history_rewritten: review the affected files and approve recovery.
+// DraftActionReason is one of "conflict", "checks_failed", "review_failed", "checks_unavailable", "history_rewritten". conflict: resolve the listed files. checks_failed: correct failed package checks. review_failed: correct the Draft title or version. checks_unavailable: restore a required check. history_rewritten: review the affected files and approve recovery.
 type DraftActionReason string
 
 const (
@@ -3544,60 +3551,68 @@ const (
 	DraftVersionSourceGithub    DraftVersionSource = "github"
 )
 
-// DraftReadiness is an API model. Readiness decision for the Draft's head_sha. Null readiness on the Draft means no Draft has been generated.
-type DraftReadiness struct {
-	// Status success means required checks passed; failure means the Draft needs correction or review; error means assessment could not finish; pending means checks have not finished.
-	Status DraftReadinessStatus `json:"status"`
-	// Description Human-readable explanation of the current decision. Do not parse it for control flow.
-	Description string `json:"description"`
-	// CompatibilityAPI API surface comparison against the latest release. unknown means analysis is unavailable.
-	CompatibilityAPI CompatibilityAPI `json:"compatibility_api"`
-	// CompatibilityPackage Package and supported SDK source comparison against the latest release. unknown means analysis is incomplete or unavailable.
-	CompatibilityPackage CompatibilityAPI `json:"compatibility_package"`
-	// VersionCorrect Whether the version satisfies the assessed change. Null when no verdict is available.
-	VersionCorrect *bool `json:"version_correct"`
-	// BumpRequired Minimum assessed version bump. Approval never waives an insufficient bump. Null when no bump has been determined.
-	BumpRequired *DraftReadinessBumpRequired `json:"bump_required"`
-	// VersionPrevious Latest release version used for the comparison. Null before the first release.
-	VersionPrevious *string `json:"version_previous"`
-	// TitleError Draft title error that must be corrected before release. Null when none is recorded.
-	TitleError *string `json:"title_error"`
+// DraftCompatibility is an API model. Comparison of the Draft's head_sha with the latest release.
+type DraftCompatibility struct {
+	// API API surface comparison. unknown means analysis is unavailable.
+	API API `json:"api"`
+	// Package Package and supported SDK source comparison. unknown means analysis is incomplete or unavailable.
+	Package API `json:"package"`
 }
 
-// DraftReadinessStatus is one of "success", "failure", "error", "pending". success means required checks passed; failure means the Draft needs correction or review; error means assessment could not finish; pending means checks have not finished.
-type DraftReadinessStatus string
+// API is one of "compatible", "breaking", "unknown".
+type API string
 
 const (
-	DraftReadinessStatusSuccess DraftReadinessStatus = "success"
-	DraftReadinessStatusFailure DraftReadinessStatus = "failure"
-	DraftReadinessStatusError   DraftReadinessStatus = "error"
-	DraftReadinessStatusPending DraftReadinessStatus = "pending"
+	APICompatible API = "compatible"
+	APIBreaking   API = "breaking"
+	APIUnknown    API = "unknown"
 )
 
-// CompatibilityAPI is one of "compatible", "breaking", "unknown".
-type CompatibilityAPI string
+// DraftVersion is an API model. How version_next relates to the assessed change.
+type DraftVersion struct {
+	// BumpRequired Minimum assessed version bump. Approval never waives an insufficient bump. Null when no bump has been determined.
+	BumpRequired *DraftVersionBumpRequired `json:"bump_required"`
+	// Correct Whether version_next satisfies the assessed change. Null when no verdict is available.
+	Correct *bool `json:"correct"`
+	// Previous Latest release version used for the comparison. Null before the first release.
+	Previous *string `json:"previous"`
+}
+
+// DraftVersionBumpRequired is one of "major", "minor", "patch". Minimum assessed version bump. Approval never waives an insufficient bump. Null when no bump has been determined.
+type DraftVersionBumpRequired string
 
 const (
-	CompatibilityAPICompatible CompatibilityAPI = "compatible"
-	CompatibilityAPIBreaking   CompatibilityAPI = "breaking"
-	CompatibilityAPIUnknown    CompatibilityAPI = "unknown"
+	DraftVersionBumpRequiredMajor DraftVersionBumpRequired = "major"
+	DraftVersionBumpRequiredMinor DraftVersionBumpRequired = "minor"
+	DraftVersionBumpRequiredPatch DraftVersionBumpRequired = "patch"
 )
 
-// DraftReadinessBumpRequired is one of "major", "minor", "patch". Minimum assessed version bump. Approval never waives an insufficient bump. Null when no bump has been determined.
-type DraftReadinessBumpRequired string
-
-const (
-	DraftReadinessBumpRequiredMajor DraftReadinessBumpRequired = "major"
-	DraftReadinessBumpRequiredMinor DraftReadinessBumpRequired = "minor"
-	DraftReadinessBumpRequiredPatch DraftReadinessBumpRequired = "patch"
-)
+// ErrorDetail is an API model.
+type ErrorDetail struct {
+	Type  ErrorType     `json:"type"`
+	Code  ErrorCode     `json:"code"`
+	Phase *FailurePhase `json:"phase,omitempty"`
+	// TargetID The affected Target when an operation reports failures for multiple Targets.
+	TargetID *TargetID `json:"target_id,omitempty"`
+	// Field JSON Pointer to the invalid field within the request part named by in. When in is omitted, the pointer refers to the request body. Header pointers use lowercase header names, such as /idempotency-key.
+	Field *string `json:"field,omitempty"`
+	// In Request part containing field. Query-parameter errors use query; header errors use header. Body errors use body or omit in.
+	In *DomainErrorIn `json:"in,omitempty"`
+	// Message Human-readable explanation. Its wording may change.
+	Message string `json:"message"`
+	// Retryable Whether another attempt can succeed without correcting the inputs. For a recorded failure, start generation or publishing again; retrieving the resource or replaying an idempotency key does not start another attempt.
+	Retryable bool `json:"retryable"`
+	// SuggestedAction Stable, concise recovery instruction suitable for a person or agent.
+	SuggestedAction string `json:"suggested_action"`
+	// DocsURL Documentation for this class of error.
+	DocsURL string `json:"docs_url"`
+}
 
 // DraftChanges is an API model.
 type DraftChanges struct {
 	// Changelog Cumulative changelog against the latest release.
-	Changelog       *string `json:"changelog,omitempty"`
-	BreakingCount   *int64  `json:"breaking_count,omitempty"`
-	VersionPrevious *string `json:"version_previous,omitempty"`
+	Changelog     *string `json:"changelog,omitempty"`
+	BreakingCount *int64  `json:"breaking_count,omitempty"`
 }
 
 // DraftPullRequest is an API model.
@@ -3636,10 +3651,15 @@ type DraftResponse struct {
 	// VersionNext Next version for this Draft, or null before a version is selected.
 	VersionNext *string `json:"version_next"`
 	// VersionSource Where version_next was selected; null once the Draft merged.
-	VersionSource *DraftVersionSource   `json:"version_source"`
-	Readiness     *DraftReadiness       `json:"readiness"`
-	Changes       *DraftResponseChanges `json:"changes"`
-	// HeadSha Draft commit that readiness, checks, and conflicts describe. Send it as expected_head_sha when resolving or discarding.
+	VersionSource *DraftVersionSource `json:"version_source"`
+	// Compatibility Null until the Draft has a generated change, and on a merged Draft.
+	Compatibility *DraftCompatibility `json:"compatibility"`
+	// Version Null until the Draft has a generated change, and on a merged Draft.
+	Version *DraftVersion `json:"version"`
+	// Errors What blocks the Draft, one entry per finding, each with a code and suggested_action. Empty unless status is action_required.
+	Errors  []ErrorDetail         `json:"errors"`
+	Changes *DraftResponseChanges `json:"changes"`
+	// HeadSha Draft commit that compatibility, version, checks, and conflicts describe. Send it as expected_head_sha when resolving or discarding.
 	HeadSha *string `json:"head_sha"`
 	// PullRequest The Draft pull request in the destination repository, or null before one is opened.
 	PullRequest *DraftResponsePullRequest `json:"pull_request"`
@@ -3663,9 +3683,8 @@ type DraftResponse struct {
 // DraftResponseChanges is an API model.
 type DraftResponseChanges struct {
 	// Changelog Cumulative changelog against the latest release.
-	Changelog       *string `json:"changelog,omitempty"`
-	BreakingCount   *int64  `json:"breaking_count,omitempty"`
-	VersionPrevious *string `json:"version_previous,omitempty"`
+	Changelog     *string `json:"changelog,omitempty"`
+	BreakingCount *int64  `json:"breaking_count,omitempty"`
 }
 
 // DraftResponsePullRequest is an API model.

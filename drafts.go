@@ -91,7 +91,7 @@ func (s *DraftsService) List(ctx context.Context, params *DraftsListParams, opts
 
 // Get a Draft.
 //
-// Returns the Draft's status. An open Draft also reports its typed reason when action is required, next version and its source, readiness, checks, and conflict counts. The response carries an `ETag`; send it in `If-Match` when updating the Draft to avoid changing a newer version selection.
+// Returns the Draft's status. An open Draft also reports its typed reason when action is required, next version and its source, compatibility and version assessment, blocking errors, checks, and conflict counts. The response carries an `ETag`; send it in `If-Match` when updating the Draft to avoid changing a newer version selection.
 //
 // GET /drafts/{draft_id}
 func (s *DraftsService) Get(ctx context.Context, draftID string, opts ...RequestOption) (*DraftResponse, error) {
