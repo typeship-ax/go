@@ -2281,9 +2281,9 @@ type Diagnostic struct {
 	// ID Stable rule identifier, unique within a Spec Revision. Suppressions name it as rule_id.
 	ID     string `json:"id"`
 	Object string `json:"object"`
-	// Blocking Whether this Diagnostic fails the Spec's Diagnostic policy. Suppressed occurrences and, when only_new is set, occurrences present in the baseline never block.
+	// Blocking Whether any location fails the Spec's Diagnostic policy. Each location's blocking field names which ones. Suppressed locations and, when only_new is set, locations present in the baseline never block.
 	Blocking bool `json:"blocking"`
-	// Introduced Whether any occurrence is new since baseline_spec_revision_id in the Diagnostic summary. Always true when there is no baseline.
+	// Introduced Whether any location is new since baseline_spec_revision_id in the Diagnostic summary. Each location's introduced field names which ones. Always true when there is no baseline.
 	Introduced bool `json:"introduced"`
 	// Severity Whether the rule reports invalid behavior, material risk, or an improvement.
 	Severity DiagnosticSeverity `json:"severity"`
@@ -2297,7 +2297,7 @@ type Diagnostic struct {
 	Surfaces []DiagnosticSurface `json:"surfaces"`
 	// OwnerDecisionRequired Whether remediation requires intent that the Spec cannot prove.
 	OwnerDecisionRequired bool `json:"owner_decision_required"`
-	// Locations All affected coordinates, kept under one grouped diagnostic.
+	// Locations The affected coordinates, kept under one grouped Diagnostic. With a filter, only the matching locations.
 	Locations []DiagnosticLocation `json:"locations"`
 	Fix       *DiagnosticFix       `json:"fix,omitempty"`
 	// AuthoringBrief Grounded instructions an agent can use to edit the source. The brief preserves existing behavior and requires owner input when the contract cannot prove the missing product decision.
@@ -2333,8 +2333,14 @@ const (
 	DiagnosticSurfaceMCP DiagnosticSurface = "mcp"
 )
 
-// DiagnosticLocation is an API model. One exact place where a Diagnostic rule found evidence.
+// DiagnosticLocation is an API model. One exact place where a Diagnostic rule found evidence, with its own state under the Spec's Diagnostic policy.
 type DiagnosticLocation struct {
+	// Blocking Whether this location fails the Spec's Diagnostic policy. Fix these locations to pass the policy.
+	Blocking bool `json:"blocking"`
+	// Introduced Whether this location is new since baseline_spec_revision_id in the Diagnostic summary. Always true when there is no baseline.
+	Introduced bool `json:"introduced"`
+	// Suppressed Whether a reviewed exception in the Spec's Diagnostic policy covers this location, by its path or for the whole rule. Suppressed locations never block.
+	Suppressed bool `json:"suppressed"`
 	// FilePath Source file path from the Spec Revision when the finding maps to a captured file.
 	FilePath *string `json:"file_path,omitempty"`
 	// FileID The captured source file, present with file_path. Read it with getFile.
@@ -2387,6 +2393,14 @@ const (
 	DiagnosticWarningCodeAppendTargetType  DiagnosticWarningCode = "append_target_type"
 	DiagnosticWarningCodeRenameTargetType  DiagnosticWarningCode = "rename_target_type"
 	DiagnosticWarningCodeRenameConflict    DiagnosticWarningCode = "rename_conflict"
+)
+
+// SpecRevisionsGetParamsFilter is one of "blocking", "introduced".
+type SpecRevisionsGetParamsFilter string
+
+const (
+	SpecRevisionsGetParamsFilterBlocking   SpecRevisionsGetParamsFilter = "blocking"
+	SpecRevisionsGetParamsFilterIntroduced SpecRevisionsGetParamsFilter = "introduced"
 )
 
 // SpecRevisionResponse is an API model.
