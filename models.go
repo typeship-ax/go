@@ -4041,7 +4041,7 @@ type URLSpecInput struct {
 
 // InlineSpecInput is an API model.
 type InlineSpecInput struct {
-	// Inline Raw Spec text (OpenAPI JSON/YAML or GraphQL SDL). Up to 10MB.
+	// Inline Raw Spec text (OpenAPI JSON/YAML or GraphQL SDL). Up to 4 MB, because the request body carries it; send Specs up to 10 MB with `url`.
 	Inline string `json:"inline"`
 }
 

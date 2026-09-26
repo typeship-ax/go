@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -152,6 +153,33 @@ func (a authValue) resolve(ctx context.Context) (string, error) {
 		return a.fn(ctx)
 	}
 	return a.static, nil
+}
+
+type credentialRejectedKey struct{}
+
+// CredentialRejected reports, inside a credential callback, that the API
+// answered 401 to the value this callback returned last time: refresh or
+// replace the token instead of returning it again. True for one call.
+func CredentialRejected(ctx context.Context) bool {
+	rejected, _ := ctx.Value(credentialRejectedKey{}).(bool)
+	return rejected
+}
+
+// rejectable tells a caller's callback, through its context, when the API
+// rejected its previous value.
+func rejectable(fn func(context.Context) (string, error)) authValue {
+	var mu sync.Mutex
+	rejected := false
+	return authValue{invalidate: func() { mu.Lock(); rejected = true; mu.Unlock() }, fn: func(ctx context.Context) (string, error) {
+		mu.Lock()
+		was := rejected
+		rejected = false
+		mu.Unlock()
+		if was {
+			ctx = context.WithValue(ctx, credentialRejectedKey{}, true)
+		}
+		return fn(ctx)
+	}}
 }
 
 // withPrefix prepends a scheme word such as "Bearer " to the value.
@@ -338,6 +366,11 @@ type request struct {
 	// part's Content-Type, or the delimiter of an unexploded form array.
 	BodyEncoding map[string]fieldEncoding
 	Errors       map[string]func(int, []byte, string) error
+	// URL, when set, is an absolute next-page URL sent instead of Path and Query.
+	URL string
+	// StreamBody, on a streaming twin, holds the body fields that ask for
+	// the stream (stream: true).
+	StreamBody map[string]any
 	// FailureFlag names the success envelope's flag (ok, success): false
 	// there is a failure reported inside a 2xx response.
 	FailureFlag       string
@@ -427,7 +460,16 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 	reauthenticated := false
 	for attempt := 0; attempt <= attempts; attempt++ {
 		sent++
-		endpoint, err = c.buildURL(ctx, req.Path, req.Query, req.Credentials.Query)
+		if req.URL != "" {
+			// A next-page URL (checked against the base origin by the iterator)
+			// replaces the path and query; query credentials still ride along.
+			endpoint, err = c.buildURL(ctx, "", nil, req.Credentials.Query)
+			if err == nil {
+				endpoint, err = withURLQuery(req.URL, endpoint)
+			}
+		} else {
+			endpoint, err = c.buildURL(ctx, req.Path, req.Query, req.Credentials.Query)
+		}
 		if err != nil {
 			return err
 		}
@@ -511,6 +553,11 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 				if err := c.validateBody("response", req.Method, req.Path, body, opSchema.Res); err != nil {
 					return err
 				}
+			}
+			if strings.HasPrefix(strings.ToLower(resp.Header.Get("Content-Type")), "text/event-stream") {
+				// stream: true on the JSON method: its events cannot be decoded as
+				// the JSON the method is typed to return.
+				return &APIError{Code: "unexpected_stream", Status: resp.StatusCode, RequestID: requestID, Message: "the API answered with a server-sent event stream; call the operation's Stream method instead"}
 			}
 			if out == nil || len(body) == 0 || resp.StatusCode == http.StatusNoContent {
 				return nil
@@ -673,6 +720,43 @@ func (c *core) emitDebug(event DebugEvent) {
 	if c.debug != nil {
 		c.debug(event)
 	}
+}
+
+// sameOrigin resolves a next-page URL against the base URL and refuses one
+// on another origin: the request carries the client's credentials.
+func (c *core) sameOrigin(next string) (string, error) {
+	base, err := url.Parse(c.baseURL)
+	if err != nil {
+		return "", err
+	}
+	target, err := base.Parse(next)
+	if err != nil {
+		return "", fmt.Errorf("next page URL %q: %w", next, err)
+	}
+	if requestOrigin(target) != requestOrigin(base) {
+		return "", fmt.Errorf("the next page is on another origin (%s); refusing to send credentials there", target.Host)
+	}
+	return target.String(), nil
+}
+
+// withURLQuery returns target with the query of authenticated (the base URL
+// plus any query credentials) added to it.
+func withURLQuery(target string, authenticated string) (string, error) {
+	parsed, err := url.Parse(target)
+	if err != nil {
+		return "", err
+	}
+	auth, err := url.Parse(authenticated)
+	if err != nil {
+		return "", err
+	}
+	if auth.RawQuery != "" {
+		if parsed.RawQuery != "" {
+			parsed.RawQuery += "&"
+		}
+		parsed.RawQuery += auth.RawQuery
+	}
+	return parsed.String(), nil
 }
 
 func (c *core) buildURL(ctx context.Context, path string, query map[string]any, authQuery ...map[string]authValue) (string, error) {

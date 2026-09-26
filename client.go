@@ -112,7 +112,7 @@ func WithBearerTokenFuncContext(fn func(ctx context.Context) (string, error)) Op
 			c.configurationError = errors.New("credential callback must not be nil")
 			return
 		}
-		value := authValue{fn: fn}.withPrefix("Bearer ")
+		value := rejectable(fn).withPrefix("Bearer ")
 		c.bearerCredential = &value
 	}
 }
@@ -138,7 +138,7 @@ func WithCredentialFuncContext(name string, fn func(ctx context.Context) (string
 	if fn == nil {
 		return func(c *core) { c.configurationError = errors.New("credential callback must not be nil") }
 	}
-	return schemeCredential(name, authValue{fn: fn})
+	return schemeCredential(name, rejectable(fn))
 }
 
 // schemeCredential stores value as the credential of one named token or

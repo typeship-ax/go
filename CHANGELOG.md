@@ -847,6 +847,7 @@
 - SDK declaration `AuthenticationConfigResponseCredentialVariablesValueVariant2` added
 - SDK declaration `Client.Packages` added
 - SDK declaration `Client.WithCredentials` added
+- SDK declaration `CredentialRejected` added
 - SDK declaration `DeletedDelivery` added
 - SDK declaration `DeliveriesCreateParams` added
 - SDK declaration `DeliveriesDeleteParams` added

@@ -3,6 +3,7 @@
 package typeship
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -20,6 +21,14 @@ type pageConfig struct {
 	PageParam       string
 	OffsetParam     string
 	LimitParam      string
+	// NextURLField is the dot path of the next page's URL (nextUrl style).
+	NextURLField string
+	// ZeroBasedPages starts page numbering at 0 instead of 1.
+	ZeroBasedPages bool
+	// TotalField is the dot path of the total item count.
+	TotalField string
+	// TotalPagesField is the dot path of the total page count.
+	TotalPagesField string
 }
 
 // Iter walks every page of a list endpoint, fetching lazily:
@@ -46,6 +55,7 @@ type Iter[T any] struct {
 	err     error
 	started bool
 	first   map[string]json.RawMessage
+	count   int
 }
 
 func newIter[T any](ctx context.Context, c *core, req request, opts []RequestOption, cfg pageConfig) *Iter[T] {
@@ -53,6 +63,9 @@ func newIter[T any](ctx context.Context, c *core, req request, opts []RequestOpt
 		req.Query = map[string]any{}
 	}
 	it := &Iter[T]{ctx: ctx, core: c, req: req, opts: opts, cfg: cfg, page: 1}
+	if cfg.ZeroBasedPages {
+		it.page = 0
+	}
 
 	return it
 }
@@ -103,8 +116,10 @@ func (it *Iter[T]) FirstPage() (map[string]json.RawMessage, error) {
 }
 
 func (it *Iter[T]) fetch() bool {
-	var raw map[string]json.RawMessage
-	if err := it.core.do(it.ctx, it.req, &raw, it.opts...); err != nil {
+	var body json.RawMessage
+	var meta APIResponse
+	opts := append(append([]RequestOption{}, it.opts...), WithAPIResponse(&meta))
+	if err := it.core.do(it.ctx, it.req, &body, opts...); err != nil {
 		// A 304 to a conditional list request: nothing new to walk.
 		if errors.Is(err, errNotModified) {
 			it.started = true
@@ -115,26 +130,38 @@ func (it *Iter[T]) fetch() bool {
 		return false
 	}
 	it.started = true
+	var raw map[string]json.RawMessage
+	var itemsRaw json.RawMessage
+	if it.cfg.ItemsField == "" {
+		// The body is the page's array (a Link-header list).
+		itemsRaw = body
+	} else {
+		if err := json.Unmarshal(body, &raw); err != nil {
+			it.err = fmt.Errorf("list response is not a JSON object: %w", err)
+			return false
+		}
+		var ok bool
+		itemsRaw, ok = lookupPath(raw, it.cfg.ItemsField)
+		if !ok {
+			// A page without its item array is a contract break, not an empty
+			// page: iterating it would silently end the walk.
+			it.err = fmt.Errorf("list response has no %q array; check the API response against the spec, or configure this operation's pagination", it.cfg.ItemsField)
+			return false
+		}
+	}
 	if it.first == nil {
 		it.first = raw
 	}
-
-	itemsRaw, ok := lookupPath(raw, it.cfg.ItemsField)
-	if !ok {
-		it.done = true
-		return false
-	}
 	var items []T
-	if err := json.Unmarshal(itemsRaw, &items); err != nil {
-		it.err = err
-		return false
+	if string(bytes.TrimSpace(itemsRaw)) != "null" {
+		if err := json.Unmarshal(itemsRaw, &items); err != nil {
+			it.err = err
+			return false
+		}
 	}
 	it.items = items
 	it.index = 0
-	if len(items) == 0 && it.cfg.Style != "cursor" {
-		it.done = true
-		return false
-	}
+	it.count += len(items)
 
 	if it.cfg.HasMoreField != "" {
 		if moreRaw, ok := lookupPath(raw, it.cfg.HasMoreField); ok {
@@ -145,7 +172,40 @@ func (it *Iter[T]) fetch() bool {
 			}
 		}
 	}
-
+	if it.cfg.TotalField != "" {
+		if totalRaw, ok := lookupPath(raw, it.cfg.TotalField); ok {
+			var total float64
+			if err := json.Unmarshal(totalRaw, &total); err == nil && float64(it.count) >= total {
+				it.done = true
+				return true
+			}
+		}
+	}
+	if it.cfg.Style == "nextUrl" || it.cfg.Style == "link" {
+		next := ""
+		if it.cfg.Style == "nextUrl" {
+			if nextRaw, ok := lookupPath(raw, it.cfg.NextURLField); ok {
+				_ = json.Unmarshal(nextRaw, &next)
+			}
+		} else if meta.Header != nil {
+			next = linkNext(meta.Header.Get("Link"))
+		}
+		if strings.TrimSpace(next) == "" {
+			it.done = true
+			return true
+		}
+		target, err := it.core.sameOrigin(next)
+		if err != nil {
+			it.err = err
+			return false
+		}
+		it.req.URL = target
+		return true
+	}
+	if len(items) == 0 && it.cfg.Style != "cursor" {
+		it.done = true
+		return false
+	}
 	switch it.cfg.Style {
 	case "cursor":
 		nextRaw, ok := lookupPath(raw, it.cfg.NextCursorField)
@@ -172,6 +232,28 @@ func (it *Iter[T]) fetch() bool {
 		it.done = true
 	}
 	return true
+}
+
+// linkNext returns the rel="next" target of an RFC 8288 Link header.
+func linkNext(header string) string {
+	for _, part := range strings.Split(header, ",") {
+		part = strings.TrimSpace(part)
+		end := strings.Index(part, ">")
+		if !strings.HasPrefix(part, "<") || end < 0 {
+			continue
+		}
+		for _, param := range strings.Split(part[end+1:], ";") {
+			name, value, _ := strings.Cut(strings.TrimSpace(param), "=")
+			if strings.EqualFold(strings.TrimSpace(name), "rel") {
+				for _, rel := range strings.Fields(strings.Trim(strings.TrimSpace(value), "\"")) {
+					if strings.EqualFold(rel, "next") {
+						return part[1:end]
+					}
+				}
+			}
+		}
+	}
+	return ""
 }
 
 // paginationCursor preserves numeric cursor precision instead of decoding through float64.
