@@ -316,6 +316,12 @@ const (
 	ValidateWarn
 )
 
+// fieldEncoding is one field's wire encoding from the spec.
+type fieldEncoding struct {
+	ContentType string
+	Delimiter   string
+}
+
 // request describes one API call. The generated service methods build it;
 // callers never see it.
 type request struct {
@@ -328,7 +334,10 @@ type request struct {
 	Body        any
 	BodyKind    string
 	ContentType string
-	Errors      map[string]func(int, []byte, string) error
+	// BodyEncoding is the media type's per-field encoding: a multipart
+	// part's Content-Type, or the delimiter of an unexploded form array.
+	BodyEncoding map[string]fieldEncoding
+	Errors       map[string]func(int, []byte, string) error
 	// FailureFlag names the success envelope's flag (ok, success): false
 	// there is a failure reported inside a 2xx response.
 	FailureFlag       string
@@ -372,7 +381,7 @@ func (c *core) do(ctx context.Context, req request, out any, opts ...RequestOpti
 		timeout = c.timeout
 	}
 
-	payload, contentType, err := encodeBody(req.Body, req.BodyKind, req.ContentType)
+	payload, contentType, err := encodeBody(req.Body, req.BodyKind, req.ContentType, req.BodyEncoding)
 	if err != nil {
 		return err
 	}
@@ -776,21 +785,38 @@ func jsonShape(value any) (any, bool) {
 	return generic, true
 }
 
-func encodeBody(body any, kind string, contentType string) ([]byte, string, error) {
+func encodeBody(body any, kind string, contentType string, encoding map[string]fieldEncoding) ([]byte, string, error) {
 	if body == nil {
 		return nil, "", nil
 	}
 	switch kind {
 	case "form":
 		values := url.Values{}
-		if typed, ok := body.(map[string]any); ok {
-			encodeDeep(values, typed)
-		} else if generic, ok := jsonShape(body); ok {
+		fields, _ := body.(map[string]any)
+		if fields == nil {
 			// A params struct: its JSON tags name the form fields.
-			if fields, ok := generic.(map[string]any); ok {
-				encodeDeep(values, fields)
+			if generic, ok := jsonShape(body); ok {
+				fields, _ = generic.(map[string]any)
 			}
 		}
+		// An unexploded array (encoding explode: false) is one delimited value.
+		if len(encoding) > 0 {
+			copied := make(map[string]any, len(fields))
+			for key, value := range fields {
+				copied[key] = value
+			}
+			fields = copied
+		}
+		for key, rule := range encoding {
+			if items, ok := fields[key].([]any); ok && rule.Delimiter != "" {
+				parts := make([]string, 0, len(items))
+				for _, item := range items {
+					parts = append(parts, fmt.Sprint(item))
+				}
+				fields[key] = strings.Join(parts, rule.Delimiter)
+			}
+		}
+		encodeDeep(values, fields)
 		return []byte(values.Encode()), "application/x-www-form-urlencoded", nil
 
 	case "text":

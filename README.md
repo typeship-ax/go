@@ -44,7 +44,7 @@ import (
 )
 
 func main() {
-	client, err := typeship.New(typeship.WithBearerToken(os.Getenv("TYPESHIP_TOKEN")))
+	client, err := typeship.New(typeship.WithBearerToken(os.Getenv("TYPESHIP_API_KEY")))
 	if err != nil {
 		panic(err)
 	}
@@ -139,6 +139,6 @@ client, err := typeship.New(
 )
 ```
 
-Configuration also reads from the environment (`TYPESHIP_BASE_URL`, `TYPESHIP_TOKEN`).
+Configuration also reads from the environment (`TYPESHIP_BASE_URL`, `TYPESHIP_API_KEY`).
 
 Timeouts apply to each attempt. By default, the client makes up to two retries for `408`, `429`, `500`, `502`, `503`, and `504`; non-idempotent calls retry only on `429`, when the operation declares an idempotency key, or when explicitly enabled. `Retry-After` takes precedence over exponential backoff.

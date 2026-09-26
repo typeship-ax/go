@@ -25,7 +25,7 @@ petstore Spec is a runnable sample.
 - Start with the local build or installation instructions in `README.md`. Generation does not publish a registry package.
 
 ## Authentication
-- Bearer token: `TYPESHIP_TOKEN` env var, or the `WithBearerToken` option.
+- Bearer token: `TYPESHIP_API_KEY` env var, or the `WithBearerToken` option.
 
 ## Using the SDK
 ```go

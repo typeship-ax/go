@@ -14,7 +14,9 @@ type BadRequestError struct {
 }
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *BadRequestError) Unwrap() error { return &e.APIError }
+func (e *BadRequestError) Unwrap() error {
+	return &e.APIError
+}
 
 // UnauthorizedError is returned for 401 responses. Missing, invalid, expired, or revoked credentials.
 type UnauthorizedError struct {
@@ -22,7 +24,9 @@ type UnauthorizedError struct {
 }
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *UnauthorizedError) Unwrap() error { return &e.APIError }
+func (e *UnauthorizedError) Unwrap() error {
+	return &e.APIError
+}
 
 // PaymentRequiredError is returned for 402 responses. The plan does not include another project or the requested target configuration.
 type PaymentRequiredError struct {
@@ -30,7 +34,9 @@ type PaymentRequiredError struct {
 }
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *PaymentRequiredError) Unwrap() error { return &e.APIError }
+func (e *PaymentRequiredError) Unwrap() error {
+	return &e.APIError
+}
 
 // ForbiddenError is returned for 403 responses. The credentials are valid but cannot act on the requested organization.
 type ForbiddenError struct {
@@ -38,7 +44,9 @@ type ForbiddenError struct {
 }
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *ForbiddenError) Unwrap() error { return &e.APIError }
+func (e *ForbiddenError) Unwrap() error {
+	return &e.APIError
+}
 
 // ConflictError is returned for 409 responses. A Delivery conflicts, or the key identifies changed intent.
 type ConflictError struct {
@@ -46,7 +54,9 @@ type ConflictError struct {
 }
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *ConflictError) Unwrap() error { return &e.APIError }
+func (e *ConflictError) Unwrap() error {
+	return &e.APIError
+}
 
 // UnprocessableEntityError is returned for 422 responses. The configured source could not be read and analyzed, so the project was not created.
 type UnprocessableEntityError struct {
@@ -54,7 +64,9 @@ type UnprocessableEntityError struct {
 }
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *UnprocessableEntityError) Unwrap() error { return &e.APIError }
+func (e *UnprocessableEntityError) Unwrap() error {
+	return &e.APIError
+}
 
 // RateLimitedError is returned for 429 responses. Too many requests, or an identical write is still in progress. Wait for Retry-After before retrying.
 type RateLimitedError struct {
@@ -62,7 +74,9 @@ type RateLimitedError struct {
 }
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *RateLimitedError) Unwrap() error { return &e.APIError }
+func (e *RateLimitedError) Unwrap() error {
+	return &e.APIError
+}
 
 // InternalServerError is returned for 500 responses. Project setup failed unexpectedly; the key reservation is released.
 type InternalServerError struct {
@@ -70,7 +84,9 @@ type InternalServerError struct {
 }
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *InternalServerError) Unwrap() error { return &e.APIError }
+func (e *InternalServerError) Unwrap() error {
+	return &e.APIError
+}
 
 // NotFoundError is returned for 404 responses. No such resource in this organization.
 type NotFoundError struct {
@@ -78,7 +94,9 @@ type NotFoundError struct {
 }
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *NotFoundError) Unwrap() error { return &e.APIError }
+func (e *NotFoundError) Unwrap() error {
+	return &e.APIError
+}
 
 // PreconditionFailedError is returned for 412 responses. The resource changed since the ETag supplied in If-Match. No write was applied.
 type PreconditionFailedError struct {
@@ -86,7 +104,9 @@ type PreconditionFailedError struct {
 }
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *PreconditionFailedError) Unwrap() error { return &e.APIError }
+func (e *PreconditionFailedError) Unwrap() error {
+	return &e.APIError
+}
 
 // BadGatewayError is returned for 502 responses. Dependent work failed while completing the request.
 type BadGatewayError struct {
@@ -94,7 +114,9 @@ type BadGatewayError struct {
 }
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *BadGatewayError) Unwrap() error { return &e.APIError }
+func (e *BadGatewayError) Unwrap() error {
+	return &e.APIError
+}
 
 // PayloadTooLargeError is returned for 413 responses. The Spec exceeds the supported size.
 type PayloadTooLargeError struct {
@@ -102,7 +124,9 @@ type PayloadTooLargeError struct {
 }
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *PayloadTooLargeError) Unwrap() error { return &e.APIError }
+func (e *PayloadTooLargeError) Unwrap() error {
+	return &e.APIError
+}
 
 // APIResponseError is returned for default responses. Unexpected error.
 type APIResponseError struct {
@@ -110,7 +134,9 @@ type APIResponseError struct {
 }
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *APIResponseError) Unwrap() error { return &e.APIError }
+func (e *APIResponseError) Unwrap() error {
+	return &e.APIError
+}
 
 // apiError maps a status onto the documented error type for an operation.
 func apiError(status int, body []byte, requestID string, header http.Header, errs map[string]func(int, []byte, string) error) error {

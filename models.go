@@ -220,9 +220,9 @@ type GraphqlSettings struct {
 	Endpoint *string `json:"endpoint,omitempty"`
 	// Environments Named endpoints (sandbox, production). Each becomes a client environment; the first is the default unless endpoint is set.
 	Environments []GraphqlSettingsEnvironmentsItem `json:"environments,omitempty"`
-	// Auth How requests authenticate. bearer sends Authorization: Bearer; basic is for key-pair APIs (public key as username, private key as password); api_key sends a header named by api_key_header; none generates no auth option.
+	// Auth How requests authenticate. bearer sends Authorization: Bearer; basic is for key-pair APIs (public key as username, private key as password); basic_api_key sends one API key as the Basic-auth username with an empty password; api_key sends a header named by api_key_header; api_key_or_bearer sends a key in api_key_header (Authorization for a raw key) and also accepts an OAuth access token as Authorization: Bearer; none generates no auth option.
 	Auth *Auth `json:"auth,omitempty"`
-	// APIKeyHeader Header carrying the key when auth is api_key. Required for that mode; Typeship does not invent a vendor-specific header name.
+	// APIKeyHeader Header carrying the key when auth is api_key or api_key_or_bearer. Required for those modes; Typeship does not invent a vendor-specific header name.
 	APIKeyHeader *string `json:"api_key_header,omitempty"`
 	// Title The API's name; drives the package and client names ("Acme" gives acme and AcmeClient). Defaults to a name derived from the endpoint's host.
 	Title *string `json:"title,omitempty"`
@@ -236,14 +236,16 @@ type GraphqlSettingsEnvironmentsItem struct {
 	URL  string `json:"url"`
 }
 
-// Auth is one of "bearer", "basic", "api_key", "none".
+// Auth is one of "bearer", "basic", "basic_api_key", "api_key", "api_key_or_bearer", "none".
 type Auth string
 
 const (
-	AuthBearer Auth = "bearer"
-	AuthBasic  Auth = "basic"
-	AuthAPIKey Auth = "api_key"
-	AuthNone   Auth = "none"
+	AuthBearer         Auth = "bearer"
+	AuthBasic          Auth = "basic"
+	AuthBasicAPIKey    Auth = "basic_api_key"
+	AuthAPIKey         Auth = "api_key"
+	AuthAPIKeyOrBearer Auth = "api_key_or_bearer"
+	AuthNone           Auth = "none"
 )
 
 // Scalars is one of "string", "integer", "number", "boolean", "json".
@@ -2201,9 +2203,9 @@ type GraphqlSettingsResponse struct {
 	Endpoint *string `json:"endpoint,omitempty"`
 	// Environments Named endpoints (sandbox, production). Each becomes a client environment; the first is the default unless endpoint is set.
 	Environments []GraphqlSettingsResponseEnvironmentsItem `json:"environments,omitempty"`
-	// Auth How requests authenticate. bearer sends Authorization: Bearer; basic is for key-pair APIs (public key as username, private key as password); api_key sends a header named by api_key_header; none generates no auth option.
+	// Auth How requests authenticate. bearer sends Authorization: Bearer; basic is for key-pair APIs (public key as username, private key as password); basic_api_key sends one API key as the Basic-auth username with an empty password; api_key sends a header named by api_key_header; api_key_or_bearer sends a key in api_key_header (Authorization for a raw key) and also accepts an OAuth access token as Authorization: Bearer; none generates no auth option.
 	Auth *Auth `json:"auth,omitempty"`
-	// APIKeyHeader Header carrying the key when auth is api_key. Required for that mode; Typeship does not invent a vendor-specific header name.
+	// APIKeyHeader Header carrying the key when auth is api_key or api_key_or_bearer. Required for those modes; Typeship does not invent a vendor-specific header name.
 	APIKeyHeader *string `json:"api_key_header,omitempty"`
 	// Title The API's name; drives the package and client names ("Acme" gives acme and AcmeClient). Defaults to a name derived from the endpoint's host.
 	Title *string `json:"title,omitempty"`

@@ -192,7 +192,7 @@ type Client struct {
 }
 
 // New builds a client. Credentials fall back to environment variables
-// (TYPESHIP_TOKEN, TYPESHIP_BASE_URL) when no option supplies them.
+// (TYPESHIP_API_KEY, TYPESHIP_BASE_URL) when no option supplies them.
 func New(opts ...Option) (*Client, error) {
 	c := &core{
 		baseURL:     envOr("TYPESHIP_BASE_URL", "https://typeship.dev/api/v1"),
@@ -207,7 +207,9 @@ func New(opts ...Option) (*Client, error) {
 		maxRetries:  2,
 		globalsVals: map[string]any{},
 	}
-	if token := os.Getenv("TYPESHIP_TOKEN"); token != "" {
+	if token := os.Getenv("TYPESHIP_API_KEY"); token != "" {
+		c.bearerCredential = &authValue{static: "Bearer " + token}
+	} else if token := os.Getenv("TYPESHIP_TOKEN"); token != "" {
 		c.bearerCredential = &authValue{static: "Bearer " + token}
 	}
 	for _, opt := range opts {
