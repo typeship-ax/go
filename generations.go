@@ -36,6 +36,27 @@ type GenerationsListFilesParams struct {
 	Cursor *string `json:"-"`
 }
 
+// Get a Generation.
+//
+// Returns the status of that Generation. `queued` and `running` mean generation is still in progress. `completed` means generated files are saved, not that repository delivery or a Draft is complete. List its files with listGenerationFiles and read each with getFile.
+//
+// GET /generations/{generation_id}
+func (s *GenerationsService) Get(ctx context.Context, generationID string, opts ...RequestOption) (*GenerationResponse, error) {
+	req := request{
+		Method:     "GET",
+		Path:       fmt.Sprintf("/generations/%s", url.PathEscape(generationID)),
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:   []map[string][]string{{"apiKey": {}}},
+		SchemaKey:  "generations.get",
+		Idempotent: true,
+	}
+	var out GenerationResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // List Generations.
 //
 // GET /generations
@@ -83,27 +104,6 @@ func (s *GenerationsService) List(ctx context.Context, params *GenerationsListPa
 		HasMoreField:    "has_more",
 		LimitParam:      "limit",
 	})
-}
-
-// Get a Generation.
-//
-// Returns the status of that Generation. `queued` and `running` mean generation is still in progress. `completed` means generated files are saved, not that repository delivery or a Draft is complete. List its files with listGenerationFiles and read each with getFile.
-//
-// GET /generations/{generation_id}
-func (s *GenerationsService) Get(ctx context.Context, generationID string, opts ...RequestOption) (*GenerationResponse, error) {
-	req := request{
-		Method:     "GET",
-		Path:       fmt.Sprintf("/generations/%s", url.PathEscape(generationID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "generations.get",
-		Idempotent: true,
-	}
-	var out GenerationResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
 }
 
 // ListFiles — list a Generation's files.

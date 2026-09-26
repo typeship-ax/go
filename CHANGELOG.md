@@ -6,10 +6,10 @@
 ## 0.26.0 (2026-09-26) (88 breaking)
 
 ### Added
-- `releases.retry()`: POST `/releases/{release_id}/retry`
 - `deliveries.create()`: POST `/deliveries`
 - `deliveries.delete()`: DELETE `/deliveries/{delivery_id}`
 - `deliveries.update()`: PATCH `/deliveries/{delivery_id}`
+- `releases.retry()`: POST `/releases/{release_id}/retry`
 
 ### Removed (breaking)
 - `releases.republish()`: POST `/releases/{release_id}/republish`

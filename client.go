@@ -149,17 +149,17 @@ func firstCredential(values ...*authValue) *authValue {
 
 // Client is the entry point for typeship.
 type Client struct {
-	Generate      *GenerateService
 	Projects      *ProjectsService
 	Specs         *SpecsService
 	SpecRevisions *SpecRevisionsService
 	Targets       *TargetsService
+	Deliveries    *DeliveriesService
+	Generations   *GenerationsService
 	Drafts        *DraftsService
 	Releases      *ReleasesService
-	Deliveries    *DeliveriesService
 	Publications  *PublicationsService
-	Generations   *GenerationsService
 	Files         *FilesService
+	Generate      *GenerateService
 	Organization  *OrganizationService
 	APIKeys       *APIKeysService
 
@@ -202,17 +202,17 @@ func New(opts ...Option) (*Client, error) {
 		return nil, errors.New("no base URL: pass WithBaseURL or set TYPESHIP_BASE_URL")
 	}
 	client := &Client{core: c}
-	client.Generate = &GenerateService{core: c}
 	client.Projects = &ProjectsService{core: c}
 	client.Specs = &SpecsService{core: c}
 	client.SpecRevisions = &SpecRevisionsService{core: c}
 	client.Targets = &TargetsService{core: c}
+	client.Deliveries = &DeliveriesService{core: c}
+	client.Generations = &GenerationsService{core: c}
 	client.Drafts = &DraftsService{core: c}
 	client.Releases = &ReleasesService{core: c}
-	client.Deliveries = &DeliveriesService{core: c}
 	client.Publications = &PublicationsService{core: c}
-	client.Generations = &GenerationsService{core: c}
 	client.Files = &FilesService{core: c}
+	client.Generate = &GenerateService{core: c}
 	client.Organization = &OrganizationService{core: c}
 	client.APIKeys = &APIKeysService{core: c}
 	return client, nil

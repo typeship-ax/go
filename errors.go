@@ -4,7 +4,7 @@ package typeship
 
 import "fmt"
 
-// BadRequestError is returned for 400 responses. The request body, Spec source, target selection, or package name is invalid.
+// BadRequestError is returned for 400 responses. A list query parameter is unknown, repeated, empty, or invalid, or the cursor is not for this list.
 type BadRequestError struct {
 	APIError
 }
@@ -28,30 +28,6 @@ type ForbiddenError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *ForbiddenError) Unwrap() error { return &e.APIError }
 
-// ConflictError is returned for 409 responses. The key identifies changed intent.
-type ConflictError struct {
-	APIError
-}
-
-// Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *ConflictError) Unwrap() error { return &e.APIError }
-
-// PayloadTooLargeError is returned for 413 responses. Spec exceeds the 10MB limit.
-type PayloadTooLargeError struct {
-	APIError
-}
-
-// Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *PayloadTooLargeError) Unwrap() error { return &e.APIError }
-
-// UnprocessableEntityError is returned for 422 responses. The Spec could not be resolved or understood.
-type UnprocessableEntityError struct {
-	APIError
-}
-
-// Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *UnprocessableEntityError) Unwrap() error { return &e.APIError }
-
 // RateLimitedError is returned for 429 responses. Too many requests, or an identical write is still in progress. Wait for Retry-After before retrying.
 type RateLimitedError struct {
 	APIError
@@ -68,13 +44,29 @@ type InternalServerError struct {
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *InternalServerError) Unwrap() error { return &e.APIError }
 
-// APIResponseError is returned for default responses. Unexpected error.
-type APIResponseError struct {
+// PaymentRequiredError is returned for 402 responses. The plan does not include another project or the requested target configuration.
+type PaymentRequiredError struct {
 	APIError
 }
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *APIResponseError) Unwrap() error { return &e.APIError }
+func (e *PaymentRequiredError) Unwrap() error { return &e.APIError }
+
+// ConflictError is returned for 409 responses. A Delivery conflicts, or the key identifies changed intent.
+type ConflictError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *ConflictError) Unwrap() error { return &e.APIError }
+
+// UnprocessableEntityError is returned for 422 responses. The configured source could not be read and analyzed, so the project was not created.
+type UnprocessableEntityError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *UnprocessableEntityError) Unwrap() error { return &e.APIError }
 
 // NotFoundError is returned for 404 responses. No such resource in this organization.
 type NotFoundError struct {
@@ -83,14 +75,6 @@ type NotFoundError struct {
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *NotFoundError) Unwrap() error { return &e.APIError }
-
-// PaymentRequiredError is returned for 402 responses. The plan does not include another project or the requested target configuration.
-type PaymentRequiredError struct {
-	APIError
-}
-
-// Unwrap returns the underlying *APIError, so errors.As can match either type.
-func (e *PaymentRequiredError) Unwrap() error { return &e.APIError }
 
 // PreconditionFailedError is returned for 412 responses. The resource changed since the ETag supplied in If-Match. No write was applied.
 type PreconditionFailedError struct {
@@ -107,6 +91,22 @@ type BadGatewayError struct {
 
 // Unwrap returns the underlying *APIError, so errors.As can match either type.
 func (e *BadGatewayError) Unwrap() error { return &e.APIError }
+
+// PayloadTooLargeError is returned for 413 responses. The Spec exceeds the supported size.
+type PayloadTooLargeError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *PayloadTooLargeError) Unwrap() error { return &e.APIError }
+
+// APIResponseError is returned for default responses. Unexpected error.
+type APIResponseError struct {
+	APIError
+}
+
+// Unwrap returns the underlying *APIError, so errors.As can match either type.
+func (e *APIResponseError) Unwrap() error { return &e.APIError }
 
 // apiError maps a status onto the documented error type for an operation.
 func apiError(status int, body []byte, requestID string, errs map[string]func(int, []byte, string) error) error {
@@ -134,18 +134,6 @@ func newForbiddenError(status int, body []byte, requestID string) error {
 	return &ForbiddenError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
-func newConflictError(status int, body []byte, requestID string) error {
-	return &ConflictError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
-}
-
-func newPayloadTooLargeError(status int, body []byte, requestID string) error {
-	return &PayloadTooLargeError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
-}
-
-func newUnprocessableEntityError(status int, body []byte, requestID string) error {
-	return &UnprocessableEntityError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
-}
-
 func newRateLimitedError(status int, body []byte, requestID string) error {
 	return &RateLimitedError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
@@ -154,16 +142,20 @@ func newInternalServerError(status int, body []byte, requestID string) error {
 	return &InternalServerError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
-func newAPIResponseError(status int, body []byte, requestID string) error {
-	return &APIResponseError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+func newPaymentRequiredError(status int, body []byte, requestID string) error {
+	return &PaymentRequiredError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+}
+
+func newConflictError(status int, body []byte, requestID string) error {
+	return &ConflictError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+}
+
+func newUnprocessableEntityError(status int, body []byte, requestID string) error {
+	return &UnprocessableEntityError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
 func newNotFoundError(status int, body []byte, requestID string) error {
 	return &NotFoundError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
-}
-
-func newPaymentRequiredError(status int, body []byte, requestID string) error {
-	return &PaymentRequiredError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }
 
 func newPreconditionFailedError(status int, body []byte, requestID string) error {
@@ -172,4 +164,12 @@ func newPreconditionFailedError(status int, body []byte, requestID string) error
 
 func newBadGatewayError(status int, body []byte, requestID string) error {
 	return &BadGatewayError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+}
+
+func newPayloadTooLargeError(status int, body []byte, requestID string) error {
+	return &PayloadTooLargeError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
+}
+
+func newAPIResponseError(status int, body []byte, requestID string) error {
+	return &APIResponseError{APIError: APIError{Code: codeFromBody(body, status), Status: status, Body: body, RequestID: requestID, Message: messageFromBody(body)}}
 }

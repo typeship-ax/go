@@ -25,6 +25,27 @@ type PublicationsListParams struct {
 	Status *GenerationStatus `json:"-"`
 }
 
+// Get a Publication.
+//
+// Returns the registry publishing status for a release. A status in another organization returns 404 resource_not_found.
+//
+// GET /publications/{publication_id}
+func (s *PublicationsService) Get(ctx context.Context, publicationID string, opts ...RequestOption) (*PublicationResponse, error) {
+	req := request{
+		Method:     "GET",
+		Path:       fmt.Sprintf("/publications/%s", url.PathEscape(publicationID)),
+		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
+		Security:   []map[string][]string{{"apiKey": {}}},
+		SchemaKey:  "publications.get",
+		Idempotent: true,
+	}
+	var out PublicationResponse
+	if err := s.core.do(ctx, req, &out, opts...); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // List Publications.
 //
 // GET /publications
@@ -69,25 +90,4 @@ func (s *PublicationsService) List(ctx context.Context, params *PublicationsList
 		HasMoreField:    "has_more",
 		LimitParam:      "limit",
 	})
-}
-
-// Get a Publication.
-//
-// Returns the registry publishing status for a release. A status in another organization returns 404 resource_not_found.
-//
-// GET /publications/{publication_id}
-func (s *PublicationsService) Get(ctx context.Context, publicationID string, opts ...RequestOption) (*PublicationResponse, error) {
-	req := request{
-		Method:     "GET",
-		Path:       fmt.Sprintf("/publications/%s", url.PathEscape(publicationID)),
-		Errors:     map[string]func(int, []byte, string) error{"401": newUnauthorizedError, "403": newForbiddenError, "404": newNotFoundError, "429": newRateLimitedError, "500": newInternalServerError},
-		Security:   []map[string][]string{{"apiKey": {}}},
-		SchemaKey:  "publications.get",
-		Idempotent: true,
-	}
-	var out PublicationResponse
-	if err := s.core.do(ctx, req, &out, opts...); err != nil {
-		return nil, err
-	}
-	return &out, nil
 }

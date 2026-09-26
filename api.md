@@ -6,81 +6,6 @@ Methods return `(value, error)`, the Go way. Every documented error response is 
 
 For complete input and output schemas, use [`api.json`](./api.json), the machine-readable companion to this reference. Collapsed wire arguments below use API field names for CLI and MCP; SDK calls use the native signature shown in each heading.
 
-## generate
-
-### `client.Generate.Run(ctx, body, params)`
-
-Generate a package
-
-`POST /generate`
-
-Returns one generated package without creating a Project.
-
-Supports [idempotent retries](https://typeship.dev/docs/typeship-api/idempotency); keyed responses include generated files in the replay cache.
-
-Use `download.url` to save the complete ZIP, verify `download.sha256`, and extract it into an empty directory. The link expires at `download.expires_at` and grants access to anyone who has it. CLI, MCP, and SDK calls supply an idempotency key automatically. Agents should request `fields=["download","coverage","warnings","claim"]` to keep the MCP result compact; files can exceed the response limit. Download the ZIP instead of repeating generation to retrieve omitted files.
-
-Anonymous and Free requests include the first 25 operations. Paid plans include all operations. Anonymous requests are rate limited by IP address. Check `coverage` for omitted operations; an invalid API key returns `401`.
-
-An anonymous URL request without source headers may return `claim.url`. Sign in through that link within seven days to save the recipe as a Project.
-
-Safety: **write** · Authentication: **optional**
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
-
-Body: `GenerateRequest` (required)
-
-Returns: `(*GenerationResult, error)`
-Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*ConflictError` (409), `*PayloadTooLargeError` (413), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500), `*APIResponseError` (default)
-
-<details>
-<summary>Wire arguments (CLI and MCP)</summary>
-
-```json
-{
-  "spec": {
-    "url": "https://typeship.dev/examples/petstore/openapi.yaml"
-  },
-  "target": {
-    "type": "cli"
-  }
-}
-```
-
-</details>
-
-### `client.Generate.DownloadPackage(ctx, params)`
-
-Download a generated package
-
-`GET /generate/download`
-
-Download the complete ZIP referenced by `generate_run`'s `download.url`. Pass the token from that URL. No API key is needed; the token grants access only to that exact package until its replay window expires. Keep the token private.
-
-The local MCP server saves this binary response to disk. On a hosted MCP connection, download the original URL directly to your workspace. Verify the ZIP against `download.sha256` before extracting it into an empty directory. Expired or invalid tokens return `404`; a new generation creates a new download.
-
-Safety: **read** · Authentication: **none**
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `params.Token` | query | `string` | yes | Private download token from download.url in the generation result. |
-
-Returns: `([]byte, error)`
-Errors: `*BadRequestError` (400), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
-
-<details>
-<summary>Wire arguments (CLI and MCP)</summary>
-
-```json
-{
-  "token": "parcel_download_example_token_1234567890123"
-}
-```
-
-</details>
-
 ## projects
 
 ### `client.Projects.List(ctx, params)`
@@ -690,6 +615,268 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 </details>
 
+## deliveries
+
+### `client.Deliveries.List(ctx, params)`
+
+List Deliveries
+
+`GET /deliveries`
+
+Safety: **read** · Authentication: **required**
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `params.Limit` | query | `*int64` | no | Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 input_invalid. List query parameters must appear only once; repeated or unrecognized parameters return 400 query_param_invalid. |
+| `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. Valid only for the same organization, operation, filters, and ordering that issued it. Omit to start at the first page. Empty or malformed cursors, and cursors issued for different filters, return 400 cursor_invalid; start again from the first page. Repeated cursors return 400 query_param_invalid. The page limit may change between requests. |
+| `params.TargetID` | query | `*TargetID` | no | Only Deliveries of this Target. |
+
+Returns: `*Iter[Delivery]` — auto-paginating (`for it.Next()` walks every page)
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
+
+<details>
+<summary>Wire arguments (CLI and MCP)</summary>
+
+```json
+{}
+```
+
+</details>
+
+### `client.Deliveries.Create(ctx, body, params)`
+
+Create a Delivery
+
+`POST /deliveries`
+
+Adds a repository or hosted MCP Delivery to a Target. A Target has at most one Delivery of each type; a `409 delivery_exists` means it already has one, so update that Delivery instead.
+With Project auto_generate enabled, adding a Delivery queues the Target's Generation. A queued or running Target reuses that Generation.
+
+A `409 delivery_conflict` means another Target owns the requested repository directory. A `409 target_busy` means the Target is publishing; wait for it to finish.
+A `502 follow_up_failed` means the Delivery was saved, but retiring an obsolete review or regenerating the Target failed. Get the Delivery and follow the error's retryable and suggested_action fields.
+
+Safety: **write** · Authentication: **required**
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
+
+Body: `DeliveryCreateRequest` (required)
+
+Returns: `(*DeliveryResponse, error)`
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
+
+<details>
+<summary>Wire arguments (CLI and MCP)</summary>
+
+```json
+{
+  "body": {
+    "target_id": "tgt_5m8q2v7k1p9d4h6c",
+    "type": "repository",
+    "repository": {
+      "provider": "github",
+      "identifier": "parcel-example/parcel-client",
+      "package_name": "parcel-client",
+      "publish_on_merge": false
+    }
+  }
+}
+```
+
+</details>
+
+### `client.Deliveries.Get(ctx, deliveryID)`
+
+Get a Delivery
+
+`GET /deliveries/{delivery_id}`
+
+Returns the configured repository or hosted MCP Delivery for a Target. A Delivery in another organization returns 404 resource_not_found.
+
+Safety: **read** · Authentication: **required**
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `deliveryID` | path | `string` | yes | — |
+
+Returns: `(*DeliveryResponse, error)`
+Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
+
+<details>
+<summary>Wire arguments (CLI and MCP)</summary>
+
+```json
+{
+  "delivery_id": "dlv_4q8m2v7k1p9d5h6c"
+}
+```
+
+</details>
+
+### `client.Deliveries.Delete(ctx, deliveryID, params)`
+
+Delete a Delivery
+
+`DELETE /deliveries/{delivery_id}`
+
+Removes a Delivery from its Target. Removing a repository Delivery retires the Target's open release pull request; removing a hosted MCP Delivery stops serving its URL. Recreating the type later allocates a new ID and, for hosted MCP, a new URL.
+
+A `409 target_busy` means the Target is publishing; wait for it to finish. A `502 follow_up_failed` means the Delivery was removed, but retiring an obsolete review or regenerating the Target failed.
+See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
+
+Safety: **destructive** · Authentication: **required**
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `deliveryID` | path | `string` | yes | — |
+| `params.IfMatch` | header | `*string` | no | ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes. |
+
+Returns: `(*DeletedDelivery, error)`
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*PreconditionFailedError` (412), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
+
+<details>
+<summary>Wire arguments (CLI and MCP)</summary>
+
+```json
+{
+  "delivery_id": "dlv_4q8m2v7k1p9d5h6c"
+}
+```
+
+</details>
+
+### `client.Deliveries.Update(ctx, deliveryID, body, params)`
+
+Update a Delivery
+
+`PATCH /deliveries/{delivery_id}`
+
+Replaces a repository Delivery's settings. Omitted optional settings reset to their defaults. Hosted MCP Deliveries have no settings to update.
+With Project auto_generate enabled, changing a Delivery queues the Target's Generation. A queued or running Target reuses that Generation.
+Omitting If-Match applies the update to the current Delivery; with If-Match, a stale ETag returns 412 precondition_failed without saving.
+
+A `409 delivery_conflict` means another Target owns the requested repository directory. A `409 target_busy` means the Target is publishing; wait for it to finish.
+A `502 follow_up_failed` means the Delivery was saved, but retiring an obsolete review or regenerating the Target failed. Get the Delivery and follow the error's retryable and suggested_action fields.
+See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
+
+Safety: **write** · Authentication: **required**
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `deliveryID` | path | `string` | yes | — |
+| `params.IfMatch` | header | `*string` | no | ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes. |
+
+Body: `DeliveryUpdateRequest` (required)
+
+Returns: `(*DeliveryResponse, error)`
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*PreconditionFailedError` (412), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
+
+<details>
+<summary>Wire arguments (CLI and MCP)</summary>
+
+```json
+{
+  "delivery_id": "dlv_4q8m2v7k1p9d5h6c",
+  "repository": {
+    "provider": "github",
+    "identifier": "parcel-example/parcel-client",
+    "package_name": "parcel-client",
+    "publish_on_merge": true
+  }
+}
+```
+
+</details>
+
+## generations
+
+### `client.Generations.Get(ctx, generationID)`
+
+Get a Generation
+
+`GET /generations/{generation_id}`
+
+Returns the status of that Generation. `queued` and `running` mean generation is still in progress. `completed` means generated files are saved, not that repository delivery or a Draft is complete. List its files with listGenerationFiles and read each with getFile.
+
+Safety: **read** · Authentication: **required**
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `generationID` | path | `string` | yes | — |
+
+Returns: `(*GenerationResponse, error)`
+Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
+
+<details>
+<summary>Wire arguments (CLI and MCP)</summary>
+
+```json
+{
+  "generation_id": "gen_7h2p5d9c3m8w1k6q"
+}
+```
+
+</details>
+
+### `client.Generations.List(ctx, params)`
+
+List Generations
+
+`GET /generations`
+
+Safety: **read** · Authentication: **required**
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `params.Limit` | query | `*int64` | no | Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 input_invalid. List query parameters must appear only once; repeated or unrecognized parameters return 400 query_param_invalid. |
+| `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. Valid only for the same organization, operation, filters, and ordering that issued it. Omit to start at the first page. Empty or malformed cursors, and cursors issued for different filters, return 400 cursor_invalid; start again from the first page. Repeated cursors return 400 query_param_invalid. The page limit may change between requests. |
+| `params.ProjectID` | query | `*ProjectID` | no | Only Generations in this Project. |
+| `params.TargetID` | query | `*TargetID` | no | Only Generations of this Target. |
+| `params.Status` | query | `*GenerationStatus` | no | Only Generations with this status. |
+
+Returns: `*Iter[Generation]` — auto-paginating (`for it.Next()` walks every page)
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
+
+<details>
+<summary>Wire arguments (CLI and MCP)</summary>
+
+```json
+{}
+```
+
+</details>
+
+### `client.Generations.ListFiles(ctx, generationID, params)`
+
+List a Generation's files
+
+`GET /generations/{generation_id}/files`
+
+Lists the generated package's files, ordered by path. Read content with getFile.
+
+Safety: **read** · Authentication: **required**
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `generationID` | path | `string` | yes | — |
+| `params.Limit` | query | `*int64` | no | Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 input_invalid. List query parameters must appear only once; repeated or unrecognized parameters return 400 query_param_invalid. |
+| `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. Valid only for the same organization, operation, filters, and ordering that issued it. Omit to start at the first page. Empty or malformed cursors, and cursors issued for different filters, return 400 cursor_invalid; start again from the first page. Repeated cursors return 400 query_param_invalid. The page limit may change between requests. |
+
+Returns: `*Iter[File]` — auto-paginating (`for it.Next()` walks every page)
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
+
+<details>
+<summary>Wire arguments (CLI and MCP)</summary>
+
+```json
+{
+  "generation_id": "gen_7h2p5d9c3m8w1k6q"
+}
+```
+
+</details>
+
 ## drafts
 
 ### `client.Drafts.List(ctx, params)`
@@ -980,208 +1167,7 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 </details>
 
-## deliveries
-
-### `client.Deliveries.List(ctx, params)`
-
-List Deliveries
-
-`GET /deliveries`
-
-Safety: **read** · Authentication: **required**
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `params.Limit` | query | `*int64` | no | Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 input_invalid. List query parameters must appear only once; repeated or unrecognized parameters return 400 query_param_invalid. |
-| `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. Valid only for the same organization, operation, filters, and ordering that issued it. Omit to start at the first page. Empty or malformed cursors, and cursors issued for different filters, return 400 cursor_invalid; start again from the first page. Repeated cursors return 400 query_param_invalid. The page limit may change between requests. |
-| `params.TargetID` | query | `*TargetID` | no | Only Deliveries of this Target. |
-
-Returns: `*Iter[Delivery]` — auto-paginating (`for it.Next()` walks every page)
-Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
-
-<details>
-<summary>Wire arguments (CLI and MCP)</summary>
-
-```json
-{}
-```
-
-</details>
-
-### `client.Deliveries.Create(ctx, body, params)`
-
-Create a Delivery
-
-`POST /deliveries`
-
-Adds a repository or hosted MCP Delivery to a Target. A Target has at most one Delivery of each type; a `409 delivery_exists` means it already has one, so update that Delivery instead.
-With Project auto_generate enabled, adding a Delivery queues the Target's Generation. A queued or running Target reuses that Generation.
-
-A `409 delivery_conflict` means another Target owns the requested repository directory. A `409 target_busy` means the Target is publishing; wait for it to finish.
-A `502 follow_up_failed` means the Delivery was saved, but retiring an obsolete review or regenerating the Target failed. Get the Delivery and follow the error's retryable and suggested_action fields.
-
-Safety: **write** · Authentication: **required**
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
-
-Body: `DeliveryCreateRequest` (required)
-
-Returns: `(*DeliveryResponse, error)`
-Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
-
-<details>
-<summary>Wire arguments (CLI and MCP)</summary>
-
-```json
-{
-  "body": {
-    "target_id": "tgt_5m8q2v7k1p9d4h6c",
-    "type": "repository",
-    "repository": {
-      "provider": "github",
-      "identifier": "parcel-example/parcel-client",
-      "package_name": "parcel-client",
-      "publish_on_merge": false
-    }
-  }
-}
-```
-
-</details>
-
-### `client.Deliveries.Get(ctx, deliveryID)`
-
-Get a Delivery
-
-`GET /deliveries/{delivery_id}`
-
-Returns the configured repository or hosted MCP Delivery for a Target. A Delivery in another organization returns 404 resource_not_found.
-
-Safety: **read** · Authentication: **required**
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `deliveryID` | path | `string` | yes | — |
-
-Returns: `(*DeliveryResponse, error)`
-Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
-
-<details>
-<summary>Wire arguments (CLI and MCP)</summary>
-
-```json
-{
-  "delivery_id": "dlv_4q8m2v7k1p9d5h6c"
-}
-```
-
-</details>
-
-### `client.Deliveries.Delete(ctx, deliveryID, params)`
-
-Delete a Delivery
-
-`DELETE /deliveries/{delivery_id}`
-
-Removes a Delivery from its Target. Removing a repository Delivery retires the Target's open release pull request; removing a hosted MCP Delivery stops serving its URL. Recreating the type later allocates a new ID and, for hosted MCP, a new URL.
-
-A `409 target_busy` means the Target is publishing; wait for it to finish. A `502 follow_up_failed` means the Delivery was removed, but retiring an obsolete review or regenerating the Target failed.
-See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
-
-Safety: **destructive** · Authentication: **required**
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `deliveryID` | path | `string` | yes | — |
-| `params.IfMatch` | header | `*string` | no | ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes. |
-
-Returns: `(*DeletedDelivery, error)`
-Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*PreconditionFailedError` (412), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
-
-<details>
-<summary>Wire arguments (CLI and MCP)</summary>
-
-```json
-{
-  "delivery_id": "dlv_4q8m2v7k1p9d5h6c"
-}
-```
-
-</details>
-
-### `client.Deliveries.Update(ctx, deliveryID, body, params)`
-
-Update a Delivery
-
-`PATCH /deliveries/{delivery_id}`
-
-Replaces a repository Delivery's settings. Omitted optional settings reset to their defaults. Hosted MCP Deliveries have no settings to update.
-With Project auto_generate enabled, changing a Delivery queues the Target's Generation. A queued or running Target reuses that Generation.
-Omitting If-Match applies the update to the current Delivery; with If-Match, a stale ETag returns 412 precondition_failed without saving.
-
-A `409 delivery_conflict` means another Target owns the requested repository directory. A `409 target_busy` means the Target is publishing; wait for it to finish.
-A `502 follow_up_failed` means the Delivery was saved, but retiring an obsolete review or regenerating the Target failed. Get the Delivery and follow the error's retryable and suggested_action fields.
-See [conditional writes](https://typeship.dev/docs/typeship-api#conditional-writes) for ETag and If-Match.
-
-Safety: **write** · Authentication: **required**
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `deliveryID` | path | `string` | yes | — |
-| `params.IfMatch` | header | `*string` | no | ETag from a preceding response. The write applies only if the resource still has that version; otherwise it returns 412 precondition_failed without changes. Omit to write the current version. See https://typeship.dev/docs/typeship-api#conditional-writes. |
-
-Body: `DeliveryUpdateRequest` (required)
-
-Returns: `(*DeliveryResponse, error)`
-Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*ConflictError` (409), `*PreconditionFailedError` (412), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500), `*BadGatewayError` (502)
-
-<details>
-<summary>Wire arguments (CLI and MCP)</summary>
-
-```json
-{
-  "delivery_id": "dlv_4q8m2v7k1p9d5h6c",
-  "repository": {
-    "provider": "github",
-    "identifier": "parcel-example/parcel-client",
-    "package_name": "parcel-client",
-    "publish_on_merge": true
-  }
-}
-```
-
-</details>
-
 ## publications
-
-### `client.Publications.List(ctx, params)`
-
-List Publications
-
-`GET /publications`
-
-Safety: **read** · Authentication: **required**
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `params.Limit` | query | `*int64` | no | Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 input_invalid. List query parameters must appear only once; repeated or unrecognized parameters return 400 query_param_invalid. |
-| `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. Valid only for the same organization, operation, filters, and ordering that issued it. Omit to start at the first page. Empty or malformed cursors, and cursors issued for different filters, return 400 cursor_invalid; start again from the first page. Repeated cursors return 400 query_param_invalid. The page limit may change between requests. |
-| `params.ReleaseID` | query | `*ReleaseID` | no | Only publications of this release. |
-| `params.Status` | query | `*GenerationStatus` | no | Only publications with this status. |
-
-Returns: `*Iter[Publication]` — auto-paginating (`for it.Next()` walks every page)
-Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
-
-<details>
-<summary>Wire arguments (CLI and MCP)</summary>
-
-```json
-{}
-```
-
-</details>
 
 ### `client.Publications.Get(ctx, publicationID)`
 
@@ -1211,13 +1197,11 @@ Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (4
 
 </details>
 
-## generations
+### `client.Publications.List(ctx, params)`
 
-### `client.Generations.List(ctx, params)`
+List Publications
 
-List Generations
-
-`GET /generations`
+`GET /publications`
 
 Safety: **read** · Authentication: **required**
 
@@ -1225,11 +1209,10 @@ Safety: **read** · Authentication: **required**
 | --- | --- | --- | --- | --- |
 | `params.Limit` | query | `*int64` | no | Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 input_invalid. List query parameters must appear only once; repeated or unrecognized parameters return 400 query_param_invalid. |
 | `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. Valid only for the same organization, operation, filters, and ordering that issued it. Omit to start at the first page. Empty or malformed cursors, and cursors issued for different filters, return 400 cursor_invalid; start again from the first page. Repeated cursors return 400 query_param_invalid. The page limit may change between requests. |
-| `params.ProjectID` | query | `*ProjectID` | no | Only Generations in this Project. |
-| `params.TargetID` | query | `*TargetID` | no | Only Generations of this Target. |
-| `params.Status` | query | `*GenerationStatus` | no | Only Generations with this status. |
+| `params.ReleaseID` | query | `*ReleaseID` | no | Only publications of this release. |
+| `params.Status` | query | `*GenerationStatus` | no | Only publications with this status. |
 
-Returns: `*Iter[Generation]` — auto-paginating (`for it.Next()` walks every page)
+Returns: `*Iter[Publication]` — auto-paginating (`for it.Next()` walks every page)
 Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
 
 <details>
@@ -1237,64 +1220,6 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 
 ```json
 {}
-```
-
-</details>
-
-### `client.Generations.Get(ctx, generationID)`
-
-Get a Generation
-
-`GET /generations/{generation_id}`
-
-Returns the status of that Generation. `queued` and `running` mean generation is still in progress. `completed` means generated files are saved, not that repository delivery or a Draft is complete. List its files with listGenerationFiles and read each with getFile.
-
-Safety: **read** · Authentication: **required**
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `generationID` | path | `string` | yes | — |
-
-Returns: `(*GenerationResponse, error)`
-Errors: `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
-
-<details>
-<summary>Wire arguments (CLI and MCP)</summary>
-
-```json
-{
-  "generation_id": "gen_7h2p5d9c3m8w1k6q"
-}
-```
-
-</details>
-
-### `client.Generations.ListFiles(ctx, generationID, params)`
-
-List a Generation's files
-
-`GET /generations/{generation_id}/files`
-
-Lists the generated package's files, ordered by path. Read content with getFile.
-
-Safety: **read** · Authentication: **required**
-
-| Parameter | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `generationID` | path | `string` | yes | — |
-| `params.Limit` | query | `*int64` | no | Maximum number of resources to return. Omit for 20; otherwise supply base-10 digits representing an integer from 1 to 100. Empty, malformed, or out-of-range values return 400 input_invalid. List query parameters must appear only once; repeated or unrecognized parameters return 400 query_param_invalid. |
-| `params.Cursor` | query | `*string` | no | Opaque cursor from the preceding page's next_cursor. Valid only for the same organization, operation, filters, and ordering that issued it. Omit to start at the first page. Empty or malformed cursors, and cursors issued for different filters, return 400 cursor_invalid; start again from the first page. Repeated cursors return 400 query_param_invalid. The page limit may change between requests. |
-
-Returns: `*Iter[File]` — auto-paginating (`for it.Next()` walks every page)
-Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
-
-<details>
-<summary>Wire arguments (CLI and MCP)</summary>
-
-```json
-{
-  "generation_id": "gen_7h2p5d9c3m8w1k6q"
-}
 ```
 
 </details>
@@ -1325,6 +1250,81 @@ Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` 
 ```json
 {
   "file_id": "file_4k8m2v7q1p9d5h6c"
+}
+```
+
+</details>
+
+## generate
+
+### `client.Generate.Run(ctx, body, params)`
+
+Generate a package
+
+`POST /generate`
+
+Returns one generated package without creating a Project.
+
+Supports [idempotent retries](https://typeship.dev/docs/typeship-api/idempotency); keyed responses include generated files in the replay cache.
+
+Use `download.url` to save the complete ZIP, verify `download.sha256`, and extract it into an empty directory. The link expires at `download.expires_at` and grants access to anyone who has it. CLI, MCP, and SDK calls supply an idempotency key automatically. Agents should request `fields=["download","coverage","warnings","claim"]` to keep the MCP result compact; files can exceed the response limit. Download the ZIP instead of repeating generation to retrieve omitted files.
+
+Anonymous and Free requests include the first 25 operations. Paid plans include all operations. Anonymous requests are rate limited by IP address. Check `coverage` for omitted operations; an invalid API key returns `401`.
+
+An anonymous URL request without source headers may return `claim.url`. Sign in through that link within seven days to save the recipe as a Project.
+
+Safety: **write** · Authentication: **optional**
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `params.IdempotencyKey` | header | `*string` | no | Identifies one logical write for 24 hours. The key is scoped to the authenticated organization and operation; generation without an organization uses a hashed network identity. Retrying the same method, path, query, If-Match header, and JSON body replays the original response. Reusing the key with changed intent returns 409. After expiry the key starts a new write. |
+
+Body: `GenerateRequest` (required)
+
+Returns: `(*GenerationResult, error)`
+Errors: `*BadRequestError` (400), `*UnauthorizedError` (401), `*ForbiddenError` (403), `*ConflictError` (409), `*PayloadTooLargeError` (413), `*UnprocessableEntityError` (422), `*RateLimitedError` (429), `*InternalServerError` (500), `*APIResponseError` (default)
+
+<details>
+<summary>Wire arguments (CLI and MCP)</summary>
+
+```json
+{
+  "spec": {
+    "url": "https://typeship.dev/examples/petstore/openapi.yaml"
+  },
+  "target": {
+    "type": "cli"
+  }
+}
+```
+
+</details>
+
+### `client.Generate.DownloadPackage(ctx, params)`
+
+Download a generated package
+
+`GET /generate/download`
+
+Download the complete ZIP referenced by `generate_run`'s `download.url`. Pass the token from that URL. No API key is needed; the token grants access only to that exact package until its replay window expires. Keep the token private.
+
+The local MCP server saves this binary response to disk. On a hosted MCP connection, download the original URL directly to your workspace. Verify the ZIP against `download.sha256` before extracting it into an empty directory. Expired or invalid tokens return `404`; a new generation creates a new download.
+
+Safety: **read** · Authentication: **none**
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `params.Token` | query | `string` | yes | Private download token from download.url in the generation result. |
+
+Returns: `([]byte, error)`
+Errors: `*BadRequestError` (400), `*NotFoundError` (404), `*RateLimitedError` (429), `*InternalServerError` (500)
+
+<details>
+<summary>Wire arguments (CLI and MCP)</summary>
+
+```json
+{
+  "token": "parcel_download_example_token_1234567890123"
 }
 ```
 
