@@ -152,12 +152,12 @@
         "Get"
       ],
       [
-        "Generate",
-        "Run"
+        "Packages",
+        "Generate"
       ],
       [
-        "Generate",
-        "DownloadPackage"
+        "Packages",
+        "Download"
       ],
       [
         "Organization",
@@ -579,24 +579,24 @@
         "path": "/files/{file_id}"
       },
       {
-        "resource": "generate",
-        "method": "run",
+        "resource": "packages",
+        "method": "generate",
         "command": [
-          "generate",
-          "run"
+          "packages",
+          "generate"
         ],
-        "tool": "generate_run",
+        "tool": "packages_generate",
         "httpMethod": "POST",
         "path": "/generate"
       },
       {
-        "resource": "generate",
-        "method": "downloadPackage",
+        "resource": "packages",
+        "method": "download",
         "command": [
-          "generate",
-          "download-package"
+          "packages",
+          "download"
         ],
-        "tool": "generate_download_package",
+        "tool": "packages_download",
         "httpMethod": "GET",
         "path": "/generate/download"
       },
@@ -12397,8 +12397,8 @@
       }
     },
     {
-      "operation": "generate.run",
-      "signature": "client.Generate.Run(ctx, body, params)",
+      "operation": "packages.generate",
+      "signature": "client.Packages.Generate(ctx, body, params)",
       "method": "POST",
       "path": "/generate",
       "summary": "Generate a package",
@@ -13359,12 +13359,12 @@
       }
     },
     {
-      "operation": "generate.downloadPackage",
-      "signature": "client.Generate.DownloadPackage(ctx, params)",
+      "operation": "packages.download",
+      "signature": "client.Packages.Download(ctx, params)",
       "method": "GET",
       "path": "/generate/download",
       "summary": "Download a generated package",
-      "description": "Download the complete ZIP referenced by `generate_run`'s `download.url`. Pass the token from that URL. No API key is needed; the token grants access only to that exact package until its replay window expires. Keep the token private.\n\nThe local MCP server saves this binary response to disk. On a hosted MCP connection, download the original URL directly to your workspace. Verify the ZIP against `download.sha256` before extracting it into an empty directory. Expired or invalid tokens return `404`; a new generation creates a new download.",
+      "description": "Download the complete ZIP referenced by `packages_generate`'s `download.url`. Pass the token from that URL. No API key is needed; the token grants access only to that exact package until its replay window expires. Keep the token private.\n\nThe local MCP server saves this binary response to disk. On a hosted MCP connection, download the original URL directly to your workspace. Verify the ZIP against `download.sha256` before extracting it into an empty directory. Expired or invalid tokens return `404`; a new generation creates a new download.",
       "safety": "read",
       "auth": "none",
       "security": [

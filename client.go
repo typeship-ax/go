@@ -158,7 +158,7 @@ type Client struct {
 	Drafts        *DraftsService
 	Releases      *ReleasesService
 	Files         *FilesService
-	Generate      *GenerateService
+	Packages      *PackagesService
 	Organization  *OrganizationService
 	APIKeys       *APIKeysService
 
@@ -210,7 +210,7 @@ func New(opts ...Option) (*Client, error) {
 	client.Drafts = &DraftsService{core: c}
 	client.Releases = &ReleasesService{core: c}
 	client.Files = &FilesService{core: c}
-	client.Generate = &GenerateService{core: c}
+	client.Packages = &PackagesService{core: c}
 	client.Organization = &OrganizationService{core: c}
 	client.APIKeys = &APIKeysService{core: c}
 	return client, nil
