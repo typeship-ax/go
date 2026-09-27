@@ -369,7 +369,11 @@ type TargetChecksCustomerItem struct {
 // TargetConfigParams is an API model. Target-specific generation and delivery overrides. Authentication may only select a Project-owned OAuth application. OAuth server metadata, applications, and identity policy remain Project-owned. Self-hosted MCP access may be overridden for a Target-specific deployment.
 type TargetConfigParams struct {
 	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
-	Globals []string     `json:"globals,omitempty"`
+	Globals []string `json:"globals,omitempty"`
+	// Include Generate only matching operations: tag names, or path globs such as `/zones/**` (`*` is one path segment, `**` any number), optionally after an HTTP method (`DELETE /zones/*`). Applied before the Spec size limit, with components nothing references any more removed, so a one-shot run can generate part of a Spec up to 64 MB. Selectors that match nothing are reported as generation warnings.
+	Include []string `json:"include,omitempty"`
+	// Exclude Leave out matching operations (tag names or path globs, as for `include`). Wins over `include`.
+	Exclude []string     `json:"exclude,omitempty"`
 	Retries *RetryTuning `json:"retries,omitempty"`
 	// Pagination Per-operation pagination control, keyed by operationId or "METHOD /path". Unmatched keys are reported as generation warnings.
 	Pagination map[string]TargetConfigParamsPaginationValue `json:"pagination,omitempty"`
@@ -900,7 +904,11 @@ type HostedMCPDeliveryInput struct {
 // ProjectConfigParams is an API model. Shared generated-client and tooling behavior for a stored Project. Every Target inherits these defaults. Target.config is merged over them for one Target; top-level values replace defaults while cli, mcp, auth, readme, and package merge by field. GraphQL-only source settings live on the Project's Spec and are rejected in both stored config scopes.
 type ProjectConfigParams struct {
 	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
-	Globals []string     `json:"globals,omitempty"`
+	Globals []string `json:"globals,omitempty"`
+	// Include Generate only matching operations: tag names, or path globs such as `/zones/**` (`*` is one path segment, `**` any number), optionally after an HTTP method (`DELETE /zones/*`). Applied before the Spec size limit, with components nothing references any more removed, so a one-shot run can generate part of a Spec up to 64 MB. Selectors that match nothing are reported as generation warnings.
+	Include []string `json:"include,omitempty"`
+	// Exclude Leave out matching operations (tag names or path globs, as for `include`). Wins over `include`.
+	Exclude []string     `json:"exclude,omitempty"`
 	Retries *RetryTuning `json:"retries,omitempty"`
 	// Pagination Per-operation pagination control, keyed by operationId or "METHOD /path". Unmatched keys are reported as generation warnings.
 	Pagination map[string]ProjectConfigParamsPaginationValue `json:"pagination,omitempty"`
@@ -1390,7 +1398,11 @@ type SpecID string
 // ProjectConfigResponse is an API model. Shared generated-client and tooling behavior for a stored Project. Every Target inherits these defaults. Target.config is merged over them for one Target; top-level values replace defaults while cli, mcp, auth, readme, and package merge by field. GraphQL-only source settings live on the Project's Spec and are rejected in both stored config scopes.
 type ProjectConfigResponse struct {
 	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
-	Globals []string             `json:"globals,omitempty"`
+	Globals []string `json:"globals,omitempty"`
+	// Include Generate only matching operations: tag names, or path globs such as `/zones/**` (`*` is one path segment, `**` any number), optionally after an HTTP method (`DELETE /zones/*`). Applied before the Spec size limit, with components nothing references any more removed, so a one-shot run can generate part of a Spec up to 64 MB. Selectors that match nothing are reported as generation warnings.
+	Include []string `json:"include,omitempty"`
+	// Exclude Leave out matching operations (tag names or path globs, as for `include`). Wins over `include`.
+	Exclude []string             `json:"exclude,omitempty"`
 	Retries *RetryTuningResponse `json:"retries,omitempty"`
 	// Pagination Per-operation pagination control, keyed by operationId or "METHOD /path". Unmatched keys are reported as generation warnings.
 	Pagination map[string]ProjectConfigResponsePaginationValue `json:"pagination,omitempty"`
@@ -2713,7 +2725,11 @@ type TargetChecksResponseCustomerItem struct {
 // TargetConfigResponse is an API model. Target-specific generation and delivery overrides. Authentication may only select a Project-owned OAuth application. OAuth server metadata, applications, and identity policy remain Project-owned. Self-hosted MCP access may be overridden for a Target-specific deployment.
 type TargetConfigResponse struct {
 	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
-	Globals []string             `json:"globals,omitempty"`
+	Globals []string `json:"globals,omitempty"`
+	// Include Generate only matching operations: tag names, or path globs such as `/zones/**` (`*` is one path segment, `**` any number), optionally after an HTTP method (`DELETE /zones/*`). Applied before the Spec size limit, with components nothing references any more removed, so a one-shot run can generate part of a Spec up to 64 MB. Selectors that match nothing are reported as generation warnings.
+	Include []string `json:"include,omitempty"`
+	// Exclude Leave out matching operations (tag names or path globs, as for `include`). Wins over `include`.
+	Exclude []string             `json:"exclude,omitempty"`
 	Retries *RetryTuningResponse `json:"retries,omitempty"`
 	// Pagination Per-operation pagination control, keyed by operationId or "METHOD /path". Unmatched keys are reported as generation warnings.
 	Pagination map[string]TargetConfigResponsePaginationValue `json:"pagination,omitempty"`
@@ -4065,7 +4081,11 @@ type GoSDKDescriptor struct {
 // Config is an API model. Everything Typeship needs beyond the Spec, in one object: generation customization (globals, retries, pagination, readme) and how the generated tooling behaves (cli, mcp, package, docs_url). Plain configuration. Typeship never requires vendor extensions inside the Spec itself. One-shot generation also accepts GraphQL settings here; stored projects keep those settings on their Spec.
 type Config struct {
 	// Globals Wire names of query/header parameters that become settable once on the generated client and auto-apply to every operation that accepts them; per-call values win. Names that match nothing are reported as generation warnings.
-	Globals []string     `json:"globals,omitempty"`
+	Globals []string `json:"globals,omitempty"`
+	// Include Generate only matching operations: tag names, or path globs such as `/zones/**` (`*` is one path segment, `**` any number), optionally after an HTTP method (`DELETE /zones/*`). Applied before the Spec size limit, with components nothing references any more removed, so a one-shot run can generate part of a Spec up to 64 MB. Selectors that match nothing are reported as generation warnings.
+	Include []string `json:"include,omitempty"`
+	// Exclude Leave out matching operations (tag names or path globs, as for `include`). Wins over `include`.
+	Exclude []string     `json:"exclude,omitempty"`
 	Retries *RetryTuning `json:"retries,omitempty"`
 	// Pagination Per-operation pagination control, keyed by operationId or "METHOD /path". Unmatched keys are reported as generation warnings.
 	Pagination map[string]ConfigPaginationValue `json:"pagination,omitempty"`
