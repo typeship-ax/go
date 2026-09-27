@@ -3,7 +3,7 @@
 
 
 
-## 0.26.0 (2026-09-26) (100 breaking)
+## 0.26.0 (2026-09-27) (100 breaking)
 
 ### Added
 - `deliveries.create()`: POST `/deliveries`

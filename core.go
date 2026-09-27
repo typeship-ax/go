@@ -869,7 +869,19 @@ func jsonShape(value any) (any, bool) {
 	return generic, true
 }
 
-func encodeBody(body any, kind string, contentType string, encoding map[string]fieldEncoding) ([]byte, string, error) {
+// encodeBody writes a request body. extra holds fields a streaming twin adds
+// to the body (stream: true), merged over the caller's.
+func encodeBody(body any, kind string, contentType string, encoding map[string]fieldEncoding, extra ...map[string]any) ([]byte, string, error) {
+	if len(extra) > 0 && len(extra[0]) > 0 && kind != "multipart" {
+		if generic, ok := jsonShape(body); ok {
+			if fields, ok := generic.(map[string]any); ok {
+				for name, value := range extra[0] {
+					fields[name] = value
+				}
+				body = fields
+			}
+		}
+	}
 	if body == nil {
 		return nil, "", nil
 	}

@@ -29,6 +29,15 @@ type pageConfig struct {
 	TotalField string
 	// TotalPagesField is the dot path of the total page count.
 	TotalPagesField string
+	// ItemPath picks each item out of its list element (a Relay edge's node).
+	ItemPath string
+	// DefaultLimit is sent as LimitParam when the caller gives no page size.
+	DefaultLimit int
+	// Backward* page a Relay connection backward when BackwardLimitParam is set.
+	BackwardLimitParam   string
+	BackwardCursorParam  string
+	BackwardCursorField  string
+	BackwardHasMoreField string
 }
 
 // Iter walks every page of a list endpoint, fetching lazily:
@@ -61,6 +70,27 @@ type Iter[T any] struct {
 func newIter[T any](ctx context.Context, c *core, req request, opts []RequestOption, cfg pageConfig) *Iter[T] {
 	if req.Query == nil {
 		req.Query = map[string]any{}
+	}
+	if cfg.DefaultLimit > 0 || cfg.BackwardLimitParam != "" {
+		// The page size the caller chose, from params or query.
+		variables := map[string]any{}
+		if generic, ok := jsonShape(req.Body); ok {
+			if fields, ok := generic.(map[string]any); ok {
+				variables = fields
+			}
+		}
+		for key, value := range req.Query {
+			variables[key] = value
+		}
+		if cfg.BackwardLimitParam != "" && variables[cfg.BackwardLimitParam] != nil {
+			// last/before walks toward the start of the connection.
+			cfg.CursorParam = cfg.BackwardCursorParam
+			cfg.NextCursorField = cfg.BackwardCursorField
+			cfg.HasMoreField = cfg.BackwardHasMoreField
+		} else if cfg.DefaultLimit > 0 && cfg.LimitParam != "" && variables[cfg.LimitParam] == nil {
+			// Relay servers reject a connection query with neither first nor last.
+			req.Query[cfg.LimitParam] = cfg.DefaultLimit
+		}
 	}
 	it := &Iter[T]{ctx: ctx, core: c, req: req, opts: opts, cfg: cfg, page: 1}
 	if cfg.ZeroBasedPages {
@@ -153,11 +183,27 @@ func (it *Iter[T]) fetch() bool {
 		it.first = raw
 	}
 	var items []T
-	if string(bytes.TrimSpace(itemsRaw)) != "null" {
-		if err := json.Unmarshal(itemsRaw, &items); err != nil {
+	if string(bytes.TrimSpace(itemsRaw)) == "null" {
+		// A null list is an empty page.
+	} else if it.cfg.ItemPath != "" {
+		var entries []map[string]json.RawMessage
+		if err := json.Unmarshal(itemsRaw, &entries); err != nil {
 			it.err = err
 			return false
 		}
+		for _, entry := range entries {
+			var item T
+			if value, ok := entry[it.cfg.ItemPath]; ok {
+				if err := json.Unmarshal(value, &item); err != nil {
+					it.err = err
+					return false
+				}
+			}
+			items = append(items, item)
+		}
+	} else if err := json.Unmarshal(itemsRaw, &items); err != nil {
+		it.err = err
+		return false
 	}
 	it.items = items
 	it.index = 0
