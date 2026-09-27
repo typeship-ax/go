@@ -118,7 +118,7 @@ func (e *BadGatewayError) Unwrap() error {
 	return &e.APIError
 }
 
-// PayloadTooLargeError is returned for 413 responses. The Spec exceeds the supported size.
+// PayloadTooLargeError is returned for 413 responses. The Spec is over 10 MB, or an inline Spec is over 4 MB; send large Specs by URL.
 type PayloadTooLargeError struct {
 	APIError
 }

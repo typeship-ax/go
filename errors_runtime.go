@@ -173,8 +173,6 @@ func nextStep(status int) string {
 		return "Check the requested identifier or path."
 	case 409:
 		return "Refresh the resource and retry the change."
-	case 413:
-		return "Send less data in one request."
 	case 400, 422:
 		return "Correct the request and retry."
 	case 429:
