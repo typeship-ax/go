@@ -1,6 +1,6 @@
 # github.com/typeship-ax/go
 
-Go SDK for the typeship API. [API reference](./api.md)
+Go SDK for the Typeship API. [API reference](./api.md)
 
 Resolve an OpenAPI or GraphQL Spec, diagnose it, and keep every selected CLI, MCP, and SDK Target current.
 

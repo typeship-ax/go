@@ -9,7 +9,10 @@ Requires Go 1.21+. From this directory:
 ```sh
 go build ./...
 go vet ./...
+go test ./...
 ```
+
+`go test ./...` runs `sdk_test.go` against a local `httptest` server. The tests use only the standard library, and code that imports the module does not compile them.
 
 ## Publish the module
 
