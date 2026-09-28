@@ -3,7 +3,7 @@
 
 
 
-## 0.26.0 (2026-09-27) (100 breaking)
+## 0.26.0 (2026-09-28) (103 breaking)
 
 ### Added
 - `deliveries.create()`: POST `/deliveries`
@@ -39,10 +39,12 @@
   - `body-field-type-changed`: request body.spec.graphql.auth enum values added: "api\_key\_or\_bearer", "basic\_api\_key"
   - `body-field-type-changed`: request body.spec.graphql.error\_types added: string\[\] \(optional\)
   - `body-field-type-changed`: request body.spec.graphql.page\_size added: number \(optional\)
+  - `body-field-type-changed`: request body.targets\[\].config.package.title added: string \| null \(optional\)
   - `body-field-type-changed`: request body.targets\[\].config.exclude added: string\[\] \(optional\)
   - `body-field-type-changed`: request body.targets\[\].config.include added: string\[\] \(optional\)
   - `body-field-type-changed`: request body.config.auth.credential\_parameters added: Record&lt;string, Record&lt;string, boolean&gt;&gt; \| null \(optional\)
   - `body-field-type-changed`: request body.config.auth.credential\_variables added: Record&lt;string, string \| \{   username: string;   password: string; \}&gt; \| null \(optional\)
+  - `body-field-type-changed`: request body.config.package.title added: string \| null \(optional\)
   - `body-field-type-changed`: request body.config.exclude added: string\[\] \(optional\)
   - `body-field-type-changed`: request body.config.include added: string\[\] \(optional\)
   - **breaking** `return-type-changed`: response type changed: Project -&gt; ProjectResponse
@@ -119,6 +121,7 @@
 - `projects.update()`
   - `body-field-type-changed`: request body.config.auth.credential\_parameters added: Record&lt;string, Record&lt;string, boolean&gt;&gt; \| null \(optional\)
   - `body-field-type-changed`: request body.config.auth.credential\_variables added: Record&lt;string, string \| \{   username: string;   password: string; \}&gt; \| null \(optional\)
+  - `body-field-type-changed`: request body.config.package.title added: string \| null \(optional\)
   - `body-field-type-changed`: request body.config.exclude added: string\[\] \(optional\)
   - `body-field-type-changed`: request body.config.include added: string\[\] \(optional\)
   - **breaking** `return-type-changed`: response type changed: Project -&gt; ProjectResponse
@@ -309,6 +312,7 @@
   - `error-schema-changed`: error 500.errors\[\].code enum value removed: "plan\_limit\_reached"
   - **breaking** `error-schema-changed`: error 500.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid", "feature\_not\_available", "input\_duplicate", "input\_format\_invalid", "input\_missing", "input\_too\_long", "input\_too\_short", "input\_type\_invalid", "input\_unknown", "quota\_exceeded"
 - `targets.list()`
+  - `return-type-changed`: response.data\[\].config.package.title added: string \| null \(optional\)
   - `return-type-changed`: response.data\[\].config.exclude added: string\[\] \(optional\)
   - `return-type-changed`: response.data\[\].config.include added: string\[\] \(optional\)
   - `error-schema-changed`: error 400.errors\[\].code enum value removed: "plan\_limit\_reached"
@@ -324,9 +328,11 @@
   - `error-schema-changed`: error 500.errors\[\].code enum value removed: "plan\_limit\_reached"
   - **breaking** `error-schema-changed`: error 500.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid", "feature\_not\_available", "input\_duplicate", "input\_format\_invalid", "input\_missing", "input\_too\_long", "input\_too\_short", "input\_type\_invalid", "input\_unknown", "quota\_exceeded"
 - `targets.create()`
+  - `body-field-type-changed`: request body.config.package.title added: string \| null \(optional\)
   - `body-field-type-changed`: request body.config.exclude added: string\[\] \(optional\)
   - `body-field-type-changed`: request body.config.include added: string\[\] \(optional\)
   - **breaking** `body-field-removed`: request body.spec\_id removed \(was SpecId\)
+  - `return-type-changed`: response.config.package.title added: string \| null \(optional\)
   - `return-type-changed`: response.config.exclude added: string\[\] \(optional\)
   - `return-type-changed`: response.config.include added: string\[\] \(optional\)
   - `documentation-changed`: summary or description changed
@@ -349,6 +355,7 @@
   - `error-schema-changed`: error 500.errors\[\].code enum value removed: "plan\_limit\_reached"
   - **breaking** `error-schema-changed`: error 500.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid", "feature\_not\_available", "input\_duplicate", "input\_format\_invalid", "input\_missing", "input\_too\_long", "input\_too\_short", "input\_type\_invalid", "input\_unknown", "quota\_exceeded"
 - `targets.get()`
+  - `return-type-changed`: response.config.package.title added: string \| null \(optional\)
   - `return-type-changed`: response.config.exclude added: string\[\] \(optional\)
   - `return-type-changed`: response.config.include added: string\[\] \(optional\)
   - `error-schema-changed`: error 401.errors\[\].code enum value removed: "plan\_limit\_reached"
@@ -380,9 +387,11 @@
   - `error-schema-changed`: error 500.errors\[\].code enum value removed: "plan\_limit\_reached"
   - **breaking** `error-schema-changed`: error 500.errors\[\].code enum values added: "checks\_failed", "delivery\_exists", "draft\_title\_invalid", "feature\_not\_available", "input\_duplicate", "input\_format\_invalid", "input\_missing", "input\_too\_long", "input\_too\_short", "input\_type\_invalid", "input\_unknown", "quota\_exceeded"
 - `targets.update()`
+  - `body-field-type-changed`: request body.config.package.title added: string \| null \(optional\)
   - `body-field-type-changed`: request body.config.exclude added: string\[\] \(optional\)
   - `body-field-type-changed`: request body.config.include added: string\[\] \(optional\)
   - **breaking** `body-field-removed`: request body.deliveries removed \(was DeliveryInput\[\]\)
+  - `return-type-changed`: response.config.package.title added: string \| null \(optional\)
   - `return-type-changed`: response.config.exclude added: string\[\] \(optional\)
   - `return-type-changed`: response.config.include added: string\[\] \(optional\)
   - `documentation-changed`: summary or description changed
@@ -777,6 +786,8 @@
 ### Package contract (breaking)
 - **Breaking:** SDK declaration `APIKey.Revoked` removed
 - **Breaking:** SDK declaration `APIKeyResponse.Revoked` removed
+- SDK declaration `BadGatewayError` changed
+- **Breaking:** SDK declaration `BadGatewayError.Unwrap` removed
 - **Breaking:** SDK declaration `Client.Generate` removed
 - **Breaking:** SDK declaration `Client.Publications` removed
 - **Breaking:** SDK declaration `CompatibilityAPI` removed
@@ -807,6 +818,8 @@
 - SDK declaration `GenerationList.Data` changed
 - **Breaking:** SDK declaration `GenerationSummary` removed
 - SDK declaration `GenerationsService.List` changed
+- SDK declaration `InternalServerError` changed
+- **Breaking:** SDK declaration `InternalServerError.Unwrap` removed
 - **Breaking:** SDK declaration `Mode` removed
 - **Breaking:** SDK declaration `Mode100644` removed
 - **Breaking:** SDK declaration `Mode100755` removed
@@ -839,6 +852,8 @@
 - **Breaking:** SDK declaration `PublicationStatusPublishing` removed
 - **Breaking:** SDK declaration `PublicationsListParams` removed
 - **Breaking:** SDK declaration `PublicationsService` removed
+- SDK declaration `RateLimitedError` changed
+- **Breaking:** SDK declaration `RateLimitedError.Unwrap` removed
 - **Breaking:** SDK declaration `Release.Channel` removed
 - **Breaking:** SDK declaration `ReleaseResponse.Channel` removed
 - **Breaking:** SDK declaration `ReleasesRepublishParams` removed
@@ -926,9 +941,13 @@
 - SDK declaration `GraphqlSettingsResponse.ErrorTypes` added
 - SDK declaration `GraphqlSettingsResponse.PageSize` added
 - SDK declaration `HostedMCPDeliveryCreateRequest` added
+- SDK declaration `PackageBehavior.Title` added
+- SDK declaration `PackageBehaviorParams.Title` added
+- SDK declaration `PackageBehaviorResponse.Title` added
 - SDK declaration `PackagesDownloadParams` added
 - SDK declaration `PackagesGenerateParams` added
 - SDK declaration `PackagesService` added
+- SDK declaration `PaginationError` added
 - SDK declaration `PayloadError` added
 - SDK declaration `ProjectConfigParams.Exclude` added
 - SDK declaration `ProjectConfigParams.Include` added
@@ -951,6 +970,7 @@
 - SDK declaration `ReleasesRetryParams` added
 - SDK declaration `ReleasesService.Retry` added
 - SDK declaration `RepositoryDeliveryCreateRequest` added
+- SDK declaration `ServerError` added
 - SDK declaration `SpecRevisionsGetParams.Filter` added
 - SDK declaration `SpecRevisionsGetParamsFilter` added
 - SDK declaration `SpecRevisionsGetParamsFilterBlocking` added

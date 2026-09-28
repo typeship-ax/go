@@ -1,33 +1,16 @@
 # github.com/typeship-ax/go
 
-Go SDK for typeship. [API reference](./api.md)
+Go SDK for the typeship API. [API reference](./api.md)
 
-Generated from the OpenAPI spec by [typeship](https://typeship.dev).
+Resolve an OpenAPI or GraphQL Spec, diagnose it, and keep every selected CLI, MCP, and SDK Target current.
 
-- **Zero dependencies** — `go.mod` has no requires; the client uses only the standard library
-- **Typed errors** — every documented error response is a type you can match with `errors.As`
-- **Context-aware** — every call takes a `context.Context`, so cancellation and deadlines work
-- **Retries built in** — idempotent requests retry with exponential backoff and `Retry-After` support
-- **Forward-compatible responses** — enum values decode even when new, union raw JSON remains available, and `WithAPIResponse` preserves the complete body
-
-## Build from source
-
-Requires Go 1.21+. Run these commands in the downloaded or cloned package directory:
-
-```sh
-go build ./...
-go test ./...
-```
-
-To run the quickstart against this local module, save it as `cmd/example/main.go` and run `go run ./cmd/example` from the package directory.
-
-## Install a published module
-
-Generation does not publish a Go module. Set `go.mod` to a repository path you control, publish the module and tag its release, then use that module path and version with `go get`:
+## Installation
 
 ```sh
 go get github.com/typeship-ax/go@v0.26.0
 ```
+
+Requires Go 1.21+. The module has no dependencies outside the standard library.
 
 ## Quickstart
 
@@ -72,7 +55,7 @@ func main() {
 
 ## Authentication
 
-- **Bearer token** — `typeship.WithBearerToken` (or `WithBearerTokenFunc` for tokens that expire), sent as `Authorization: Bearer <token>`.
+- **Bearer token**: `typeship.WithBearerToken` (or `WithBearerTokenFunc` for tokens that expire), sent as `Authorization: Bearer <token>`.
 
 `client.WithCredentials(...)` returns a client with different credentials that shares this client's HTTP client and settings, for per-user or per-tenant calls.
 
@@ -80,13 +63,16 @@ func main() {
 
 ## Errors
 
-Every documented error response has its own type, so you can match at
-whichever precision you need:
+Each status family has one type, returned whether or not the operation
+documents the status: `BadRequestError` (400), `UnauthorizedError` (401),
+`ForbiddenError` (403), `NotFoundError` (404), `ConflictError` (409),
+`UnprocessableEntityError` (422), `RateLimitError` (429), and `ServerError`
+(5xx). Match at whichever precision you need:
 
 ```go
-var badRequest *typeship.BadRequestError
-if errors.As(err, &badRequest) {
-	// handle the documented 400
+var notFound *typeship.NotFoundError
+if errors.As(err, &notFound) {
+	// every 404, documented or not
 }
 
 var apiErr *typeship.APIError
@@ -108,11 +94,11 @@ Every error carries `Code`, `Status`, `RequestID`, `Body`, and an actionable `Er
 
 ## Runtime validation
 
-Types catch mistakes when you compile; they cannot see an API that has drifted from its spec at runtime. `WithValidation` checks JSON request and response bodies against the spec's own schemas — no dependencies, since the tables ship as plain data in this package:
+Types catch mistakes when you compile; they cannot see an API that has drifted from its spec at runtime. `WithValidation` checks JSON request and response bodies against the spec's own schemas, with no dependencies, since the tables ship as plain data in this package:
 
 ```go
 client, err := typeship.New(typeship.WithValidation(typeship.ValidateError)) // *ValidationError on mismatch
-client, err := typeship.New(typeship.WithValidation(typeship.ValidateWarn))  // reports via WithDebug, proceeds
+// or typeship.ValidateWarn, which reports through WithDebug and proceeds
 ```
 
 A request body is checked before it reaches the wire, so a call that would have been rejected never leaves the process. `ValidationError.Violations` lists each path and what was wrong with it. Off by default: validation costs a walk of every body.
@@ -142,3 +128,5 @@ client, err := typeship.New(
 Configuration also reads from the environment (`TYPESHIP_BASE_URL`, `TYPESHIP_API_KEY`).
 
 Timeouts apply to each attempt. By default, the client makes up to two retries for `408`, `429`, `500`, `502`, `503`, and `504`; non-idempotent calls retry only on `429`, when the operation declares an idempotency key, or when explicitly enabled. `Retry-After` takes precedence over exponential backoff.
+
+Generated from the OpenAPI spec by [typeship](https://typeship.dev).
