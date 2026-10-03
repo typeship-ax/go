@@ -582,6 +582,8 @@ type TargetCLIBehaviorParams struct {
 	SkillsRepo *Nullable[string] `json:"skills_repo,omitempty"`
 	// Relay Enable webhook relay sessions for this CLI Target. Requires Pro. Turning it off prevents new sessions.
 	Relay *bool `json:"relay,omitempty"`
+	// UnitTests Also generate unit tests for the helper code a native Go CLI shares, such as raw API path checks, saved credentials, and MCP client configuration. Applies to go_cli Targets. Off by default; tests for the generated commands are always included.
+	UnitTests *bool `json:"unit_tests,omitempty"`
 }
 
 // UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
@@ -2851,6 +2853,8 @@ type TargetCLIBehaviorResponse struct {
 	SkillsRepo *string `json:"skills_repo,omitempty"`
 	// Relay Enable webhook relay sessions for this CLI Target. Requires Pro. Turning it off prevents new sessions.
 	Relay *bool `json:"relay,omitempty"`
+	// UnitTests Also generate unit tests for the helper code a native Go CLI shares, such as raw API path checks, saved credentials, and MCP client configuration. Applies to go_cli Targets. Off by default; tests for the generated commands are always included.
+	UnitTests *bool `json:"unit_tests,omitempty"`
 }
 
 // Delivery is one of RepositoryDelivery, HostedMCPDelivery.
