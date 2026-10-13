@@ -569,15 +569,13 @@ func (v *TargetAuthenticationEnvironmentParams) UnmarshalJSON(data []byte) error
 type TargetCLIBehaviorParams struct {
 	// CommandName Command users run, independent of how the CLI is distributed.
 	CommandName *Nullable[string] `json:"command_name,omitempty"`
-	// UpdateNotice Opt in to a once-a-day registry check that prints an upgrade hint. Off by default; generated code phones nobody unless this is enabled.
-	UpdateNotice *bool `json:"update_notice,omitempty"`
 	// ChangelogURL Public HTTP(S) URL read by the optional changelog command in generated CLIs. Supports UTF-8 Markdown, plain text, and static HTML; embedded credentials are not allowed. Omit or clear to disable, then regenerate.
 	ChangelogURL *Nullable[string] `json:"changelog_url,omitempty"`
 	// SupportURL Where the generated CLI's feedback command sends users. GitHub issues/new URLs get a prefilled title and environment details.
 	SupportURL *Nullable[string] `json:"support_url,omitempty"`
-	// MCPURL Hosted MCP endpoint installed by the generated CLI instead of launching the package's local stdio server.
+	// MCPURL Fallback MCP endpoint used by the generated CLI when the Project has no Typeship-hosted MCP endpoint. A hosted endpoint takes precedence over this URL.
 	MCPURL *Nullable[string] `json:"mcp_url,omitempty"`
-	// SkillsRepo GitHub owner/name of the skills package the generated CLI offers to install during init.
+	// SkillsRepo Repository in owner/name format that the generated CLI's init command offers for skill installation.
 	SkillsRepo *Nullable[string] `json:"skills_repo,omitempty"`
 	// Relay Enable webhook relay sessions for this CLI Target. Requires Pro. Turning it off prevents new sessions.
 	Relay *bool `json:"relay,omitempty"`
@@ -1343,15 +1341,13 @@ type AuthenticationConfigParamsCredentialVariablesValueVariant2 struct {
 type CLIBehaviorParams struct {
 	// CommandName Command users run, independent of how the CLI is distributed.
 	CommandName *Nullable[string] `json:"command_name,omitempty"`
-	// UpdateNotice Opt in to a once-a-day registry check that prints an upgrade hint. Off by default; generated code phones nobody unless this is enabled.
-	UpdateNotice *bool `json:"update_notice,omitempty"`
 	// ChangelogURL Public HTTP(S) URL read by the optional changelog command in generated CLIs. Supports UTF-8 Markdown, plain text, and static HTML; embedded credentials are not allowed. Omit or clear to disable, then regenerate.
 	ChangelogURL *Nullable[string] `json:"changelog_url,omitempty"`
 	// SupportURL Where the generated CLI's feedback command sends users. GitHub issues/new URLs get a prefilled title and environment details.
 	SupportURL *Nullable[string] `json:"support_url,omitempty"`
-	// MCPURL Hosted MCP endpoint installed by the generated CLI instead of launching the package's local stdio server.
+	// MCPURL Fallback MCP endpoint used by the generated CLI when the Project has no Typeship-hosted MCP endpoint. A hosted endpoint takes precedence over this URL.
 	MCPURL *Nullable[string] `json:"mcp_url,omitempty"`
-	// SkillsRepo GitHub owner/name of the skills package the generated CLI offers to install during init.
+	// SkillsRepo Repository in owner/name format that the generated CLI's init command offers for skill installation.
 	SkillsRepo *Nullable[string] `json:"skills_repo,omitempty"`
 }
 
@@ -1661,15 +1657,13 @@ type AuthenticationConfigResponseCredentialVariablesValueVariant2 struct {
 type CLIBehaviorResponse struct {
 	// CommandName Command users run, independent of how the CLI is distributed.
 	CommandName *string `json:"command_name,omitempty"`
-	// UpdateNotice Opt in to a once-a-day registry check that prints an upgrade hint. Off by default; generated code phones nobody unless this is enabled.
-	UpdateNotice *bool `json:"update_notice,omitempty"`
 	// ChangelogURL Public HTTP(S) URL read by the optional changelog command in generated CLIs. Supports UTF-8 Markdown, plain text, and static HTML; embedded credentials are not allowed. Omit or clear to disable, then regenerate.
 	ChangelogURL *string `json:"changelog_url,omitempty"`
 	// SupportURL Where the generated CLI's feedback command sends users. GitHub issues/new URLs get a prefilled title and environment details.
 	SupportURL *string `json:"support_url,omitempty"`
-	// MCPURL Hosted MCP endpoint installed by the generated CLI instead of launching the package's local stdio server.
+	// MCPURL Fallback MCP endpoint used by the generated CLI when the Project has no Typeship-hosted MCP endpoint. A hosted endpoint takes precedence over this URL.
 	MCPURL *string `json:"mcp_url,omitempty"`
-	// SkillsRepo GitHub owner/name of the skills package the generated CLI offers to install during init.
+	// SkillsRepo Repository in owner/name format that the generated CLI's init command offers for skill installation.
 	SkillsRepo *string `json:"skills_repo,omitempty"`
 }
 
@@ -2821,15 +2815,13 @@ type TargetAuthenticationEnvironmentResponse struct {
 type TargetCLIBehaviorResponse struct {
 	// CommandName Command users run, independent of how the CLI is distributed.
 	CommandName *string `json:"command_name,omitempty"`
-	// UpdateNotice Opt in to a once-a-day registry check that prints an upgrade hint. Off by default; generated code phones nobody unless this is enabled.
-	UpdateNotice *bool `json:"update_notice,omitempty"`
 	// ChangelogURL Public HTTP(S) URL read by the optional changelog command in generated CLIs. Supports UTF-8 Markdown, plain text, and static HTML; embedded credentials are not allowed. Omit or clear to disable, then regenerate.
 	ChangelogURL *string `json:"changelog_url,omitempty"`
 	// SupportURL Where the generated CLI's feedback command sends users. GitHub issues/new URLs get a prefilled title and environment details.
 	SupportURL *string `json:"support_url,omitempty"`
-	// MCPURL Hosted MCP endpoint installed by the generated CLI instead of launching the package's local stdio server.
+	// MCPURL Fallback MCP endpoint used by the generated CLI when the Project has no Typeship-hosted MCP endpoint. A hosted endpoint takes precedence over this URL.
 	MCPURL *string `json:"mcp_url,omitempty"`
-	// SkillsRepo GitHub owner/name of the skills package the generated CLI offers to install during init.
+	// SkillsRepo Repository in owner/name format that the generated CLI's init command offers for skill installation.
 	SkillsRepo *string `json:"skills_repo,omitempty"`
 	// Relay Enable webhook relay sessions for this CLI Target. Requires Pro. Turning it off prevents new sessions.
 	Relay *bool `json:"relay,omitempty"`
@@ -4291,15 +4283,13 @@ type AuthenticationConfigCredentialVariablesValueVariant2 struct {
 type CLIBehavior struct {
 	// CommandName Command users run, independent of how the CLI is distributed.
 	CommandName *string `json:"command_name,omitempty"`
-	// UpdateNotice Opt in to a once-a-day registry check that prints an upgrade hint. Off by default; generated code phones nobody unless this is enabled.
-	UpdateNotice *bool `json:"update_notice,omitempty"`
 	// ChangelogURL Public HTTP(S) URL read by the optional changelog command in generated CLIs. Supports UTF-8 Markdown, plain text, and static HTML; embedded credentials are not allowed. Omit or clear to disable, then regenerate.
 	ChangelogURL *string `json:"changelog_url,omitempty"`
 	// SupportURL Where the generated CLI's feedback command sends users. GitHub issues/new URLs get a prefilled title and environment details.
 	SupportURL *string `json:"support_url,omitempty"`
-	// MCPURL Hosted MCP endpoint installed by the generated CLI instead of launching the package's local stdio server.
+	// MCPURL Fallback MCP endpoint used by the generated CLI when the Project has no Typeship-hosted MCP endpoint. A hosted endpoint takes precedence over this URL.
 	MCPURL *string `json:"mcp_url,omitempty"`
-	// SkillsRepo GitHub owner/name of the skills package the generated CLI offers to install during init.
+	// SkillsRepo Repository in owner/name format that the generated CLI's init command offers for skill installation.
 	SkillsRepo *string `json:"skills_repo,omitempty"`
 }
 
