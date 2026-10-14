@@ -4,7 +4,7 @@
 
 
 
-## 0.27.0 (2026-10-13) (31 breaking)
+## 0.27.0 (2026-10-14) (32 breaking)
 
 ### Changed
 - `projects.create()`
@@ -79,6 +79,7 @@
   - `error-schema-changed`: error 429.errors\[\].code enum values removed: "dependency\_cross\_lineage", "dependency\_cross\_project", "dependency\_cycle", "dependency\_disabled", "dependency\_missing", "dependency\_module\_path\_missing", "dependency\_not\_found", "dependency\_revision\_mismatch", "dependency\_self", "dependency\_unreleased", "dependency\_wrong\_generator"
   - `error-schema-changed`: error 500.errors\[\].code enum values removed: "dependency\_cross\_lineage", "dependency\_cross\_project", "dependency\_cycle", "dependency\_disabled", "dependency\_missing", "dependency\_module\_path\_missing", "dependency\_not\_found", "dependency\_revision\_mismatch", "dependency\_self", "dependency\_unreleased", "dependency\_wrong\_generator"
 - `specs.update()`
+  - `documentation-changed`: summary or description changed
   - `error-schema-changed`: error 400.errors\[\].code enum values removed: "dependency\_cross\_lineage", "dependency\_cross\_project", "dependency\_cycle", "dependency\_disabled", "dependency\_missing", "dependency\_module\_path\_missing", "dependency\_not\_found", "dependency\_revision\_mismatch", "dependency\_self", "dependency\_unreleased", "dependency\_wrong\_generator"
   - `error-schema-changed`: error 401.errors\[\].code enum values removed: "dependency\_cross\_lineage", "dependency\_cross\_project", "dependency\_cycle", "dependency\_disabled", "dependency\_missing", "dependency\_module\_path\_missing", "dependency\_not\_found", "dependency\_revision\_mismatch", "dependency\_self", "dependency\_unreleased", "dependency\_wrong\_generator"
   - `error-schema-changed`: error 403.errors\[\].code enum values removed: "dependency\_cross\_lineage", "dependency\_cross\_project", "dependency\_cycle", "dependency\_disabled", "dependency\_missing", "dependency\_module\_path\_missing", "dependency\_not\_found", "dependency\_revision\_mismatch", "dependency\_self", "dependency\_unreleased", "dependency\_wrong\_generator"
@@ -88,6 +89,7 @@
   - `error-schema-changed`: error 422.errors\[\].code enum values removed: "dependency\_cross\_lineage", "dependency\_cross\_project", "dependency\_cycle", "dependency\_disabled", "dependency\_missing", "dependency\_module\_path\_missing", "dependency\_not\_found", "dependency\_revision\_mismatch", "dependency\_self", "dependency\_unreleased", "dependency\_wrong\_generator"
   - `error-schema-changed`: error 429.errors\[\].code enum values removed: "dependency\_cross\_lineage", "dependency\_cross\_project", "dependency\_cycle", "dependency\_disabled", "dependency\_missing", "dependency\_module\_path\_missing", "dependency\_not\_found", "dependency\_revision\_mismatch", "dependency\_self", "dependency\_unreleased", "dependency\_wrong\_generator"
   - `error-schema-changed`: error 500.errors\[\].code enum values removed: "dependency\_cross\_lineage", "dependency\_cross\_project", "dependency\_cycle", "dependency\_disabled", "dependency\_missing", "dependency\_module\_path\_missing", "dependency\_not\_found", "dependency\_revision\_mismatch", "dependency\_self", "dependency\_unreleased", "dependency\_wrong\_generator"
+  - **breaking** `error-added`: 502: BadGatewayError
 - `specs.refresh()`
   - `error-schema-changed`: error 400.errors\[\].code enum values removed: "dependency\_cross\_lineage", "dependency\_cross\_project", "dependency\_cycle", "dependency\_disabled", "dependency\_missing", "dependency\_module\_path\_missing", "dependency\_not\_found", "dependency\_revision\_mismatch", "dependency\_self", "dependency\_unreleased", "dependency\_wrong\_generator"
   - `error-schema-changed`: error 401.errors\[\].code enum values removed: "dependency\_cross\_lineage", "dependency\_cross\_project", "dependency\_cycle", "dependency\_disabled", "dependency\_missing", "dependency\_module\_path\_missing", "dependency\_not\_found", "dependency\_revision\_mismatch", "dependency\_self", "dependency\_unreleased", "dependency\_wrong\_generator"
@@ -414,6 +416,10 @@
 - **Breaking:** SDK declaration `TargetCLIBehaviorResponse.UpdateNotice` removed
 - **Breaking:** SDK declaration `TargetDependency` removed
 - **Breaking:** SDK declaration `TargetResponse.Dependency` removed
+- SDK declaration `Iter.FirstPageItems` added
+- SDK declaration `Iter.FirstPageRequestID` added
+- SDK declaration `Iter.HasMore` added
+- SDK declaration `Iter.NextPageParams` added
 - SDK declaration `TargetCLIBehaviorParams.UnitTests` added
 - SDK declaration `TargetCLIBehaviorResponse.UnitTests` added
 ## 0.26.0 (2026-09-28) (149 breaking)
