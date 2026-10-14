@@ -7,7 +7,7 @@ Resolve an OpenAPI or GraphQL Spec, diagnose it, and keep every selected CLI, MC
 ## Installation
 
 ```sh
-go get github.com/typeship-ax/go@v0.26.0
+go get github.com/typeship-ax/go@v0.27.0
 ```
 
 Requires Go 1.21+. The module has no dependencies outside the standard library.

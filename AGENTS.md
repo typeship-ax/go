@@ -1,6 +1,6 @@
 # Typeship: agent guide
 
-Instructions for coding agents that call the Typeship API through this Go SDK (API version 1.0.0, package version 0.26.0).
+Instructions for coding agents that call the Typeship API through this Go SDK (API version 1.0.0, package version 0.27.0).
 
 Resolve an OpenAPI or GraphQL Spec, diagnose it, and keep every
 selected CLI, MCP, and SDK Target current.

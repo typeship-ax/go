@@ -322,12 +322,11 @@ func (v *InitialTargetFieldsParams) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// GeneratorKind is one of "cli", "go_cli", "mcp", "typescript_sdk", "python_sdk", "go_sdk". Generator implementation selected by a Target. This is configuration, not identity; several Targets may use the same generator. cli is the TypeScript CLI; go_cli is the native Go CLI, a distinct product that imports one exact paired Go SDK module rather than a client of its own.
+// GeneratorKind is one of "cli", "mcp", "typescript_sdk", "python_sdk", "go_sdk". Package type selected by a Target. Several Targets may use the same type. The CLI is a self-contained command-line package and requires no SDK Target.
 type GeneratorKind string
 
 const (
 	GeneratorKindCLI           GeneratorKind = "cli"
-	GeneratorKindGoCLI         GeneratorKind = "go_cli"
 	GeneratorKindMCP           GeneratorKind = "mcp"
 	GeneratorKindTypescriptSDK GeneratorKind = "typescript_sdk"
 	GeneratorKindPythonSDK     GeneratorKind = "python_sdk"
@@ -570,18 +569,18 @@ func (v *TargetAuthenticationEnvironmentParams) UnmarshalJSON(data []byte) error
 type TargetCLIBehaviorParams struct {
 	// CommandName Command users run, independent of how the CLI is distributed.
 	CommandName *Nullable[string] `json:"command_name,omitempty"`
-	// UpdateNotice Opt in to a once-a-day registry check that prints an upgrade hint. Off by default; generated code phones nobody unless this is enabled.
-	UpdateNotice *bool `json:"update_notice,omitempty"`
 	// ChangelogURL Public HTTP(S) URL read by the optional changelog command in generated CLIs. Supports UTF-8 Markdown, plain text, and static HTML; embedded credentials are not allowed. Omit or clear to disable, then regenerate.
 	ChangelogURL *Nullable[string] `json:"changelog_url,omitempty"`
 	// SupportURL Where the generated CLI's feedback command sends users. GitHub issues/new URLs get a prefilled title and environment details.
 	SupportURL *Nullable[string] `json:"support_url,omitempty"`
-	// MCPURL Hosted MCP endpoint installed by the generated CLI instead of launching the package's local stdio server.
+	// MCPURL Fallback MCP endpoint used by the generated CLI when the Project has no Typeship-hosted MCP endpoint. A hosted endpoint takes precedence over this URL.
 	MCPURL *Nullable[string] `json:"mcp_url,omitempty"`
-	// SkillsRepo GitHub owner/name of the skills package the generated CLI offers to install during init.
+	// SkillsRepo Repository in owner/name format that the generated CLI's init command offers for skill installation.
 	SkillsRepo *Nullable[string] `json:"skills_repo,omitempty"`
 	// Relay Enable webhook relay sessions for this CLI Target. Requires Pro. Turning it off prevents new sessions.
 	Relay *bool `json:"relay,omitempty"`
+	// UnitTests Also generate unit tests for the helper code a CLI shares, such as raw API path checks, saved credentials, and MCP client configuration. Applies to cli Targets. Off by default; tests for the generated commands are always included.
+	UnitTests *bool `json:"unit_tests,omitempty"`
 }
 
 // UnmarshalJSON keeps explicit nulls distinct from omitted request fields.
@@ -901,7 +900,7 @@ type RepositoryDeliverySettingsInput struct {
 	Directory  *string              `json:"directory,omitempty"`
 	// PackageName npm or Python registry identity where applicable.
 	PackageName *string `json:"package_name,omitempty"`
-	// ModulePath Go module identity for the Go SDK or Go CLI Target where applicable.
+	// ModulePath Go module identity for the Go SDK or CLI Target where applicable.
 	ModulePath *string `json:"module_path,omitempty"`
 	// PublishOnMerge Commit repository-owned registry automation and report publication after the Draft merges.
 	PublishOnMerge *bool `json:"publish_on_merge,omitempty"`
@@ -1342,15 +1341,13 @@ type AuthenticationConfigParamsCredentialVariablesValueVariant2 struct {
 type CLIBehaviorParams struct {
 	// CommandName Command users run, independent of how the CLI is distributed.
 	CommandName *Nullable[string] `json:"command_name,omitempty"`
-	// UpdateNotice Opt in to a once-a-day registry check that prints an upgrade hint. Off by default; generated code phones nobody unless this is enabled.
-	UpdateNotice *bool `json:"update_notice,omitempty"`
 	// ChangelogURL Public HTTP(S) URL read by the optional changelog command in generated CLIs. Supports UTF-8 Markdown, plain text, and static HTML; embedded credentials are not allowed. Omit or clear to disable, then regenerate.
 	ChangelogURL *Nullable[string] `json:"changelog_url,omitempty"`
 	// SupportURL Where the generated CLI's feedback command sends users. GitHub issues/new URLs get a prefilled title and environment details.
 	SupportURL *Nullable[string] `json:"support_url,omitempty"`
-	// MCPURL Hosted MCP endpoint installed by the generated CLI instead of launching the package's local stdio server.
+	// MCPURL Fallback MCP endpoint used by the generated CLI when the Project has no Typeship-hosted MCP endpoint. A hosted endpoint takes precedence over this URL.
 	MCPURL *Nullable[string] `json:"mcp_url,omitempty"`
-	// SkillsRepo GitHub owner/name of the skills package the generated CLI offers to install during init.
+	// SkillsRepo Repository in owner/name format that the generated CLI's init command offers for skill installation.
 	SkillsRepo *Nullable[string] `json:"skills_repo,omitempty"`
 }
 
@@ -1660,15 +1657,13 @@ type AuthenticationConfigResponseCredentialVariablesValueVariant2 struct {
 type CLIBehaviorResponse struct {
 	// CommandName Command users run, independent of how the CLI is distributed.
 	CommandName *string `json:"command_name,omitempty"`
-	// UpdateNotice Opt in to a once-a-day registry check that prints an upgrade hint. Off by default; generated code phones nobody unless this is enabled.
-	UpdateNotice *bool `json:"update_notice,omitempty"`
 	// ChangelogURL Public HTTP(S) URL read by the optional changelog command in generated CLIs. Supports UTF-8 Markdown, plain text, and static HTML; embedded credentials are not allowed. Omit or clear to disable, then regenerate.
 	ChangelogURL *string `json:"changelog_url,omitempty"`
 	// SupportURL Where the generated CLI's feedback command sends users. GitHub issues/new URLs get a prefilled title and environment details.
 	SupportURL *string `json:"support_url,omitempty"`
-	// MCPURL Hosted MCP endpoint installed by the generated CLI instead of launching the package's local stdio server.
+	// MCPURL Fallback MCP endpoint used by the generated CLI when the Project has no Typeship-hosted MCP endpoint. A hosted endpoint takes precedence over this URL.
 	MCPURL *string `json:"mcp_url,omitempty"`
-	// SkillsRepo GitHub owner/name of the skills package the generated CLI offers to install during init.
+	// SkillsRepo Repository in owner/name format that the generated CLI's init command offers for skill installation.
 	SkillsRepo *string `json:"skills_repo,omitempty"`
 }
 
@@ -1994,7 +1989,7 @@ const (
 	ErrorTypeAPI          ErrorType = "api"
 )
 
-// ErrorCode is one of "input_invalid", "input_missing", "input_type_invalid", "input_format_invalid", "input_too_long", "input_too_short", "input_duplicate", "input_unknown", "query_param_invalid", "cursor_invalid", "method_not_allowed", "resource_not_found", "idempotency_key_invalid", "idempotency_key_reused", "idempotency_key_in_use", "auth_required", "api_key_invalid", "token_invalid", "organization_required", "insufficient_scope", "role_insufficient", "rate_limit_exceeded", "feature_not_available", "quota_exceeded", "spec_invalid", "spec_too_large", "spec_unreachable", "repository_provider_unsupported", "repository_disconnected", "repository_unavailable", "target_busy", "targets_inactive", "no_draft", "draft_merged", "resource_changed", "precondition_failed", "version_invalid", "version_occupied", "version_too_low", "target_already_released", "adoption_unverified", "publication_disabled", "publication_not_retryable", "publication_recovery_unavailable", "publication_failed", "delivery_conflict", "delivery_exists", "resource_has_dependencies", "customization_conflict", "checks_failed", "draft_title_invalid", "history_recovery_required", "checks_unavailable", "dependency_missing", "dependency_not_found", "dependency_self", "dependency_cycle", "dependency_cross_project", "dependency_cross_lineage", "dependency_wrong_generator", "dependency_disabled", "dependency_module_path_missing", "dependency_unreleased", "dependency_revision_mismatch", "regeneration_failed", "follow_up_failed", "api_error". Stable programmatic identifier. Do not branch on message.
+// ErrorCode is one of "input_invalid", "input_missing", "input_type_invalid", "input_format_invalid", "input_too_long", "input_too_short", "input_duplicate", "input_unknown", "query_param_invalid", "cursor_invalid", "method_not_allowed", "resource_not_found", "idempotency_key_invalid", "idempotency_key_reused", "idempotency_key_in_use", "auth_required", "api_key_invalid", "token_invalid", "organization_required", "insufficient_scope", "role_insufficient", "rate_limit_exceeded", "feature_not_available", "quota_exceeded", "spec_invalid", "spec_too_large", "spec_unreachable", "repository_provider_unsupported", "repository_disconnected", "repository_unavailable", "target_busy", "targets_inactive", "no_draft", "draft_merged", "resource_changed", "precondition_failed", "version_invalid", "version_occupied", "version_too_low", "target_already_released", "adoption_unverified", "publication_disabled", "publication_not_retryable", "publication_recovery_unavailable", "publication_failed", "delivery_conflict", "delivery_exists", "resource_has_dependencies", "customization_conflict", "checks_failed", "draft_title_invalid", "history_recovery_required", "checks_unavailable", "regeneration_failed", "follow_up_failed", "api_error". Stable programmatic identifier. Do not branch on message.
 type ErrorCode string
 
 const (
@@ -2051,17 +2046,6 @@ const (
 	ErrorCodeDraftTitleInvalid              ErrorCode = "draft_title_invalid"
 	ErrorCodeHistoryRecoveryRequired        ErrorCode = "history_recovery_required"
 	ErrorCodeChecksUnavailable              ErrorCode = "checks_unavailable"
-	ErrorCodeDependencyMissing              ErrorCode = "dependency_missing"
-	ErrorCodeDependencyNotFound             ErrorCode = "dependency_not_found"
-	ErrorCodeDependencySelf                 ErrorCode = "dependency_self"
-	ErrorCodeDependencyCycle                ErrorCode = "dependency_cycle"
-	ErrorCodeDependencyCrossProject         ErrorCode = "dependency_cross_project"
-	ErrorCodeDependencyCrossLineage         ErrorCode = "dependency_cross_lineage"
-	ErrorCodeDependencyWrongGenerator       ErrorCode = "dependency_wrong_generator"
-	ErrorCodeDependencyDisabled             ErrorCode = "dependency_disabled"
-	ErrorCodeDependencyModulePathMissing    ErrorCode = "dependency_module_path_missing"
-	ErrorCodeDependencyUnreleased           ErrorCode = "dependency_unreleased"
-	ErrorCodeDependencyRevisionMismatch     ErrorCode = "dependency_revision_mismatch"
 	ErrorCodeRegenerationFailed             ErrorCode = "regeneration_failed"
 	ErrorCodeFollowUpFailed                 ErrorCode = "follow_up_failed"
 	ErrorCodeAPIError                       ErrorCode = "api_error"
@@ -2693,16 +2677,14 @@ func (v *TargetCreateRequest) UnmarshalJSON(data []byte) error {
 
 // TargetResponse is an API model.
 type TargetResponse struct {
-	ID        TargetID      `json:"id"`
-	Object    string        `json:"object"`
-	ProjectID ProjectID     `json:"project_id"`
-	SpecID    SpecID        `json:"spec_id"`
-	Name      string        `json:"name"`
-	Type      GeneratorKind `json:"type"`
-	// Dependency Present only on a go_cli Target, naming the sibling Go SDK Target the CLI is generated against. Every other Target type reports null.
-	Dependency     *TargetDependency `json:"dependency"`
-	Status         Status            `json:"status"`
-	ReleaseChannel ReleaseChannel    `json:"release_channel"`
+	ID             TargetID       `json:"id"`
+	Object         string         `json:"object"`
+	ProjectID      ProjectID      `json:"project_id"`
+	SpecID         SpecID         `json:"spec_id"`
+	Name           string         `json:"name"`
+	Type           GeneratorKind  `json:"type"`
+	Status         Status         `json:"status"`
+	ReleaseChannel ReleaseChannel `json:"release_channel"`
 	// VersionCurrent Read-only version of the Target's latest release, or null before its first release. Publishing status is separate; inspect the release for its results.
 	VersionCurrent *string `json:"version_current"`
 	// DraftID The Target's open Draft. After a merge it names the next Draft.
@@ -2715,12 +2697,6 @@ type TargetResponse struct {
 	CreatedAt  DateTime   `json:"created_at"`
 	UpdatedAt  DateTime   `json:"updated_at"`
 	RequestID  RequestID  `json:"request_id"`
-}
-
-// TargetDependency is an API model. One Target generated from a sibling Target. A go_cli Target carries type go_sdk_module, naming the Go SDK Target it is generated against.
-type TargetDependency struct {
-	Type     string   `json:"type"`
-	TargetID TargetID `json:"target_id"`
 }
 
 // DraftID is a generated API type.
@@ -2839,18 +2815,18 @@ type TargetAuthenticationEnvironmentResponse struct {
 type TargetCLIBehaviorResponse struct {
 	// CommandName Command users run, independent of how the CLI is distributed.
 	CommandName *string `json:"command_name,omitempty"`
-	// UpdateNotice Opt in to a once-a-day registry check that prints an upgrade hint. Off by default; generated code phones nobody unless this is enabled.
-	UpdateNotice *bool `json:"update_notice,omitempty"`
 	// ChangelogURL Public HTTP(S) URL read by the optional changelog command in generated CLIs. Supports UTF-8 Markdown, plain text, and static HTML; embedded credentials are not allowed. Omit or clear to disable, then regenerate.
 	ChangelogURL *string `json:"changelog_url,omitempty"`
 	// SupportURL Where the generated CLI's feedback command sends users. GitHub issues/new URLs get a prefilled title and environment details.
 	SupportURL *string `json:"support_url,omitempty"`
-	// MCPURL Hosted MCP endpoint installed by the generated CLI instead of launching the package's local stdio server.
+	// MCPURL Fallback MCP endpoint used by the generated CLI when the Project has no Typeship-hosted MCP endpoint. A hosted endpoint takes precedence over this URL.
 	MCPURL *string `json:"mcp_url,omitempty"`
-	// SkillsRepo GitHub owner/name of the skills package the generated CLI offers to install during init.
+	// SkillsRepo Repository in owner/name format that the generated CLI's init command offers for skill installation.
 	SkillsRepo *string `json:"skills_repo,omitempty"`
 	// Relay Enable webhook relay sessions for this CLI Target. Requires Pro. Turning it off prevents new sessions.
 	Relay *bool `json:"relay,omitempty"`
+	// UnitTests Also generate unit tests for the helper code a CLI shares, such as raw API path checks, saved credentials, and MCP client configuration. Applies to cli Targets. Off by default; tests for the generated commands are always included.
+	UnitTests *bool `json:"unit_tests,omitempty"`
 }
 
 // Delivery is one of RepositoryDelivery, HostedMCPDelivery.
@@ -3035,16 +3011,14 @@ type TargetList struct {
 
 // Target is an API model. All Targets follow reviewed SemVer. Before 1.0.0, breaking changes require a minor version; the policy is fixed rather than configurable.
 type Target struct {
-	ID        TargetID      `json:"id"`
-	Object    string        `json:"object"`
-	ProjectID ProjectID     `json:"project_id"`
-	SpecID    SpecID        `json:"spec_id"`
-	Name      string        `json:"name"`
-	Type      GeneratorKind `json:"type"`
-	// Dependency Present only on a go_cli Target, naming the sibling Go SDK Target the CLI is generated against. Every other Target type reports null.
-	Dependency     *TargetDependency `json:"dependency"`
-	Status         Status            `json:"status"`
-	ReleaseChannel ReleaseChannel    `json:"release_channel"`
+	ID             TargetID       `json:"id"`
+	Object         string         `json:"object"`
+	ProjectID      ProjectID      `json:"project_id"`
+	SpecID         SpecID         `json:"spec_id"`
+	Name           string         `json:"name"`
+	Type           GeneratorKind  `json:"type"`
+	Status         Status         `json:"status"`
+	ReleaseChannel ReleaseChannel `json:"release_channel"`
 	// VersionCurrent Read-only version of the Target's latest release, or null before its first release. Publishing status is separate; inspect the release for its results.
 	VersionCurrent *string `json:"version_current"`
 	// DraftID The Target's open Draft. After a merge it names the next Draft.
@@ -3997,10 +3971,9 @@ type GenerateRequest struct {
 	Target GenerateRequestTarget `json:"target"`
 	// PackageName npm package or Python distribution override. Valid only for the TypeScript and Python SDK targets.
 	PackageName *string `json:"package_name,omitempty"`
-	// ModulePath Go module path override for the generated artifact's own module. Valid only for the Go SDK and Go CLI Targets. Projects derive this from the Go destination repository by default.
-	ModulePath *string          `json:"module_path,omitempty"`
-	GoSDK      *GoSDKDescriptor `json:"go_sdk,omitempty"`
-	Config     *Config          `json:"config,omitempty"`
+	// ModulePath Go module path override for the generated artifact's own module. Valid only for the Go SDK and CLI Targets. Projects derive this from the Go destination repository by default.
+	ModulePath *string `json:"module_path,omitempty"`
+	Config     *Config `json:"config,omitempty"`
 }
 
 // SpecInput is one of URLSpecInput, InlineSpecInput — A Spec for one-shot generation, provided as exactly one URL or inline entrypoint.
@@ -4081,18 +4054,6 @@ type InlineSpecInput struct {
 // GenerateRequestTarget is an API model. One-shot generator descriptor; no persisted Target is created.
 type GenerateRequestTarget struct {
 	Type GeneratorKind `json:"type"`
-}
-
-// GoSDKDescriptor is an API model. The exact paired Go SDK a go_cli generation is built on. Required when target.type is go_cli and rejected otherwise. The descriptor is closed and immutable, because a CLI that pins a range or a branch pins nothing.
-type GoSDKDescriptor struct {
-	// ModulePath Go module path of the SDK the CLI imports, for example github.com/acme/payments-go. Must be a valid Go module path.
-	ModulePath string `json:"module_path"`
-	// Version Exact SDK module version the CLI requires: v-prefixed SemVer such as v1.2.3, or an immutable Go pseudo-version naming a commit such as v0.0.0-20240824120000-abcdef123456. Ranges, branches, and "latest" are rejected.
-	Version string `json:"version"`
-	// SpecDigest SHA-256 hex digest of the Spec the SDK was generated from. Must match the resolved Spec, or the request fails with spec_invalid.
-	SpecDigest string `json:"spec_digest"`
-	// PackageName Go package identifier of the SDK, when the module path's last element does not imply it. Optional.
-	PackageName *string `json:"package_name,omitempty"`
 }
 
 // Config is an API model. Everything Typeship needs beyond the Spec, in one object: generation customization (globals, retries, pagination, readme) and how the generated tooling behaves (cli, mcp, package, docs_url). Plain configuration. Typeship never requires vendor extensions inside the Spec itself. One-shot generation also accepts GraphQL settings here; stored projects keep those settings on their Spec.
@@ -4322,15 +4283,13 @@ type AuthenticationConfigCredentialVariablesValueVariant2 struct {
 type CLIBehavior struct {
 	// CommandName Command users run, independent of how the CLI is distributed.
 	CommandName *string `json:"command_name,omitempty"`
-	// UpdateNotice Opt in to a once-a-day registry check that prints an upgrade hint. Off by default; generated code phones nobody unless this is enabled.
-	UpdateNotice *bool `json:"update_notice,omitempty"`
 	// ChangelogURL Public HTTP(S) URL read by the optional changelog command in generated CLIs. Supports UTF-8 Markdown, plain text, and static HTML; embedded credentials are not allowed. Omit or clear to disable, then regenerate.
 	ChangelogURL *string `json:"changelog_url,omitempty"`
 	// SupportURL Where the generated CLI's feedback command sends users. GitHub issues/new URLs get a prefilled title and environment details.
 	SupportURL *string `json:"support_url,omitempty"`
-	// MCPURL Hosted MCP endpoint installed by the generated CLI instead of launching the package's local stdio server.
+	// MCPURL Fallback MCP endpoint used by the generated CLI when the Project has no Typeship-hosted MCP endpoint. A hosted endpoint takes precedence over this URL.
 	MCPURL *string `json:"mcp_url,omitempty"`
-	// SkillsRepo GitHub owner/name of the skills package the generated CLI offers to install during init.
+	// SkillsRepo Repository in owner/name format that the generated CLI's init command offers for skill installation.
 	SkillsRepo *string `json:"skills_repo,omitempty"`
 }
 
